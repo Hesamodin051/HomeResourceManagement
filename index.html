@@ -5,13 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>سامانه تدبیر منزل | مدیریت ذخایر خانگی</title>
     <link rel="stylesheet" href="style.css">
-    <!-- فونت فارسی زیبا از Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;900&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🏠 سامانه تدبیر منزل</h1>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h1>🏠 سامانه تدبیر منزل</h1>
+                <div>
+                    <span id="userDisplay" style="margin-left: 15px; background: #eef2ff; padding: 5px 12px; border-radius: 30px;"></span>
+                    <button id="logoutBtn" style="background: #dc2626; color: white; border: none; padding: 5px 15px; border-radius: 30px; cursor: pointer;">خروج</button>
+                </div>
+            </div>
             <p class="subtitle">مدیریت هوشمند ذخایر خانگی در شرایط عادی و بحرانی</p>
             <div class="mode-switch">
                 <span>🌿 حالت عادی</span>
@@ -53,6 +58,7 @@
         </section>
     </div>
 
+    <script src="auth.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
