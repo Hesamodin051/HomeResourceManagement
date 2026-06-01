@@ -6,6 +6,8 @@
     <title>داشبورد | سامانه تدبیر منزل</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <!-- کتابخانه Chart.js برای رسم نمودار -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -27,6 +29,29 @@
                 <span>⚠️ حالت بحران</span>
             </div>
         </header>
+
+        <!-- بخش جدید: ثبت مصرف روزانه آب، برق، گاز و نمودار -->
+        <section class="consumption-section">
+            <h2>📊 ثبت مصرف روزانه</h2>
+            <div class="form-row">
+                <div class="consumption-item">
+                    <label>💧 آب (لیتر)</label>
+                    <input type="number" id="waterConsumption" placeholder="مصرف امروز آب" step="any">
+                </div>
+                <div class="consumption-item">
+                    <label>⚡ برق (کیلووات)</label>
+                    <input type="number" id="electricityConsumption" placeholder="مصرف امروز برق" step="any">
+                </div>
+                <div class="consumption-item">
+                    <label>🔥 گاز (متر مکعب)</label>
+                    <input type="number" id="gasConsumption" placeholder="مصرف امروز گاز" step="any">
+                </div>
+                <button id="saveConsumptionBtn" class="consumption-btn">💾 ذخیره مصرف</button>
+            </div>
+            <div id="consumptionChart" style="margin-top: 20px; background: #f8fafc; padding: 10px; border-radius: 1rem;">
+                <canvas id="myChart" width="400" height="200" style="max-width:100%; height:auto;"></canvas>
+            </div>
+        </section>
 
         <div class="alert-panel" id="alertPanel"></div>
 
