@@ -4,13 +4,11 @@
     box-sizing: border-box;
     font-family: 'Vazirmatn', sans-serif;
 }
-
 body {
     background: linear-gradient(145deg, #e9f0f5 0%, #d9e2ec 100%);
     padding: 20px;
     min-height: 100vh;
 }
-
 .container {
     max-width: 1300px;
     margin: 0 auto;
@@ -21,21 +19,17 @@ body {
     padding: 1.5rem;
     transition: all 0.3s ease;
 }
-
 h1 {
     font-size: 1.8rem;
     color: #1e466e;
     border-right: 6px solid #3b82f6;
     padding-right: 15px;
 }
-
 .subtitle {
     color: #4b5563;
     margin-top: 8px;
     font-size: 0.9rem;
 }
-
-/* حالت بحران (کلاس crisis روی body می‌آید) */
 body.crisis {
     background: linear-gradient(145deg, #3e2a2a, #2c1e1e);
 }
@@ -50,7 +44,6 @@ body.crisis h1 {
 body.crisis .subtitle {
     color: #cbd5e1;
 }
-
 .mode-switch {
     display: flex;
     align-items: center;
@@ -103,7 +96,6 @@ input:checked + .slider {
 input:checked + .slider:before {
     transform: translateX(30px);
 }
-
 .alert-panel {
     background: #fef9c3;
     border-right: 6px solid #eab308;
@@ -117,6 +109,39 @@ body.crisis .alert-panel {
     color: #ffe4e4;
     border-right-color: #ff8c00;
 }
+/* بخش مصرف جدید */
+.consumption-section {
+    background: #ffffffcc;
+    border-radius: 1.5rem;
+    padding: 1rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.consumption-item {
+    flex: 1;
+    min-width: 120px;
+}
+.consumption-item label {
+    display: block;
+    font-size: 0.8rem;
+    margin-bottom: 0.3rem;
+    font-weight: 500;
+    color: #1e466e;
+}
+.consumption-item input {
+    width: 100%;
+}
+.consumption-btn {
+    background: #2c7a47;
+    margin-top: 1.5rem;
+}
+body.crisis .consumption-section {
+    background: #2d2f36cc;
+}
+body.crisis .consumption-item label {
+    color: #facc15;
+}
+/* پایان بخش مصرف */
 .add-item, .inventory-list {
     margin-top: 30px;
 }
