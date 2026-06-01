@@ -4,16 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ورود / ثبت‌نام | سامانه مدیریت ذخایر</title>
-    <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;900&display=swap" rel="stylesheet">
     <style>
-        /* استایل اختصاصی صفحه لاگین */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Vazirmatn', sans-serif;
+        }
+        body {
+            background: linear-gradient(145deg, #e9f0f5 0%, #d9e2ec 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
         .auth-container {
             max-width: 500px;
-            margin: 50px auto;
-            background: white;
+            width: 100%;
+            background: rgba(255,255,255,0.95);
             border-radius: 2rem;
-            box-shadow: 0 20px 35px rgba(0,0,0,0.1);
+            box-shadow: 0 25px 45px rgba(0,0,0,0.1);
             padding: 2rem;
         }
         .tabs {
@@ -48,6 +60,7 @@
             border: 1px solid #cbd5e1;
             border-radius: 1rem;
             font-family: inherit;
+            font-size: 1rem;
         }
         button {
             width: 100%;
@@ -59,6 +72,7 @@
             font-weight: bold;
             cursor: pointer;
             margin-top: 0.5rem;
+            font-size: 1rem;
         }
         .error-msg {
             color: #dc2626;
@@ -81,7 +95,6 @@
             <div class="tab" data-tab="register">ثبت‌نام</div>
         </div>
 
-        <!-- فرم ورود -->
         <div id="loginForm" class="form-panel">
             <div class="form-group">
                 <label>نام کاربری</label>
@@ -95,7 +108,6 @@
             <div id="loginError" class="error-msg"></div>
         </div>
 
-        <!-- فرم ثبت‌نام -->
         <div id="registerForm" class="form-panel" style="display: none;">
             <div class="form-group">
                 <label>نام کاربری</label>
