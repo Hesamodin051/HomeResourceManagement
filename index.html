@@ -2,63 +2,137 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>سامانه تدبیر منزل | مدیریت ذخایر خانگی</title>
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سامانه تدبیر منزل | مدیریت هوشمند مصرف و ذخایر خانگی</title>
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Vazirmatn', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .hero {
+            max-width: 1000px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 2rem;
+            box-shadow: 0 25px 45px rgba(0,0,0,0.2);
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+        h1 {
+            font-size: 2.5rem;
+            color: #1e466e;
+            margin-bottom: 1rem;
+        }
+        .sub {
+            font-size: 1.2rem;
+            color: #2c3e66;
+            margin-bottom: 2rem;
+            border-right: 4px solid #f97316;
+            padding-right: 1rem;
+            display: inline-block;
+        }
+        .desc {
+            text-align: justify;
+            line-height: 1.8;
+            color: #334155;
+            margin: 2rem 0;
+            font-size: 1rem;
+        }
+        .features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+        .feature-card {
+            background: #f1f5f9;
+            border-radius: 1.5rem;
+            padding: 1rem;
+            width: 180px;
+            text-align: center;
+        }
+        .feature-card span {
+            font-size: 2rem;
+            display: block;
+        }
+        .buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+        .btn {
+            padding: 0.8rem 2rem;
+            border-radius: 3rem;
+            font-weight: bold;
+            text-decoration: none;
+            transition: 0.2s;
+        }
+        .btn-primary {
+            background: #1e466e;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #0f2b44;
+            transform: scale(1.05);
+        }
+        .btn-outline {
+            border: 2px solid #1e466e;
+            color: #1e466e;
+        }
+        .btn-outline:hover {
+            background: #1e466e;
+            color: white;
+        }
+        footer {
+            margin-top: 2rem;
+            font-size: 0.8rem;
+            color: #475569;
+        }
+        @media (max-width: 700px) {
+            .hero { padding: 1.5rem; }
+            h1 { font-size: 1.8rem; }
+            .features { gap: 1rem; }
+            .feature-card { width: 140px; }
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h1>🏠 سامانه تدبیر منزل</h1>
-                <div>
-                    <span id="userDisplay" style="margin-left: 15px; background: #eef2ff; padding: 5px 12px; border-radius: 30px;"></span>
-                    <button id="logoutBtn" style="background: #dc2626; color: white; border: none; padding: 5px 15px; border-radius: 30px; cursor: pointer;">خروج</button>
-                </div>
-            </div>
-            <p class="subtitle">مدیریت هوشمند ذخایر خانگی در شرایط عادی و بحرانی</p>
-            <div class="mode-switch">
-                <span>🌿 حالت عادی</span>
-                <label class="toggle">
-                    <input type="checkbox" id="crisisModeToggle">
-                    <span class="slider"></span>
-                </label>
-                <span>⚠️ حالت بحران</span>
-            </div>
-        </header>
-
-        <div class="alert-panel" id="alertPanel">
-            <!-- هشدارهای هوشمند اینجا نمایش داده می‌شوند -->
+    <div class="hero">
+        <h1>🏠 سامانه تدبیر منزل</h1>
+        <div class="sub">مدیریت هوشمند مصرف آب، برق، گاز و ذخایر غذایی</div>
+        <div class="desc">
+            در شرایط عادی و بحرانی (زلزله، قطعی برق، جنگ) همراه شما هستیم.  
+            با ثبت‌نام در سامانه، می‌توانید مصرف لحظه‌ای آب، برق و گاز منزل خود را پایش کنید،  
+            تاریخ انقضای مواد غذایی را مدیریت کنید و در زمان بحران، توصیه‌های هوشمند برای اولویت‌بندی منابع دریافت کنید.  
+            تمام امکانات به صورت آفلاین نیز کار می‌کند.
         </div>
-
-        <section class="add-item">
-            <h2>➕ افزودن ذخیره جدید</h2>
-            <div class="form-row">
-                <input type="text" id="itemName" placeholder="نام ذخیره (مثلاً آب، برنج، باتری)" autocomplete="off">
-                <input type="number" id="itemQuantity" placeholder="مقدار" step="any">
-                <input type="text" id="itemUnit" placeholder="واحد (لیتر، کیلو، عدد)" autocomplete="off">
-                <input type="date" id="itemExpiry" placeholder="تاریخ انقضا (اختیاری)">
-                <button id="addBtn">➕ افزودن</button>
-            </div>
-        </section>
-
-        <section class="inventory-list">
-            <h2>📋 فهرست ذخایر منزل</h2>
-            <div class="table-wrapper">
-                <table id="inventoryTable">
-                    <thead>
-                        <tr><th>نام</th><th>مقدار</th><th>واحد</th><th>تاریخ انقضا</th><th>عملیات</th></tr>
-                    </thead>
-                    <tbody id="inventoryBody">
-                        <!-- ردیف‌ها توسط JS پر می‌شوند -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
+        <div class="features">
+            <div class="feature-card"><span>💧</span> پایش مصرف آب</div>
+            <div class="feature-card"><span>⚡</span> پایش مصرف برق</div>
+            <div class="feature-card"><span>🔥</span> پایش مصرف گاز</div>
+            <div class="feature-card"><span>🍚</span> مدیریت ذخایر غذایی</div>
+            <div class="feature-card"><span>⚠️</span> حالت بحران هوشمند</div>
+        </div>
+        <div class="buttons">
+            <a href="login.html" class="btn btn-primary">ورود به پرتال شخصی</a>
+            <a href="login.html" class="btn btn-outline">ثبت‌نام</a>
+        </div>
+        <footer>
+            پروژه درس مدیریت پروژه فناوری اطلاعات – تیم بین‌رشته‌ای
+        </footer>
     </div>
-
-    <script src="auth.js"></script>
-    <script src="script.js"></script>
 </body>
 </html>
