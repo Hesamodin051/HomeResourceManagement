@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>داشبورد | سامانه تدبیر منزل</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h1>🏠 سامانه تدبیر منزل</h1>
+                <div>
+                    <span id="userDisplay" style="margin-left: 15px; background: #eef2ff; padding: 5px 12px; border-radius: 30px;"></span>
+                    <button id="logoutBtn" style="background: #dc2626; color: white; border: none; padding: 5px 15px; border-radius: 30px; cursor: pointer;">خروج</button>
+                </div>
+            </div>
+            <p class="subtitle">مدیریت هوشمند ذخایر خانگی در شرایط عادی و بحرانی</p>
+            <div class="mode-switch">
+                <span>🌿 حالت عادی</span>
+                <label class="toggle">
+                    <input type="checkbox" id="crisisModeToggle">
+                    <span class="slider"></span>
+                </label>
+                <span>⚠️ حالت بحران</span>
+            </div>
+        </header>
+
+        <div class="alert-panel" id="alertPanel"></div>
+
+        <section class="add-item">
+            <h2>➕ افزودن ذخیره جدید</h2>
+            <div class="form-row">
+                <input type="text" id="itemName" placeholder="نام ذخیره (مثلاً آب، برنج، باتری)" autocomplete="off">
+                <input type="number" id="itemQuantity" placeholder="مقدار" step="any">
+                <input type="text" id="itemUnit" placeholder="واحد (لیتر، کیلو، عدد)" autocomplete="off">
+                <input type="date" id="itemExpiry" placeholder="تاریخ انقضا (اختیاری)">
+                <button id="addBtn">➕ افزودن</button>
+            </div>
+        </section>
+
+        <section class="inventory-list">
+            <h2>📋 فهرست ذخایر منزل</h2>
+            <div class="table-wrapper">
+                <table id="inventoryTable">
+                    <thead>
+                        <tr><th>نام</th><th>مقدار</th><th>واحد</th><th>تاریخ انقضا</th><th>عملیات</th></tr>
+                    </thead>
+                    <tbody id="inventoryBody"></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script src="auth.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
