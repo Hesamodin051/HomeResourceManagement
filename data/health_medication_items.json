@@ -1,0 +1,31 @@
+[
+  {
+    "name": "ماسک N95",
+    "category": "بهداشتی",
+    "quantity_per_person_per_month": 10,
+    "unit": "عدد",
+    "shelf_life_days": 730,
+    "storage_condition": "dry_cool",
+    "priority_level": 1
+  },
+  {
+    "name": "الکل ۷۰٪ (۱۰۰ میلی‌لیتر)",
+    "category": "بهداشتی",
+    "quantity_per_person_per_month": 1,
+    "unit": "عدد",
+    "shelf_life_days": 365,
+    "storage_condition": "dark_dry",
+    "priority_level": 2
+  },
+  {
+    "name": "قرص متفورمین (دیابت)",
+    "category": "دارویی خاص",
+    "condition": "دیابت نوع ۲",
+    "quantity_per_patient_per_month": 60,
+    "unit": "قرص",
+    "shelf_life_days": 730,
+    "storage_condition": "room_temperature",
+    "prescription_required": true,
+    "priority_level": 1
+  }
+]
