@@ -1,0 +1,29 @@
+[
+  {
+    "name": "برنج",
+    "quantity_per_person_per_day": 0.1,
+    "unit": "کیلوگرم",
+    "shelf_life_days": 365,
+    "storage_condition": "dry_cool",
+    "category": "غلات",
+    "priority_level": 1
+  },
+  {
+    "name": "کنسرو لوبیا",
+    "quantity_per_person_per_day": 0.05,
+    "unit": "کیلوگرم",
+    "shelf_life_days": 730,
+    "storage_condition": "dry_cool",
+    "category": "کنسرو",
+    "priority_level": 1
+  },
+  {
+    "name": "روغن",
+    "quantity_per_person_per_day": 0.03,
+    "unit": "لیتر",
+    "shelf_life_days": 540,
+    "storage_condition": "dark_dry",
+    "category": "چاشنی",
+    "priority_level": 2
+  }
+]
