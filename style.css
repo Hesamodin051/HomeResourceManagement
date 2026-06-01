@@ -1,1 +1,214 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Vazirmatn', sans-serif;
+}
 
+body {
+    background: linear-gradient(145deg, #e9f0f5 0%, #d9e2ec 100%);
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1300px;
+    margin: 0 auto;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(2px);
+    border-radius: 2rem;
+    box-shadow: 0 25px 45px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+h1 {
+    font-size: 1.8rem;
+    color: #1e466e;
+    border-right: 6px solid #3b82f6;
+    padding-right: 15px;
+}
+
+.subtitle {
+    color: #4b5563;
+    margin-top: 8px;
+    font-size: 0.9rem;
+}
+
+/* حالت بحران (کلاس crisis روی body می‌آید) */
+body.crisis {
+    background: linear-gradient(145deg, #3e2a2a, #2c1e1e);
+}
+body.crisis .container {
+    background: rgba(30, 30, 40, 0.92);
+    color: #f3f4f6;
+}
+body.crisis h1 {
+    color: #f97316;
+    border-right-color: #ef4444;
+}
+body.crisis .subtitle {
+    color: #cbd5e1;
+}
+
+.mode-switch {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #eef2ff;
+    padding: 8px 16px;
+    border-radius: 60px;
+    width: fit-content;
+    margin-top: 15px;
+}
+body.crisis .mode-switch {
+    background: #4a3a3a;
+}
+.toggle {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 28px;
+}
+.toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.3s;
+    border-radius: 34px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 4px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+input:checked + .slider {
+    background-color: #ef4444;
+}
+input:checked + .slider:before {
+    transform: translateX(30px);
+}
+
+.alert-panel {
+    background: #fef9c3;
+    border-right: 6px solid #eab308;
+    padding: 12px 20px;
+    border-radius: 28px;
+    margin: 20px 0;
+    font-weight: 500;
+}
+body.crisis .alert-panel {
+    background: #7f1a1a;
+    color: #ffe4e4;
+    border-right-color: #ff8c00;
+}
+.add-item, .inventory-list {
+    margin-top: 30px;
+}
+h2 {
+    font-size: 1.4rem;
+    margin-bottom: 15px;
+    color: #2c3e66;
+}
+body.crisis h2 {
+    color: #facc15;
+}
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-end;
+}
+input, button {
+    padding: 12px 16px;
+    border-radius: 28px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.9rem;
+    background: white;
+}
+input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+}
+button {
+    background: #1e466e;
+    color: white;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+}
+button:hover {
+    background: #0f2b44;
+    transform: scale(1.02);
+}
+.table-wrapper {
+    overflow-x: auto;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+body.crisis table {
+    background: #1f2937;
+    color: #e2e8f0;
+}
+th, td {
+    padding: 12px 10px;
+    text-align: center;
+    border-bottom: 1px solid #e2e8f0;
+}
+body.crisis th, body.crisis td {
+    border-bottom-color: #4b5563;
+}
+th {
+    background: #eef2ff;
+    font-weight: 700;
+}
+body.crisis th {
+    background: #334155;
+}
+.edit-btn, .delete-btn {
+    padding: 5px 12px;
+    margin: 0 4px;
+    border-radius: 40px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    border: none;
+}
+.edit-btn {
+    background: #facc15;
+    color: #1e293b;
+}
+.delete-btn {
+    background: #ef4444;
+    color: white;
+}
+@media (max-width: 700px) {
+    .form-row {
+        flex-direction: column;
+    }
+    .container {
+        padding: 1rem;
+    }
+}
