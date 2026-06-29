@@ -1,1 +1,227 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>مدیریت مصرف انرژی | سامانه تدبیر منزل</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 'vazir': ['Vazirmatn', 'sans-serif'] },
+                    colors: {
+                        'primary': '#0f172a',
+                        'secondary': '#3b82f6',
+                        'accent': '#f59e0b',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="font-vazir bg-gray-50 min-h-screen">
 
+    <!-- ===== هدر ===== -->
+    <header class="glass-header sticky top-0 z-50 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-bolt text-2xl text-secondary"></i>
+                <h1 class="text-xl font-bold text-primary">مدیریت مصرف انرژی</h1>
+            </div>
+            <div class="hamburger-menu cursor-pointer" id="hamburgerMenu">
+                <i class="fas fa-bars text-2xl text-gray-700"></i>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6">
+
+        <!-- ===== ثبت کنتور ===== -->
+        <div class="card-modern p-4 mb-6">
+            <h3 class="text-lg font-bold text-primary mb-4">
+                <i class="fas fa-pen-to-square text-secondary ml-2"></i>
+                ثبت کنتور
+            </h3>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">📅 تاریخ</label>
+                    <input type="date" id="meterDate" class="input-modern">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">💧 آب</label>
+                    <input type="number" id="waterMeter" class="input-modern" placeholder="عدد کنتور">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">⚡ برق</label>
+                    <input type="number" id="electricityMeter" class="input-modern" placeholder="عدد کنتور">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">🔥 گاز</label>
+                    <input type="number" id="gasMeter" class="input-modern" placeholder="عدد کنتور">
+                </div>
+            </div>
+            <div class="flex gap-2 mt-3">
+                <button id="saveMeterBtn" class="btn-gradient flex-1 justify-center">
+                    <i class="fas fa-save ml-2"></i> ذخیره کنتور
+                </button>
+                <button id="resetAllDataBtn" class="btn-danger flex-1 justify-center">
+                    <i class="fas fa-trash-can ml-2"></i> حذف همه
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== تنظیمات ===== -->
+        <div class="card-modern p-4 mb-6">
+            <h3 class="text-lg font-bold text-primary mb-4">
+                <i class="fas fa-sliders text-secondary ml-2"></i>
+                تنظیمات
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">🔔 آستانه آب (لیتر)</label>
+                    <input type="number" id="waterThreshold" class="input-modern" placeholder="۵۰۰">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">🔔 آستانه برق (کیلووات)</label>
+                    <input type="number" id="electricityThreshold" class="input-modern" placeholder="۳۰">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">🔔 آستانه گاز (مترمکعب)</label>
+                    <input type="number" id="gasThreshold" class="input-modern" placeholder="۵۰">
+                </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-3">
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">💰 قیمت آب (تومان/لیتر)</label>
+                    <input type="number" id="waterPrice" class="input-modern" placeholder="۰.۲">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">💰 قیمت برق (تومان)</label>
+                    <input type="number" id="electricityPrice" class="input-modern" placeholder="۱۶۲">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">💰 قیمت گاز (تومان)</label>
+                    <input type="number" id="gasPrice" class="input-modern" placeholder="۱۵۷">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1">💧 واحد آب</label>
+                    <select id="waterUnit" class="input-modern">
+                        <option value="liter">لیتر</option>
+                        <option value="cubic">متر مکعب</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex gap-2 mt-3">
+                <button id="enableManualPriceBtn" class="btn-outline flex-1 justify-center">
+                    <i class="fas fa-pen ml-2"></i> تنظیم دستی
+                </button>
+                <button id="saveManualPriceBtn" class="btn-gradient flex-1 justify-center hidden">
+                    <i class="fas fa-save ml-2"></i> ذخیره تنظیمات
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== انتخاب بازه ===== -->
+        <div class="flex flex-wrap gap-4 mb-6">
+            <div class="flex items-center gap-2">
+                <label class="text-sm font-medium text-gray-700">📅 نمایش:</label>
+                <select id="periodSelect" class="input-modern !py-1 !px-3">
+                    <option value="daily">روزانه</option>
+                    <option value="weekly">هفتگی</option>
+                    <option value="monthly">ماهانه</option>
+                </select>
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="text-sm font-medium text-gray-700">📊 نوع:</label>
+                <select id="chartTypeSelect" class="input-modern !py-1 !px-3">
+                    <option value="line">خطی</option>
+                    <option value="bar">میله‌ای</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- ===== نمودار ===== -->
+        <div class="card-modern p-4 mb-6">
+            <h3 class="text-lg font-bold text-primary mb-4">
+                <i class="fas fa-chart-line text-secondary ml-2"></i>
+                روند مصرف
+            </h3>
+            <canvas id="energyChart" height="200"></canvas>
+        </div>
+
+        <!-- ===== پیش‌بینی قبض ===== -->
+        <div class="card-modern p-4 mb-6 bg-yellow-50 border border-yellow-200">
+            <h3 class="text-lg font-bold text-primary mb-4">
+                <i class="fas fa-wallet text-accent ml-2"></i>
+                پیش‌بینی قبض
+            </h3>
+            <div class="flex items-center gap-4 mb-3">
+                <label class="text-sm font-medium text-gray-700">بازه:</label>
+                <select id="predictionPeriod" class="input-modern !py-1 !px-3">
+                    <option value="daily">روزانه</option>
+                    <option value="weekly">هفتگی</option>
+                    <option value="monthly" selected>ماهانه</option>
+                </select>
+            </div>
+            <div id="billPredictionDisplay" class="text-sm text-gray-600">در حال محاسبه...</div>
+        </div>
+
+        <!-- ===== جدول مصرف ===== -->
+        <div class="card-modern p-4 mb-6">
+            <h3 class="text-lg font-bold text-primary mb-4">
+                <i class="fas fa-table text-secondary ml-2"></i>
+                جدول مصرف روزانه
+            </h3>
+            <div class="flex flex-wrap gap-3 mb-4">
+                <input type="date" id="startDate" class="input-modern !py-1 !px-3">
+                <span class="text-gray-400">تا</span>
+                <input type="date" id="endDate" class="input-modern !py-1 !px-3">
+                <button id="showTableBtn" class="btn-gradient !py-1 !px-4 text-sm">
+                    <i class="fas fa-eye ml-2"></i> نمایش
+                </button>
+                <button id="exportCSVBtn" class="btn-gradient !py-1 !px-4 text-sm bg-green-600 hover:bg-green-700">
+                    <i class="fas fa-file-csv ml-2"></i> خروجی CSV
+                </button>
+            </div>
+            <div id="consumptionTableContainer" class="hidden">
+                <div class="overflow-x-auto">
+                    <table class="table-modern">
+                        <thead><tr><th>تاریخ</th><th>آب</th><th>برق</th><th>گاز</th><th>هزینه (تومان)</th><th>هشدار</th></tr></thead>
+                        <tbody id="consumptionTableBody"></tbody>
+                    </table>
+                </div>
+                <div id="averageDisplay" class="mt-3 text-sm text-gray-600 bg-gray-50 rounded-xl p-3 text-center"></div>
+            </div>
+        </div>
+
+        <!-- ===== تاریخچه ===== -->
+        <div class="card-modern p-4">
+            <h3 class="text-lg font-bold text-primary mb-4">
+                <i class="fas fa-clock-rotate-left text-secondary ml-2"></i>
+                تاریخچه ثبت کنتورها
+            </h3>
+            <div id="meterHistoryList" class="space-y-2"></div>
+        </div>
+
+    </main>
+
+    <!-- ===== منوی کشو ===== -->
+    <div id="drawer" class="drawer-modern fixed top-0 right-0 w-72 h-full z-50 transform translate-x-full transition-transform duration-300 shadow-2xl p-4 overflow-y-auto">
+        <div class="flex justify-between items-center mb-6">
+            <span class="text-lg font-bold text-primary">منو</span>
+            <button id="closeDrawerBtn" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        <div id="drawerItems" class="space-y-2"></div>
+    </div>
+    <div id="drawerBackdrop" class="fixed inset-0 bg-black/30 z-40 hidden"></div>
+
+    <script type="module" src="energy.js"></script>
+</body>
+</html>
