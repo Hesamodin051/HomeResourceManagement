@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدیریت مواد غذایی | سامانه تدبیر منزل</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 'vazir': ['Vazirmatn', 'sans-serif'] },
+                    colors: {
+                        'primary': '#0f172a',
+                        'secondary': '#3b82f6',
+                        'accent': '#f59e0b',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="font-vazir bg-gray-50 min-h-screen">
+
+    <!-- ===== هدر ===== -->
+    <header class="glass-header sticky top-0 z-50 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-utensils text-2xl text-secondary"></i>
+                <h1 class="text-xl font-bold text-primary">مدیریت مواد غذایی</h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <button id="historyBtn" class="btn-outline !py-1 !px-4 text-sm">
+                    <i class="fas fa-clock-rotate-left ml-2"></i> تاریخچه
+                </button>
+                <div class="hamburger-menu cursor-pointer" id="hamburgerMenu">
+                    <i class="fas fa-bars text-2xl text-gray-700"></i>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6">
+
+        <!-- ===== دسته‌بندی‌ها ===== -->
+        <div class="card-modern p-4 mb-6">
+            <h3 class="text-lg font-bold text-primary mb-4">
+                <i class="fas fa-tags text-secondary ml-2"></i>
+                دسته‌بندی‌های مواد غذایی
+            </h3>
+            <div id="categoryList" class="flex flex-wrap gap-2 mb-3"></div>
+            <div class="flex gap-2">
+                <input type="text" id="newCategoryName" class="input-modern flex-1" placeholder="نام دسته جدید (مثلاً لبنیات)">
+                <button id="addCategoryBtn" class="btn-gradient !py-2 !px-4 text-sm">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== فرم افزودن ===== -->
+        <div class="card-modern p-4 mb-6">
+            <h3 class="text-lg font-bold text-primary mb-4">
+                <i class="fas fa-plus-circle text-secondary ml-2"></i>
+                افزودن/ویرایش ماده غذایی
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <select id="foodCategory" class="input-modern">
+                    <option value="">-- دسته --</option>
+                </select>
+                <input type="text" id="foodName" class="input-modern" placeholder="نام کالا" list="foodNamesList">
+                <datalist id="foodNamesList"></datalist>
+                <input type="number" id="foodQty" class="input-modern" placeholder="مقدار">
+                <select id="foodUnit" class="input-modern">
+                    <option value="کیلوگرم">کیلوگرم</option>
+                    <option value="لیتر">لیتر</option>
+                    <option value="عدد">عدد</option>
+                    <option value="بسته">بسته</option>
+                </select>
+                <input type="date" id="foodExpiry" class="input-modern">
+            </div>
+            <div class="flex gap-2 mt-3">
+                <button id="saveFoodBtn" class="btn-gradient flex-1 justify-center">
+                    <i class="fas fa-save ml-2"></i> ذخیره
+                </button>
+                <button id="clearFormBtn" class="btn-outline flex-1 justify-center">
+                    <i class="fas fa-eraser ml-2"></i> پاک کردن
+                </button>
+                <button id="startBarcodeScannerBtn" class="btn-gradient flex-1 justify-center bg-green-600 hover:bg-green-700">
+                    <i class="fas fa-camera ml-2"></i> اسکن بارکد
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== اسکنر بارکد ===== -->
+        <div id="barcodeScannerContainer" class="card-modern p-4 mb-6 hidden">
+            <h4 class="font-bold text-primary mb-2">لطفاً بارکد را در مقابل دوربین قرار دهید</h4>
+            <div id="scannerVideo" class="w-full max-w-md mx-auto bg-black rounded-xl overflow-hidden aspect-video"></div>
+            <div class="flex justify-between items-center mt-3">
+                <button id="closeScannerBtn" class="btn-outline !py-1 !px-4 text-sm">
+                    <i class="fas fa-times ml-2"></i> بستن
+                </button>
+                <p id="scanResult" class="text-sm text-gray-600"></p>
+            </div>
+        </div>
+
+        <!-- ===== جدول ===== -->
+        <div class="card-modern p-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-primary">
+                    <i class="fas fa-list text-secondary ml-2"></i>
+                    لیست مواد غذایی موجود
+                </h3>
+                <button id="resetDataBtn" class="text-red-500 hover:text-red-700 text-sm font-medium">
+                    <i class="fas fa-trash-can ml-2"></i> ریست
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="table-modern">
+                    <thead><tr><th>دسته</th><th>نام</th><th>مقدار</th><th>واحد</th><th>انقضا</th><th>عملیات</th></tr></thead>
+                    <tbody id="foodTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ===== مدال تاریخچه ===== -->
+        <div id="historyModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
+            <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6 shadow-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-primary">📜 تاریخچه تغییرات</h3>
+                    <button class="close-modal text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+                <div id="historyList" class="space-y-2"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ===== منوی کشو ===== -->
+    <div id="drawer" class="drawer-modern fixed top-0 right-0 w-72 h-full z-50 transform translate-x-full transition-transform duration-300 shadow-2xl p-4 overflow-y-auto">
+        <div class="flex justify-between items-center mb-6">
+            <span class="text-lg font-bold text-primary">منو</span>
+            <button id="closeDrawerBtn" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        <div id="drawerItems" class="space-y-2"></div>
+    </div>
+    <div id="drawerBackdrop" class="fixed inset-0 bg-black/30 z-40 hidden"></div>
+
+    <script type="module" src="food.js"></script>
+</body>
+</html>
