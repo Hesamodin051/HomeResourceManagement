@@ -97,12 +97,9 @@ export function getUserAvatar(username) {
     return users[username]?.avatar || null;
 }
 
-// ===== تابع checkAuth ساده =====
 export function checkAuth() {
     const loggedInUser = getLoggedInUser();
     const currentPath = window.location.pathname;
-
-    // اگر کاربر لاگین نکرده و در صفحات محافظت‌شده است
     const protectedPages = ['dashboard.html', 'profile.html', 'food.html', 'energy.html', 
                             'reports.html', 'notifications.html', 'help.html', 'contact.html', 
                             'chat-history.html', 'medications.html'];
@@ -111,15 +108,10 @@ export function checkAuth() {
         window.location.href = 'index.html';
         return false;
     }
-
-    // اگر کاربر لاگین کرده و در index یا login است
-    if (loggedInUser && (currentPath === '/' || 
-                         currentPath.includes('index.html') || 
-                         currentPath.includes('login.html'))) {
+    if (loggedInUser && (currentPath === '/' || currentPath.includes('index.html') || currentPath.includes('login.html'))) {
         window.location.href = 'dashboard.html';
         return false;
     }
-
     return true;
 }
 
