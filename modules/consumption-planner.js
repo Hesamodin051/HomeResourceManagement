@@ -348,7 +348,28 @@ export async function generateConsumptionPlan(days = 7, startDate = null) {
     html += `</div>`;
     return html;
 }
+// modules/consumption-planner.js (اضافه کردن تابع جدید)
 
+// ============================================================
+// دریافت جزئیات یک وعده برای نمایش در مدال
+// ============================================================
+export function getMealDetails(dayIndex, mealType, plan) {
+    if (!plan || !plan[dayIndex]) return null;
+    const day = plan[dayIndex];
+    const meal = day.meals[mealType];
+    if (!meal) return null;
+    
+    return {
+        dayName: day.dayName,
+        date: day.date,
+        mealType: mealType,
+        mealName: meal.name,
+        ingredients: meal.ingredients,
+        cook_time: meal.cook_time,
+        servings: meal.servings,
+        dayIndex: dayIndex
+    };
+}
 // ============================================================
 // تنظیمات
 // ============================================================
