@@ -487,24 +487,6 @@ async function loadChatbotWidget() {
     }
 }
 
-/// ============================================================
-// 11. مدیریت مسیرها و بارگذاری اولیه (اصلاح شده برای جلوگیری از رفرش)
-// ============================================================
-const currentPath = window.location.pathname;
-
-// دریافت کاربر لاگین شده
-const loggedInUser = getLoggedInUser();
-
-// صفحات محافظت‌شده
-const protectedPages = ['dashboard.html', 'profile.html', 'food.html', 'energy.html', 
-                        'reports.html', 'notifications.html', 'help.html', 'contact.html', 
-                        'chat-history.html', 'medications.html'];
-
-// آیا صفحه فعلی محافظت‌شده است؟
-const isProtected = protectedPages.some(page => currentPath.includes(page));
-
-// آیا صفحه فعلی صفحه اصلی یا لاگین است؟
-const isPublic = currentPath.includes('index.html') || currentPath.includes('login.html') || currentPath === '/';
 
 // ===== مدیریت ریدایرکت‌ها =====
 if (isProtected && !loggedInUser) {
