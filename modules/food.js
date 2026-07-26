@@ -1,4 +1,5 @@
-// modules/food.js
+// modules/food.js - نسخه نهایی با مدیریت صحیح پاسخ AI
+
 import { getLoggedInUser } from './auth.js';
 import { initDrawer, updateDrawerItems } from './drawer.js';
 import { getAverageRating } from './feedback.js';
@@ -53,7 +54,7 @@ async function loadNutritionData() {
 }
 
 // ============================================================
-// دریافت اطلاعات تغذیه‌ای از هوش مصنوعی (نسخه مقاوم)
+// دریافت اطلاعات تغذیه‌ای از هوش مصنوعی (نسخه نهایی)
 // ============================================================
 export async function fetchNutritionFromAI(foodName) {
     try {
@@ -93,26 +94,38 @@ export async function fetchNutritionFromAI(foodName) {
             temperature: 0.1
         });
 
-        // ===== استخراج متن پاسخ به‌صورت مقاوم =====
+        // ===== استخراج متن پاسخ =====
         let responseText = '';
 
+        // 1. اگر پاسخ رشته است
         if (typeof response === 'string') {
             responseText = response;
-        } else if (response && typeof response === 'object') {
-            // بررسی ساختارهای رایج
+        }
+        // 2. اگر پاسخ شیء است (حالت فعلی)
+        else if (response && typeof response === 'object') {
+            // بررسی کلید message.content
             if (response.message && typeof response.message.content === 'string') {
                 responseText = response.message.content;
-            } else if (response.message && typeof response.message === 'string') {
-                responseText = response.message;
-            } else if (typeof response.text === 'string') {
+            }
+            // بررسی کلید text
+            else if (typeof response.text === 'string') {
                 responseText = response.text;
-            } else if (typeof response.response === 'string') {
+            }
+            // بررسی کلید response
+            else if (typeof response.response === 'string') {
                 responseText = response.response;
-            } else {
-                // اگر هیچکدام نبود، به JSON تبدیل کن
+            }
+            // بررسی کلید content
+            else if (typeof response.content === 'string') {
+                responseText = response.content;
+            }
+            // اگر هیچ‌کدام نبود، کل پاسخ را به JSON تبدیل کن
+            else {
                 responseText = JSON.stringify(response);
             }
-        } else {
+        }
+        // 3. اگر هیچ‌کدام نبود
+        else {
             console.warn('⚠️ پاسخ نامعتبر از AI:', response);
             return null;
         }
@@ -120,7 +133,6 @@ export async function fetchNutritionFromAI(foodName) {
         // ===== استخراج JSON از متن =====
         let jsonMatch = responseText.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
-            // اگر بریس پیدا نشد، احتمالاً کل پاسخ JSON است
             jsonMatch = [responseText];
         }
         
