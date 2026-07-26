@@ -1,21 +1,33 @@
+// ============================================================
+// app.js - فایل ورودی اصلی سامانه تدبیر منزل
+// ============================================================
+
 import { checkAuth, getLoggedInUser, logout, getUserProfile, getUserAvatar } from './modules/auth.js';
 import { loadInventory, addItem, editItem, deleteItem } from './modules/inventory.js';
 import { loadConsumptionData, saveTodayConsumption } from './modules/consumption.js';
 import { store, setCrisisMode, addListener, setCurrentUserProfile } from './modules/store.js';
-import { initDrawer, updateDrawerItems } from './drawer.js';
-import { generateSuggestions } from './modules/suggestions.js';
+import { generateSuggestions } from './modules/suggestion.js';
 import { generateConsumptionPlan } from './modules/consumption-planner.js';
 import { generateMealSuggestions } from './modules/meal-planner.js';
 import { getSmartSuggestions } from './modules/ai.js';
 
-// ===== PWA: ثبت Service Worker =====
+// ===== غیرفعال کردن پیام Puter.js =====
+if (typeof puter !== 'undefined') {
+    puter.quiet = true;
+}
+
+// ============================================================
+// 1. PWA: ثبت Service Worker
+// ============================================================
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')
         .then(() => console.log('✅ Service Worker ثبت شد'))
         .catch(err => console.log('❌ خطا در ثبت Service Worker:', err));
 }
 
-// ===== توابع AI =====
+// ============================================================
+// 2. توابع مربوط به هوش مصنوعی (AI)
+// ============================================================
 async function handleAISuggestion() {
     const display = document.getElementById('aiSuggestionDisplay');
     const btn = document.getElementById('aiSuggestionBtn');
@@ -26,17 +38,27 @@ async function handleAISuggestion() {
     display.innerHTML = '<span style="color: #805ad5;">🤔 در حال تحلیل داده‌ها و دریافت پیشنهادات...</span>';
     try {
         const suggestion = await getSmartSuggestions();
-        display.innerHTML = suggestion.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        let text = '';
+        if (typeof suggestion === 'string') {
+            text = suggestion;
+        } else if (suggestion && typeof suggestion === 'object') {
+            text = JSON.stringify(suggestion);
+        } else {
+            text = String(suggestion || 'پاسخی دریافت نشد.');
+        }
+        display.innerHTML = text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     } catch (error) {
         display.innerHTML = '❌ خطا در دریافت پیشنهادات. لطفاً دوباره تلاش کنید.';
-        console.error(error);
+        console.error('❌ خطا در handleAISuggestion:', error);
     } finally {
         btn.style.display = 'inline-block';
         loadingBtn.style.display = 'none';
     }
 }
 
-// ===== رندر جدول ذخایر =====
+// ============================================================
+// 3. رندر جدول ذخایر
+// ============================================================
 function renderInventoryTable() {
     const tbody = document.getElementById('inventoryBody');
     if (!tbody) return;
@@ -83,6 +105,9 @@ function renderInventoryTable() {
     });
 }
 
+// ============================================================
+// 4. تولید هشدارها
+// ============================================================
 function generateAlerts() {
     const alertPanel = document.getElementById('alertPanel');
     if (!alertPanel) return;
@@ -102,6 +127,9 @@ function generateAlerts() {
     alertPanel.innerHTML = alerts.map(a => `<div>${a}</div>`).join('');
 }
 
+// ============================================================
+// 5. رندر نمودار مصرف
+// ============================================================
 function renderChart() {
     const ctx = document.getElementById('myChart');
     if (!ctx) return;
@@ -122,6 +150,9 @@ function renderChart() {
     });
 }
 
+// ============================================================
+// 6. اتصال رویدادهای داشبورد
+// ============================================================
 function bindDashboardUI() {
     const saveBtn = document.getElementById('saveConsumptionBtn');
     if (saveBtn) {
@@ -159,6 +190,9 @@ function bindDashboardUI() {
     if (logoutBtn) logoutBtn.addEventListener('click', () => logout());
 }
 
+// ============================================================
+// 7. سناریوهای بحران
+// ============================================================
 function populateScenarioDropdown() {
     const scenarios = window.crisisScenarios || [];
     const select = document.getElementById('scenarioSelect');
@@ -176,8 +210,10 @@ function populateScenarioDropdown() {
         const tipDiv = document.getElementById('scenarioTip');
         if (scenario) {
             tipDiv.innerHTML = `<strong>توصیه:</strong> ${scenario.tip}<br><strong>اولویت منابع:</strong> ${scenario.priority_resources.join(' → ')}`;
+            tipDiv.style.display = 'block';
         } else {
             tipDiv.innerHTML = '';
+            tipDiv.style.display = 'none';
         }
         generateSuggestions();
         document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
@@ -185,32 +221,38 @@ function populateScenarioDropdown() {
     });
 }
 
+// ============================================================
+// 8. مقداردهی اولیه داشبورد
+// ============================================================
 async function initDashboard() {
     if (!checkAuth()) return;
+    
     const loggedInUser = getLoggedInUser();
     if (loggedInUser && !store.currentUserProfile) {
         const profile = getUserProfile(loggedInUser);
         if (profile) setCurrentUserProfile(profile);
     }
+    
     try {
         const response = await fetch('assets/data/crisis_scenarios.json');
         window.crisisScenarios = await response.json();
     } catch(e) { console.warn('خطا در بارگذاری سناریوها'); window.crisisScenarios = []; }
+    
     loadInventory();
     loadConsumptionData();
     renderInventoryTable();
     renderChart();
     generateAlerts();
     bindDashboardUI();
-    initDrawer();
-    updateDrawerItems();
+    
     populateScenarioDropdown();
     generateSuggestions();
     document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
     document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
-    // AI
+    
     const aiBtn = document.getElementById('aiSuggestionBtn');
     if (aiBtn) aiBtn.addEventListener('click', handleAISuggestion);
+    
     const savedCrisis = localStorage.getItem('crisis_mode');
     const crisisToggle = document.getElementById('crisisModeToggle');
     if (savedCrisis === 'true' && crisisToggle) {
@@ -222,6 +264,7 @@ async function initDashboard() {
         document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
         document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
     }
+    
     const userDisplay = document.getElementById('userDisplay');
     const userAvatar = document.getElementById('userAvatar');
     if (userDisplay && loggedInUser) userDisplay.innerText = loggedInUser;
@@ -240,22 +283,164 @@ async function initDashboard() {
     }
 }
 
+// ============================================================
+// 9. مقداردهی اولیه صفحه اصلی (index.html)
+// ============================================================
 function initIndex() {
     checkAuth();
-    initDrawer();
-    updateDrawerItems();
+    console.log('✅ صفحه اصلی بارگذاری شد.');
 }
 
-if (window.location.pathname.includes('login.html')) {
+// ============================================================
+// 10. چت‌بات هوشمند (ویجت شناور)
+// ============================================================
+async function loadChatbotWidget() {
+    try {
+        if (typeof puter === 'undefined') {
+            console.warn('⚠️ Puter.js بارگذاری نشده است. چت‌بات غیرفعال می‌شود.');
+            return;
+        }
+
+        const chatbotModule = await import('./modules/chatbot.js');
+        const chatbotApi = chatbotModule.default || chatbotModule;
+
+        const fab = document.getElementById('chatbotFab');
+        const windowEl = document.getElementById('chatbotWindow');
+        const closeBtn = document.getElementById('chatbotCloseBtn');
+        const sendBtn = document.getElementById('chatbotSendBtn');
+        const input = document.getElementById('chatbotInput');
+        const messages = document.getElementById('chatbotMessages');
+        const typingIndicator = document.getElementById('typingIndicator');
+
+        if (!fab || !windowEl) {
+            console.warn('⚠️ ویجت چت‌بات در صفحه پیدا نشد.');
+            return;
+        }
+
+        let isOpen = false;
+
+        fab.addEventListener('click', () => {
+            isOpen = !isOpen;
+            windowEl.classList.toggle('open', isOpen);
+            if (isOpen) {
+                input.focus();
+                const badge = document.getElementById('chatbotBadge');
+                if (badge) badge.style.display = 'none';
+            }
+        });
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                isOpen = false;
+                windowEl.classList.remove('open');
+            });
+        }
+
+        async function sendUserMessage() {
+            const text = input.value.trim();
+            if (!text) return;
+
+            addMessageToUI('user', text);
+            input.value = '';
+            input.style.height = 'auto';
+
+            typingIndicator.style.display = 'flex';
+            sendBtn.disabled = true;
+
+            try {
+                const response = await chatbotApi.sendMessage(text);
+                addMessageToUI('assistant', response);
+            } catch (error) {
+                addMessageToUI('assistant', '❌ خطا در دریافت پاسخ. لطفاً دوباره تلاش کنید.');
+                console.error(error);
+            } finally {
+                typingIndicator.style.display = 'none';
+                sendBtn.disabled = false;
+                messages.scrollTop = messages.scrollHeight;
+            }
+        }
+
+        sendBtn.addEventListener('click', sendUserMessage);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendUserMessage();
+            }
+        });
+
+        input.addEventListener('input', () => {
+            input.style.height = 'auto';
+            input.style.height = Math.min(input.scrollHeight, 80) + 'px';
+        });
+
+        document.querySelectorAll('.chatbot-quick-suggestions button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const question = btn.getAttribute('data-question');
+                if (question) {
+                    input.value = question;
+                    sendUserMessage();
+                }
+            });
+        });
+
+        function addMessageToUI(role, content) {
+            const div = document.createElement('div');
+            div.className = `message ${role}`;
+            div.innerHTML = content.replace(/\n/g, '<br>') + `<span class="time">${new Date().toLocaleTimeString('fa-IR')}</span>`;
+            messages.insertBefore(div, typingIndicator);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        if (chatbotApi.getHistory && typeof chatbotApi.getHistory === 'function') {
+            const history = chatbotApi.getHistory();
+            history.forEach(msg => {
+                if (msg.role !== 'system') {
+                    addMessageToUI(msg.role, msg.content);
+                }
+            });
+        }
+
+        console.log('✅ چت‌بات هوشمند با موفقیت بارگذاری شد.');
+
+    } catch (error) {
+        console.error('❌ خطا در بارگذاری چت‌بات:', error);
+    }
+}
+
+// ============================================================
+// 11. مدیریت مسیرها و بارگذاری اولیه
+// ============================================================
+const currentPath = window.location.pathname;
+
+if (currentPath.includes('login.html')) {
     import('./modules/auth.js').then(module => module.initAuthPage());
-} else if (window.location.pathname.includes('dashboard.html')) {
+} else if (currentPath.includes('dashboard.html')) {
     document.addEventListener('DOMContentLoaded', initDashboard);
-} else if (window.location.pathname.includes('profile.html') || window.location.pathname.includes('food.html') || window.location.pathname.includes('energy.html')) {
-    // handled by their own scripts
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadChatbotWidget);
+    } else {
+        loadChatbotWidget();
+    }
+} else if (currentPath.includes('profile.html') || 
+           currentPath.includes('food.html') || 
+           currentPath.includes('energy.html')) {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadChatbotWidget);
+    } else {
+        loadChatbotWidget();
+    }
 } else {
     document.addEventListener('DOMContentLoaded', initIndex);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadChatbotWidget);
+    } else {
+        loadChatbotWidget();
+    }
 }
 
+// ============================================================
+// 12. شنونده‌های تغییرات store
+// ============================================================
 addListener('inventory', () => {
     if (window.location.pathname.includes('dashboard.html')) {
         renderInventoryTable();
@@ -265,6 +450,7 @@ addListener('inventory', () => {
         document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
     }
 });
+
 addListener('crisisMode', () => {
     if (window.location.pathname.includes('dashboard.html')) {
         generateAlerts();
@@ -273,6 +459,7 @@ addListener('crisisMode', () => {
         document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
     }
 });
+
 addListener('consumptionData', () => {
     if (window.location.pathname.includes('dashboard.html')) {
         renderChart();
@@ -280,6 +467,7 @@ addListener('consumptionData', () => {
         document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
     }
 });
+
 addListener('currentUserProfile', () => {
     if (window.location.pathname.includes('dashboard.html')) {
         generateAlerts();
@@ -288,3 +476,5 @@ addListener('currentUserProfile', () => {
         document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
     }
 });
+
+console.log('🚀 سامانه تدبیر منزل با موفقیت بارگذاری شد.');
