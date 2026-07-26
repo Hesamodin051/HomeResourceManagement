@@ -1,5 +1,5 @@
 // ============================================================
-// app.js - فایل ورودی اصلی سامانه تدبیر منزل (نسخه نهایی با رفع خطای ۴۲۹ و حذف meal-planner)
+// app.js - فایل ورودی اصلی سامانه تدبیر منزل
 // ============================================================
 
 import { checkAuth, getLoggedInUser, logout, getUserProfile, getUserAvatar } from './modules/auth.js';
@@ -204,7 +204,7 @@ function updateConsumptionPlan() {
             .finally(() => {
                 planUpdateTimeout = null;
             });
-    }, 800); // افزایش delay به ۸۰۰ms برای اطمینان از تجمیع درخواست‌ها
+    }, 800);
 }
 
 // ============================================================
@@ -274,7 +274,7 @@ async function updateNutritionAnalysis() {
 }
 
 // ============================================================
-// 8. تابع به‌روزرسانی همه بخش‌ها (بدون بارگذاری مجدد)
+// 8. تابع به‌روزرسانی همه بخش‌ها
 // ============================================================
 function refreshAll() {
     renderInventoryTable();
@@ -297,7 +297,7 @@ async function swapMeal(dayIndex, mealType, currentName) {
     
     let options = foodNames.map(name => `<option value="${name}">${name}</option>`).join('');
     const additionalOptions = `
-        <option value="__chatbot__">🤖 دریافت پیشنهاد از چت‌بات</option>
+        <option value="__chatbot__">🤖 دریافت پیشنهاد از jsllm7</option>
         <option value="__custom__">✏️ وارد کردن دستی</option>
     `;
     const selectHTML = `
@@ -326,26 +326,22 @@ async function swapMeal(dayIndex, mealType, currentName) {
         const select = document.getElementById('mealSwapSelect');
         const selected = select.value;
         let newMealName = '';
-    // در app.js - درون تابع swapMeal
-// بخش مربوط به '__chatbot__'
-
-if (selected === '__chatbot__') {
-    const inventory = store.inventory || [];
-    const inventoryList = inventory.map(item => 
-        `- ${item.name}: ${item.quantity} ${item.unit}`
-    ).join('\n');
-    const familySize = getFamilySize();
-    
-    try {
-        const { getAlternativeMealAI } = await import('./modules/ai-fallback.js');
-        newMealName = await getAlternativeMealAI(mealType, inventoryList, familySize);
-        if (!newMealName || newMealName.length < 2) newMealName = 'غذای ساده';
-    } catch (e) {
-        console.error('❌ خطا در دریافت پیشنهاد از jsllm7:', e);
-        alert('خطا در دریافت پیشنهاد. لطفاً دستی وارد کنید.');
-        return;
-    }
-}
+        
+        if (selected === '__chatbot__') {
+            const inventoryList = inventory.map(item => 
+                `- ${item.name}: ${item.quantity} ${item.unit}`
+            ).join('\n');
+            const familySize = getFamilySize();
+            
+            try {
+                const { getAlternativeMealAI } = await import('./modules/ai-fallback.js');
+                newMealName = await getAlternativeMealAI(mealType, inventoryList, familySize);
+                if (!newMealName || newMealName.length < 2) newMealName = 'غذای ساده';
+            } catch (e) {
+                console.error('❌ خطا در دریافت پیشنهاد از jsllm7:', e);
+                alert('خطا در دریافت پیشنهاد. لطفاً دستی وارد کنید.');
+                return;
+            }
         } else if (selected === '__custom__') {
             newMealName = prompt('نام غذای جدید را وارد کنید:');
             if (!newMealName) return;
@@ -615,10 +611,8 @@ function initDashboard() {
         .then(data => { window.crisisScenarios = data; })
         .catch(() => { window.crisisScenarios = []; })
         .finally(() => {
-            // ===== بارگذاری اولیه =====
             loadInventory();
             
-            // ===== بارگذاری مصرف با پرچم =====
             isInitialLoad = true;
             loadConsumptionData();
             isInitialLoad = false;
@@ -629,8 +623,6 @@ function initDashboard() {
             bindDashboardUI();
             populateScenarioDropdown();
             generateSuggestions();
-            
-            // ===== فقط یک بار در انتها =====
             updateConsumptionPlan();
             updateNutritionAnalysis();
             
@@ -806,7 +798,7 @@ if (currentPath.includes('login.html')) {
 }
 
 // ============================================================
-// 18. شنونده‌های تغییرات store - با بررسی پرچم isInitialLoad
+// 18. شنونده‌های تغییرات store
 // ============================================================
 addListener('inventory', function() {
     if (window.location.pathname.includes('dashboard.html') && !isInitialLoad) {
