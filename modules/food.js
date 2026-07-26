@@ -5,17 +5,17 @@ import { store, setInventory } from './store.js';
 
 // ===== کلیدهای ذخیره‌سازی در localStorage =====
 function getInventoryKey() {
-    const user = getLoggedInUser() || 'default';
+    const user = store.currentUser || getLoggedInUser() || 'default';
     return `home_inventory_${user}`;
 }
 
 function getCategoriesKey() {
-    const user = getLoggedInUser() || 'default';
+    const user = store.currentUser || getLoggedInUser() || 'default';
     return `food_categories_${user}`;
 }
 
 function getHistoryKey() {
-    const user = getLoggedInUser() || 'default';
+    const user = store.currentUser || getLoggedInUser() || 'default';
     return `food_history_${user}`;
 }
 
@@ -347,7 +347,6 @@ function resetOnlyFoodItems() {
 // رویدادهای فرم
 // ============================================================
 function setupEventListeners() {
-    // دکمه افزودن دسته
     document.getElementById('addCategoryBtn')?.addEventListener('click', () => {
         const newCat = document.getElementById('newCategoryName')?.value.trim();
         if (!newCat) {
@@ -365,7 +364,6 @@ function setupEventListeners() {
         alert(`دسته "${newCat}" اضافه شد.`);
     });
 
-    // دکمه ذخیره ماده غذایی
     document.getElementById('saveFoodBtn')?.addEventListener('click', () => {
         const category = document.getElementById('foodCategory')?.value;
         const name = document.getElementById('foodName')?.value?.trim();
@@ -389,7 +387,6 @@ function setupEventListeners() {
         saveFoodItems();
         renderAll();
         document.getElementById('clearFormBtn')?.click();
-        // به‌روزرسانی داشبورد
         if (window.updateNutritionAnalysis) {
             window.updateNutritionAnalysis();
         }
@@ -442,10 +439,12 @@ async function init() {
         window.location.href = 'index.html';
         return;
     }
+    // تنظیم store.currentUser برای هماهنگی
+    store.currentUser = loggedInUser;
+    
     initDrawer();
     updateDrawerItems();
 
-    // بارگذاری همه داده‌ها از localStorage
     loadCategories();
     loadFoodItems();
     loadHistory();
