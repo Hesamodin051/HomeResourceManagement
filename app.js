@@ -9,7 +9,6 @@ import { store, setCrisisMode, addListener, setCurrentUserProfile } from './modu
 import { generateSuggestions } from './modules/suggestion.js';
 import { generateConsumptionPlan } from './modules/consumption-planner.js';
 import { getSmartSuggestions } from './modules/ai.js';
-import { analyzeInventoryNutrition } from './modules/food.js';
 import { generateMealSuggestions, initMealPlanner } from './modules/meal-planner.js';
 
 // ===== غیرفعال کردن پیام Puter.js =====
@@ -227,70 +226,73 @@ function populateScenarioDropdown() {
 // ============================================================
 // 8. تحلیل ارزش غذایی
 // ============================================================
-function updateNutritionAnalysis() {
+async function updateNutritionAnalysis() {
     const display = document.getElementById('nutritionDisplay');
     if (!display) return;
 
     const inventory = store.inventory;
     if (!inventory || inventory.length === 0) {
         display.innerHTML = `
-            <div class="text-center text-gray-400 py-2">
+            <div class="text-center text-gray-400 py-4">
                 <i class="fas fa-info-circle text-secondary ml-2"></i>
-                هنوز مواد غذایی ثبت نشده است. پس از ثبت مواد، تحلیل ارزش غذایی نمایش داده می‌شود.
+                هنوز مواد غذایی ثبت نشده است.
             </div>
         `;
         return;
     }
 
     try {
-        const nutrition = analyzeInventoryNutrition();
+        const { analyzeInventoryNutrition } = await import('./modules/food.js');
+        const nutrition = await analyzeInventoryNutrition();
+        
         if (!nutrition || nutrition.calories === 0) {
             display.innerHTML = `
-                <div class="text-center text-gray-400 py-2">
+                <div class="text-center text-gray-400 py-4">
                     <i class="fas fa-info-circle text-secondary ml-2"></i>
                     اطلاعات ارزش غذایی برای مواد ثبت‌شده موجود نیست.
+                    <br><span class="text-xs">لطفاً مطمئن شوید که فایل food_items.json در مسیر صحیح قرار دارد.</span>
                 </div>
             `;
             return;
         }
 
         const vitaminHtml = Object.keys(nutrition.vitamins || {}).length > 0 ? `
-            <div class="flex flex-wrap gap-1 mt-2">
+            <div class="flex flex-wrap gap-1 mt-3">
                 ${Object.keys(nutrition.vitamins).map(v => `<span class="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">${v}</span>`).join('')}
             </div>
         ` : '';
 
         display.innerHTML = `
             <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-                <div class="text-center p-2 bg-blue-50 rounded-lg">
+                <div class="text-center p-3 bg-blue-50 rounded-xl">
                     <span class="text-xs text-gray-500">کالری</span>
-                    <p class="text-lg font-bold text-blue-600">${nutrition.calories}</p>
+                    <p class="text-xl font-bold text-blue-600">${nutrition.calories}</p>
                     <span class="text-xs text-gray-400">کیلوکالری</span>
                 </div>
-                <div class="text-center p-2 bg-green-50 rounded-lg">
+                <div class="text-center p-3 bg-green-50 rounded-xl">
                     <span class="text-xs text-gray-500">پروتئین</span>
-                    <p class="text-lg font-bold text-green-600">${nutrition.protein}g</p>
+                    <p class="text-xl font-bold text-green-600">${nutrition.protein}g</p>
                 </div>
-                <div class="text-center p-2 bg-yellow-50 rounded-lg">
+                <div class="text-center p-3 bg-yellow-50 rounded-xl">
                     <span class="text-xs text-gray-500">کربوهیدرات</span>
-                    <p class="text-lg font-bold text-yellow-600">${nutrition.carbs}g</p>
+                    <p class="text-xl font-bold text-yellow-600">${nutrition.carbs}g</p>
                 </div>
-                <div class="text-center p-2 bg-red-50 rounded-lg">
+                <div class="text-center p-3 bg-red-50 rounded-xl">
                     <span class="text-xs text-gray-500">چربی</span>
-                    <p class="text-lg font-bold text-red-600">${nutrition.fat}g</p>
+                    <p class="text-xl font-bold text-red-600">${nutrition.fat}g</p>
                 </div>
-                <div class="text-center p-2 bg-purple-50 rounded-lg">
+                <div class="text-center p-3 bg-purple-50 rounded-xl">
                     <span class="text-xs text-gray-500">فیبر</span>
-                    <p class="text-lg font-bold text-purple-600">${nutrition.fiber}g</p>
+                    <p class="text-xl font-bold text-purple-600">${nutrition.fiber}g</p>
                 </div>
             </div>
             ${vitaminHtml}
-            <div class="text-xs text-gray-400 mt-2 text-center">تحلیل بر اساس ${inventory.length} قلم مواد غذایی</div>
+            <div class="text-xs text-gray-400 mt-3 text-center">تحلیل بر اساس ${inventory.length} قلم مواد غذایی</div>
         `;
     } catch (error) {
         console.error('خطا در تحلیل ارزش غذایی:', error);
         display.innerHTML = `
-            <div class="text-center text-red-400 py-2">
+            <div class="text-center text-red-400 py-4">
                 <i class="fas fa-exclamation-triangle ml-2"></i>
                 خطا در تحلیل ارزش غذایی. لطفاً مجدداً تلاش کنید.
             </div>
@@ -324,7 +326,7 @@ async function initDashboard() {
     populateScenarioDropdown();
     generateSuggestions();
     document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
-    updateNutritionAnalysis();
+    await updateNutritionAnalysis();
     await generateMealSuggestions();
     
     const aiBtn = document.getElementById('aiSuggestionBtn');
@@ -339,7 +341,7 @@ async function initDashboard() {
         generateAlerts();
         generateSuggestions();
         document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
-        updateNutritionAnalysis();
+        await updateNutritionAnalysis();
         await generateMealSuggestions();
     }
     
@@ -360,7 +362,6 @@ async function initDashboard() {
         }
     }
 
-    // مقداردهی ماژول پیشنهادات غذایی
     initMealPlanner();
 }
 
@@ -368,9 +369,8 @@ async function initDashboard() {
 // 10. مقداردهی اولیه صفحه اصلی (index.html)
 // ============================================================
 function initIndex() {
-    // فقط برای زمانی که app.js در index بارگذاری شود (که الان نمی‌شود)
-    // این تابع در index استفاده نمی‌شود
-    console.log('ℹ️ این تابع در index استفاده نمی‌شود.');
+    checkAuth();
+    console.log('✅ صفحه اصلی بارگذاری شد.');
 }
 
 // ============================================================
@@ -490,7 +490,7 @@ async function loadChatbotWidget() {
 }
 
 // ============================================================
-// 12. مدیریت مسیرها
+// 12. مدیریت مسیرها و بارگذاری اولیه
 // ============================================================
 const currentPath = window.location.pathname;
 
@@ -512,14 +512,13 @@ if (currentPath.includes('login.html')) {
            currentPath.includes('contact.html') ||
            currentPath.includes('chat-history.html') ||
            currentPath.includes('medications.html')) {
-    // صفحات دیگر - چت‌بات بارگذاری شود
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', loadChatbotWidget);
     } else {
         loadChatbotWidget();
     }
 } else {
-    // index.html - هیچ کاری نکن (چون app.js در آن بارگذاری نمی‌شود)
+    // index.html - کاری انجام نده (چون app.js در آن بارگذاری نمی‌شود)
     console.log('ℹ️ index.html - app.js اجرا نمی‌شود.');
 }
 
