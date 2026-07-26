@@ -1,5 +1,5 @@
 // ============================================================
-// app.js - فایل ورودی اصلی سامانه تدبیر منزل (نسخه نهایی)
+// app.js - فایل ورودی اصلی سامانه تدبیر منزل (نسخه نهایی بدون خطا)
 // ============================================================
 
 import { checkAuth, getLoggedInUser, logout, getUserProfile, getUserAvatar } from './modules/auth.js';
@@ -10,7 +10,6 @@ import { generateSuggestions } from './modules/suggestion.js';
 import { generateConsumptionPlan, getMealDetails } from './modules/consumption-planner.js';
 import { generateMealSuggestions, refreshMealSuggestions, initMealPlanner } from './modules/meal-planner.js';
 import { getSmartSuggestions } from './modules/ai.js';
-import { analyzeInventoryNutrition } from './modules/food.js';
 
 // ===== غیرفعال کردن پیام Puter.js =====
 if (typeof puter !== 'undefined') {
@@ -58,9 +57,9 @@ async function handleAISuggestion() {
 }
 
 // ============================================================
-// 3. رندر جدول ذخایر (اکنون async)
+// 3. رندر جدول ذخایر (با استفاده از then برای مدیریت async)
 // ============================================================
-async function renderInventoryTable() {
+function renderInventoryTable() {
     const tbody = document.getElementById('inventoryBody');
     if (!tbody) return;
     tbody.innerHTML = '';
@@ -74,37 +73,36 @@ async function renderInventoryTable() {
         const editBtn = document.createElement('button');
         editBtn.innerText = '✏️';
         editBtn.className = 'edit-btn';
-        editBtn.onclick = async () => {
+        editBtn.onclick = function() {
             const newName = prompt('نام جدید:', item.name);
             const newQty = parseFloat(prompt('مقدار جدید:', item.quantity));
             const newUnit = prompt('واحد جدید:', item.unit);
             const newExpiry = prompt('تاریخ انقضا (YYYY-MM-DD):', item.expiry);
             if (newName && !isNaN(newQty) && newQty > 0 && newUnit) {
                 editItem(item.id, newName.trim(), newQty, newUnit.trim(), newExpiry || '');
-                await renderInventoryTable();
-                generateAlerts();
-                document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
-                    parseInt(document.getElementById('planDaysSelect')?.value || 7)
-                );
-                generateSuggestions();
-                await updateNutritionAnalysis();
-                refreshMealSuggestions();
+                // به‌روزرسانی با استفاده از then
+                Promise.all([
+                    renderInventoryTable(),
+                    updateConsumptionPlan(),
+                    generateSuggestions(),
+                    updateNutritionAnalysis(),
+                    refreshMealSuggestions()
+                ]).catch(err => console.error(err));
             } else alert('ورودی نامعتبر');
         };
         const delBtn = document.createElement('button');
         delBtn.innerText = '🗑️';
         delBtn.className = 'delete-btn';
-        delBtn.onclick = async () => {
+        delBtn.onclick = function() {
             if (confirm('آیا از حذف این قلم اطمینان دارید؟')) {
                 deleteItem(item.id);
-                await renderInventoryTable();
-                generateAlerts();
-                document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
-                    parseInt(document.getElementById('planDaysSelect')?.value || 7)
-                );
-                generateSuggestions();
-                await updateNutritionAnalysis();
-                refreshMealSuggestions();
+                Promise.all([
+                    renderInventoryTable(),
+                    updateConsumptionPlan(),
+                    generateSuggestions(),
+                    updateNutritionAnalysis(),
+                    refreshMealSuggestions()
+                ]).catch(err => console.error(err));
             }
         };
         actionsCell.appendChild(editBtn);
@@ -113,7 +111,7 @@ async function renderInventoryTable() {
 }
 
 // ============================================================
-// 4. تولید هشدارها (ساده - بدون async)
+// 4. تولید هشدارها
 // ============================================================
 function generateAlerts() {
     const alertPanel = document.getElementById('alertPanel');
@@ -135,7 +133,7 @@ function generateAlerts() {
 }
 
 // ============================================================
-// 5. رندر نمودار مصرف (بدون async)
+// 5. رندر نمودار مصرف
 // ============================================================
 function renderChart() {
     const ctx = document.getElementById('myChart');
@@ -158,12 +156,25 @@ function renderChart() {
 }
 
 // ============================================================
-// 6. اتصال رویدادهای داشبورد (اکنون async)
+// 6. به‌روزرسانی الگوی مصرف
 // ============================================================
-async function bindDashboardUI() {
+function updateConsumptionPlan() {
+    const display = document.getElementById('consumptionPlanDisplay');
+    if (!display) return;
+    const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
+    generateConsumptionPlan(days).then(html => {
+        display.innerHTML = html;
+        attachMealClickEvents();
+    }).catch(err => console.error('خطا در به‌روزرسانی الگوی مصرف:', err));
+}
+
+// ============================================================
+// 7. اتصال رویدادهای داشبورد
+// ============================================================
+function bindDashboardUI() {
     const saveBtn = document.getElementById('saveConsumptionBtn');
     if (saveBtn) {
-        saveBtn.addEventListener('click', async () => {
+        saveBtn.addEventListener('click', function() {
             const water = parseFloat(document.getElementById('waterConsumption').value);
             const elec = parseFloat(document.getElementById('electricityConsumption').value);
             const gas = parseFloat(document.getElementById('gasConsumption').value);
@@ -178,23 +189,19 @@ async function bindDashboardUI() {
             document.getElementById('electricityConsumption').value = '';
             document.getElementById('gasConsumption').value = '';
             generateSuggestions();
-            document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
-                parseInt(document.getElementById('planDaysSelect')?.value || 7)
-            );
+            updateConsumptionPlan();
         });
     }
     const crisisToggle = document.getElementById('crisisModeToggle');
     if (crisisToggle) {
-        crisisToggle.addEventListener('change', async (e) => {
+        crisisToggle.addEventListener('change', function(e) {
             setCrisisMode(e.target.checked);
             document.body.classList.toggle('crisis', e.target.checked);
             generateAlerts();
             generateSuggestions();
-            document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
-                parseInt(document.getElementById('planDaysSelect')?.value || 7)
-            );
+            updateConsumptionPlan();
             localStorage.setItem('crisis_mode', e.target.checked);
-            await updateNutritionAnalysis();
+            updateNutritionAnalysis();
             refreshMealSuggestions();
         });
     }
@@ -203,9 +210,9 @@ async function bindDashboardUI() {
 }
 
 // ============================================================
-// 7. سناریوهای بحران (اکنون async)
+// 8. سناریوهای بحران
 // ============================================================
-async function populateScenarioDropdown() {
+function populateScenarioDropdown() {
     const scenarios = window.crisisScenarios || [];
     const select = document.getElementById('scenarioSelect');
     if (!select) return;
@@ -216,7 +223,7 @@ async function populateScenarioDropdown() {
         option.textContent = scenario.name;
         select.appendChild(option);
     });
-    select.addEventListener('change', async (e) => {
+    select.addEventListener('change', function(e) {
         const selectedId = parseInt(e.target.value);
         const scenario = scenarios.find(s => s.id === selectedId);
         const tipDiv = document.getElementById('scenarioTip');
@@ -228,16 +235,14 @@ async function populateScenarioDropdown() {
             tipDiv.style.display = 'none';
         }
         generateSuggestions();
-        document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
-            parseInt(document.getElementById('planDaysSelect')?.value || 7)
-        );
+        updateConsumptionPlan();
     });
 }
 
 // ============================================================
-// 8. تحلیل ارزش غذایی (async)
+// 9. تحلیل ارزش غذایی (با استفاده از import پویا)
 // ============================================================
-async function updateNutritionAnalysis() {
+function updateNutritionAnalysis() {
     const display = document.getElementById('nutritionDisplay');
     if (!display) return;
 
@@ -252,67 +257,60 @@ async function updateNutritionAnalysis() {
         return;
     }
 
-    try {
-        const { analyzeInventoryNutrition } = await import('./modules/food.js');
-        const nutrition = await analyzeInventoryNutrition();
-        
-        if (!nutrition || nutrition.calories === 0) {
+    import('./modules/food.js').then(async (foodModule) => {
+        try {
+            const nutrition = await foodModule.analyzeInventoryNutrition();
+            if (!nutrition || nutrition.calories === 0) {
+                display.innerHTML = `
+                    <div class="text-center text-gray-400 py-4">
+                        <i class="fas fa-info-circle text-secondary ml-2"></i>
+                        اطلاعات ارزش غذایی برای مواد ثبت‌شده موجود نیست.
+                        <br><span class="text-xs">برای دریافت اطلاعات، به صفحه مدیریت مواد غذایی بروید و روی دکمه 📥 کلیک کنید.</span>
+                    </div>
+                `;
+                return;
+            }
+            const vitaminHtml = Object.keys(nutrition.vitamins || {}).length > 0 ? `
+                <div class="flex flex-wrap gap-1 mt-3">
+                    ${Object.keys(nutrition.vitamins).map(v => `<span class="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">${v}</span>`).join('')}
+                </div>
+            ` : '';
             display.innerHTML = `
-                <div class="text-center text-gray-400 py-4">
-                    <i class="fas fa-info-circle text-secondary ml-2"></i>
-                    اطلاعات ارزش غذایی برای مواد ثبت‌شده موجود نیست.
-                    <br><span class="text-xs">برای دریافت اطلاعات، به صفحه مدیریت مواد غذایی بروید و روی دکمه 📥 کلیک کنید.</span>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <div class="text-center p-3 bg-blue-50 rounded-xl">
+                        <span class="text-xs text-gray-500">کالری</span>
+                        <p class="text-xl font-bold text-blue-600">${nutrition.calories}</p>
+                        <span class="text-xs text-gray-400">کیلوکالری</span>
+                    </div>
+                    <div class="text-center p-3 bg-green-50 rounded-xl">
+                        <span class="text-xs text-gray-500">پروتئین</span>
+                        <p class="text-xl font-bold text-green-600">${nutrition.protein}g</p>
+                    </div>
+                    <div class="text-center p-3 bg-yellow-50 rounded-xl">
+                        <span class="text-xs text-gray-500">کربوهیدرات</span>
+                        <p class="text-xl font-bold text-yellow-600">${nutrition.carbs}g</p>
+                    </div>
+                    <div class="text-center p-3 bg-red-50 rounded-xl">
+                        <span class="text-xs text-gray-500">چربی</span>
+                        <p class="text-xl font-bold text-red-600">${nutrition.fat}g</p>
+                    </div>
+                    <div class="text-center p-3 bg-purple-50 rounded-xl">
+                        <span class="text-xs text-gray-500">فیبر</span>
+                        <p class="text-xl font-bold text-purple-600">${nutrition.fiber}g</p>
+                    </div>
                 </div>
+                ${vitaminHtml}
+                <div class="text-xs text-gray-400 mt-3 text-center">تحلیل بر اساس ${inventory.length} قلم مواد غذایی</div>
             `;
-            return;
+        } catch (error) {
+            console.error('خطا در تحلیل ارزش غذایی:', error);
+            display.innerHTML = `<div class="text-center text-red-400 py-4">خطا در تحلیل ارزش غذایی. لطفاً مجدداً تلاش کنید.</div>`;
         }
-
-        const vitaminHtml = Object.keys(nutrition.vitamins || {}).length > 0 ? `
-            <div class="flex flex-wrap gap-1 mt-3">
-                ${Object.keys(nutrition.vitamins).map(v => `<span class="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">${v}</span>`).join('')}
-            </div>
-        ` : '';
-
-        display.innerHTML = `
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-                <div class="text-center p-3 bg-blue-50 rounded-xl">
-                    <span class="text-xs text-gray-500">کالری</span>
-                    <p class="text-xl font-bold text-blue-600">${nutrition.calories}</p>
-                    <span class="text-xs text-gray-400">کیلوکالری</span>
-                </div>
-                <div class="text-center p-3 bg-green-50 rounded-xl">
-                    <span class="text-xs text-gray-500">پروتئین</span>
-                    <p class="text-xl font-bold text-green-600">${nutrition.protein}g</p>
-                </div>
-                <div class="text-center p-3 bg-yellow-50 rounded-xl">
-                    <span class="text-xs text-gray-500">کربوهیدرات</span>
-                    <p class="text-xl font-bold text-yellow-600">${nutrition.carbs}g</p>
-                </div>
-                <div class="text-center p-3 bg-red-50 rounded-xl">
-                    <span class="text-xs text-gray-500">چربی</span>
-                    <p class="text-xl font-bold text-red-600">${nutrition.fat}g</p>
-                </div>
-                <div class="text-center p-3 bg-purple-50 rounded-xl">
-                    <span class="text-xs text-gray-500">فیبر</span>
-                    <p class="text-xl font-bold text-purple-600">${nutrition.fiber}g</p>
-                </div>
-            </div>
-            ${vitaminHtml}
-            <div class="text-xs text-gray-400 mt-3 text-center">تحلیل بر اساس ${inventory.length} قلم مواد غذایی</div>
-        `;
-    } catch (error) {
-        console.error('خطا در تحلیل ارزش غذایی:', error);
-        display.innerHTML = `
-            <div class="text-center text-red-400 py-4">
-                <i class="fas fa-exclamation-triangle ml-2"></i>
-                خطا در تحلیل ارزش غذایی. لطفاً مجدداً تلاش کنید.
-            </div>
-        `;
-    }
+    }).catch(err => console.error('خطا در بارگذاری food.js:', err));
 }
 
 // ============================================================
-// 9. مدیریت مدال تأیید مصرف
+// 10. مدیریت مدال تأیید مصرف
 // ============================================================
 function getFamilySize() {
     return store.currentUserProfile?.familySize || 4;
@@ -322,17 +320,13 @@ function showConsumeModal(mealData) {
     const modal = document.getElementById('consumeModal');
     const body = document.getElementById('consumeModalBody');
     const title = document.getElementById('consumeModalTitle');
-    
     if (!modal || !body) return;
-    
     const familySize = getFamilySize();
     title.textContent = `🍽️ ${mealData.mealName} - ${mealData.mealType} (${mealData.dayName})`;
-    
     let html = `
         <p class="text-sm text-gray-600 mb-4">مواد اولیه مورد نیاز برای ${familySize} نفر:</p>
         <div class="space-y-3">
     `;
-    
     mealData.ingredients.forEach((ing, index) => {
         const needed = (ing.quantity * familySize).toFixed(2);
         html += `
@@ -345,7 +339,6 @@ function showConsumeModal(mealData) {
             </div>
         `;
     });
-    
     html += `
         </div>
         <div class="flex gap-3 mt-6">
@@ -358,10 +351,8 @@ function showConsumeModal(mealData) {
         </div>
         <div id="consumeMessage" class="mt-3 text-center text-sm hidden"></div>
     `;
-    
     body.innerHTML = html;
     modal.classList.remove('hidden');
-    
     document.getElementById('closeConsumeModal').addEventListener('click', closeConsumeModal);
     document.getElementById('cancelConsumeBtn').addEventListener('click', closeConsumeModal);
     document.getElementById('confirmConsumeBtn').addEventListener('click', handleConsumeConfirm);
@@ -371,24 +362,17 @@ function closeConsumeModal() {
     document.getElementById('consumeModal').classList.add('hidden');
 }
 
-async function handleConsumeConfirm() {
+function handleConsumeConfirm() {
     const mealData = window._currentMealData;
     if (!mealData) return;
-    
     const messageDiv = document.getElementById('consumeMessage');
     const ingredients = mealData.ingredients.map((ing, index) => {
         const input = document.getElementById(`ing_${index}`);
         const newQty = parseFloat(input.value) || 0;
-        return {
-            ...ing,
-            quantity: newQty / getFamilySize()
-        };
+        return { ...ing, quantity: newQty / getFamilySize() };
     });
-    
     if (!confirm(`آیا از مصرف ${mealData.mealName} برای ${getFamilySize()} نفر اطمینان دارید؟`)) return;
-    
     const result = consumeIngredients(ingredients, getFamilySize());
-    
     if (result.success) {
         messageDiv.className = 'mt-3 text-center text-sm text-green-600 p-2 bg-green-50 rounded-lg';
         messageDiv.textContent = `✅ ${result.message}`;
@@ -402,127 +386,105 @@ async function handleConsumeConfirm() {
     }
 }
 
-async function regeneratePlan() {
-    const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
-    const display = document.getElementById('consumptionPlanDisplay');
-    if (display) {
-        display.innerHTML = await generateConsumptionPlan(days);
-        attachMealClickEvents();
-    }
-    await renderInventoryTable();
+function regeneratePlan() {
+    updateConsumptionPlan();
+    renderInventoryTable();
     generateAlerts();
-    await updateNutritionAnalysis();
+    updateNutritionAnalysis();
     refreshMealSuggestions();
 }
 
 function attachMealClickEvents() {
     document.querySelectorAll('.day-card .meal-item').forEach(el => {
-        el.addEventListener('click', function() {
-            const dayIndex = parseInt(this.dataset.dayIndex);
-            const mealType = this.dataset.mealType;
-            const planData = window.currentPlanData;
-            if (!planData || !planData.plan) return;
-            const mealDetails = getMealDetails(dayIndex, mealType, planData.plan);
-            if (mealDetails) {
-                window._currentMealData = mealDetails;
-                showConsumeModal(mealDetails);
-            }
-        });
+        el.removeEventListener('click', mealClickHandler);
+        el.addEventListener('click', mealClickHandler);
     });
 }
 
+function mealClickHandler(e) {
+    const el = e.currentTarget;
+    const dayIndex = parseInt(el.dataset.dayIndex);
+    const mealType = el.dataset.mealType;
+    const planData = window.currentPlanData;
+    if (!planData || !planData.plan) return;
+    const mealDetails = getMealDetails(dayIndex, mealType, planData.plan);
+    if (mealDetails) {
+        window._currentMealData = mealDetails;
+        showConsumeModal(mealDetails);
+    }
+}
+
 // ============================================================
-// 10. مقداردهی اولیه داشبورد
+// 11. مقداردهی اولیه داشبورد
 // ============================================================
-async function initDashboard() {
+function initDashboard() {
     if (!checkAuth()) return;
-    
     const loggedInUser = getLoggedInUser();
     if (loggedInUser && !store.currentUserProfile) {
         const profile = getUserProfile(loggedInUser);
         if (profile) setCurrentUserProfile(profile);
     }
-    
-    try {
-        const response = await fetch('assets/data/crisis_scenarios.json');
-        window.crisisScenarios = await response.json();
-    } catch(e) { console.warn('خطا در بارگذاری سناریوها'); window.crisisScenarios = []; }
-    
-    loadInventory();
-    loadConsumptionData();
-    await renderInventoryTable();
-    renderChart();
-    generateAlerts();
-    await bindDashboardUI();
-    await populateScenarioDropdown();
-    generateSuggestions();
-    
-    // ===== الگوی مصرف =====
-    const planDisplay = document.getElementById('consumptionPlanDisplay');
-    if (planDisplay) {
-        const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
-        planDisplay.innerHTML = await generateConsumptionPlan(days);
-        attachMealClickEvents();
-    }
+    fetch('assets/data/crisis_scenarios.json')
+        .then(res => res.json())
+        .then(data => { window.crisisScenarios = data; })
+        .catch(() => { window.crisisScenarios = []; })
+        .finally(() => {
+            loadInventory();
+            loadConsumptionData();
+            renderInventoryTable();
+            renderChart();
+            generateAlerts();
+            bindDashboardUI();
+            populateScenarioDropdown();
+            generateSuggestions();
+            updateConsumptionPlan();
+            generateMealSuggestions(1);
+            updateNutritionAnalysis();
+            initMealPlanner();
 
-    // ===== پیشنهادات غذایی =====
-    await generateMealSuggestions(1);
+            const aiBtn = document.getElementById('aiSuggestionBtn');
+            if (aiBtn) aiBtn.addEventListener('click', handleAISuggestion);
 
-    // ===== تحلیل ارزش غذایی =====
-    await updateNutritionAnalysis();
-    
-    // ===== رویدادها =====
-    document.getElementById('generatePlanBtn')?.addEventListener('click', async function() {
-        const days = parseInt(document.getElementById('planDaysSelect').value);
-        document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(days);
-        attachMealClickEvents();
-    });
+            const savedCrisis = localStorage.getItem('crisis_mode');
+            const crisisToggle = document.getElementById('crisisModeToggle');
+            if (savedCrisis === 'true' && crisisToggle) {
+                crisisToggle.checked = true;
+                setCrisisMode(true);
+                document.body.classList.add('crisis');
+                generateAlerts();
+                generateSuggestions();
+                updateConsumptionPlan();
+                updateNutritionAnalysis();
+                generateMealSuggestions(1);
+            }
 
-    document.getElementById('refreshMealSuggestionsBtn')?.addEventListener('click', function() {
-        refreshMealSuggestions();
-    });
-    
-    const aiBtn = document.getElementById('aiSuggestionBtn');
-    if (aiBtn) aiBtn.addEventListener('click', handleAISuggestion);
-    
-    const savedCrisis = localStorage.getItem('crisis_mode');
-    const crisisToggle = document.getElementById('crisisModeToggle');
-    if (savedCrisis === 'true' && crisisToggle) {
-        crisisToggle.checked = true;
-        setCrisisMode(true);
-        document.body.classList.add('crisis');
-        generateAlerts();
-        generateSuggestions();
-        document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
-            parseInt(document.getElementById('planDaysSelect')?.value || 7)
-        );
-        attachMealClickEvents();
-        await updateNutritionAnalysis();
-        await generateMealSuggestions(1);
-    }
-    
-    const userDisplay = document.getElementById('userDisplay');
-    const userAvatar = document.getElementById('userAvatar');
-    if (userDisplay && loggedInUser) userDisplay.innerText = loggedInUser;
-    if (userAvatar && loggedInUser) {
-        const avatarBase64 = getUserAvatar(loggedInUser);
-        if (avatarBase64) userAvatar.src = avatarBase64;
-        else {
-            const firstChar = loggedInUser.charAt(0).toUpperCase();
-            userAvatar.src = `https://ui-avatars.com/api/?background=1e466e&color=fff&rounded=true&size=36&name=${firstChar}`;
-        }
-        const profileClickable = document.getElementById('profileClickable');
-        if (profileClickable) {
-            profileClickable.style.cursor = 'pointer';
-            profileClickable.addEventListener('click', () => window.location.href = 'profile.html');
-        }
-    }
-
-    initMealPlanner();
+            const userDisplay = document.getElementById('userDisplay');
+            const userAvatar = document.getElementById('userAvatar');
+            if (userDisplay && loggedInUser) userDisplay.innerText = loggedInUser;
+            if (userAvatar && loggedInUser) {
+                const avatarBase64 = getUserAvatar(loggedInUser);
+                if (avatarBase64) userAvatar.src = avatarBase64;
+                else {
+                    const firstChar = loggedInUser.charAt(0).toUpperCase();
+                    userAvatar.src = `https://ui-avatars.com/api/?background=1e466e&color=fff&rounded=true&size=36&name=${firstChar}`;
+                }
+                const profileClickable = document.getElementById('profileClickable');
+                if (profileClickable) {
+                    profileClickable.style.cursor = 'pointer';
+                    profileClickable.addEventListener('click', () => window.location.href = 'profile.html');
+                }
+            }
+            document.getElementById('generatePlanBtn')?.addEventListener('click', function() {
+                updateConsumptionPlan();
+            });
+            document.getElementById('refreshMealSuggestionsBtn')?.addEventListener('click', function() {
+                refreshMealSuggestions();
+            });
+        });
 }
 
 // ============================================================
-// 11. مقداردهی اولیه صفحه اصلی (index.html)
+// 12. مقداردهی اولیه صفحه اصلی (index.html)
 // ============================================================
 function initIndex() {
     checkAuth();
@@ -530,18 +492,15 @@ function initIndex() {
 }
 
 // ============================================================
-// 12. چت‌بات هوشمند
+// 13. چت‌بات هوشمند
 // ============================================================
-async function loadChatbotWidget() {
-    try {
-        if (typeof puter === 'undefined') {
-            console.warn('⚠️ Puter.js بارگذاری نشده است. چت‌بات غیرفعال می‌شود.');
-            return;
-        }
-
-        const chatbotModule = await import('./modules/chatbot.js');
+function loadChatbotWidget() {
+    if (typeof puter === 'undefined') {
+        console.warn('⚠️ Puter.js بارگذاری نشده است. چت‌بات غیرفعال می‌شود.');
+        return;
+    }
+    import('./modules/chatbot.js').then(chatbotModule => {
         const chatbotApi = chatbotModule.default || chatbotModule;
-
         const fab = document.getElementById('chatbotFab');
         const windowEl = document.getElementById('chatbotWindow');
         const closeBtn = document.getElementById('chatbotCloseBtn');
@@ -549,15 +508,12 @@ async function loadChatbotWidget() {
         const input = document.getElementById('chatbotInput');
         const messages = document.getElementById('chatbotMessages');
         const typingIndicator = document.getElementById('typingIndicator');
-
         if (!fab || !windowEl) {
             console.warn('⚠️ ویجت چت‌بات در صفحه پیدا نشد.');
             return;
         }
-
         let isOpen = false;
-
-        fab.addEventListener('click', () => {
+        fab.addEventListener('click', function() {
             isOpen = !isOpen;
             windowEl.classList.toggle('open', isOpen);
             if (isOpen) {
@@ -566,25 +522,20 @@ async function loadChatbotWidget() {
                 if (badge) badge.style.display = 'none';
             }
         });
-
         if (closeBtn) {
-            closeBtn.addEventListener('click', () => {
+            closeBtn.addEventListener('click', function() {
                 isOpen = false;
                 windowEl.classList.remove('open');
             });
         }
-
         async function sendUserMessage() {
             const text = input.value.trim();
             if (!text) return;
-
             addMessageToUI('user', text);
             input.value = '';
             input.style.height = 'auto';
-
             typingIndicator.style.display = 'flex';
             sendBtn.disabled = true;
-
             try {
                 const response = await chatbotApi.sendMessage(text);
                 addMessageToUI('assistant', response);
@@ -597,30 +548,26 @@ async function loadChatbotWidget() {
                 messages.scrollTop = messages.scrollHeight;
             }
         }
-
         sendBtn.addEventListener('click', sendUserMessage);
-        input.addEventListener('keydown', (e) => {
+        input.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendUserMessage();
             }
         });
-
-        input.addEventListener('input', () => {
-            input.style.height = 'auto';
-            input.style.height = Math.min(input.scrollHeight, 80) + 'px';
+        input.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 80) + 'px';
         });
-
         document.querySelectorAll('.chatbot-quick-suggestions button').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const question = btn.getAttribute('data-question');
+            btn.addEventListener('click', function() {
+                const question = this.getAttribute('data-question');
                 if (question) {
                     input.value = question;
                     sendUserMessage();
                 }
             });
         });
-
         function addMessageToUI(role, content) {
             const div = document.createElement('div');
             div.className = `message ${role}`;
@@ -628,7 +575,6 @@ async function loadChatbotWidget() {
             messages.insertBefore(div, typingIndicator);
             messages.scrollTop = messages.scrollHeight;
         }
-
         if (chatbotApi.getHistory && typeof chatbotApi.getHistory === 'function') {
             const history = chatbotApi.getHistory();
             history.forEach(msg => {
@@ -637,19 +583,14 @@ async function loadChatbotWidget() {
                 }
             });
         }
-
         console.log('✅ چت‌بات هوشمند با موفقیت بارگذاری شد.');
-
-    } catch (error) {
-        console.error('❌ خطا در بارگذاری چت‌بات:', error);
-    }
+    }).catch(err => console.error('❌ خطا در بارگذاری چت‌بات:', err));
 }
 
 // ============================================================
-// 13. مدیریت مسیرها
+// 14. مدیریت مسیرها
 // ============================================================
 const currentPath = window.location.pathname;
-
 if (currentPath.includes('login.html')) {
     import('./modules/auth.js').then(module => module.initAuthPage());
 } else if (currentPath.includes('dashboard.html')) {
@@ -674,59 +615,49 @@ if (currentPath.includes('login.html')) {
         loadChatbotWidget();
     }
 } else {
-    console.log('ℹ️ index.html - app.js اجرا نمی‌شود.');
+    document.addEventListener('DOMContentLoaded', initIndex);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadChatbotWidget);
+    } else {
+        loadChatbotWidget();
+    }
 }
 
 // ============================================================
-// 14. شنونده‌های تغییرات store (اکنون async)
+// 15. شنونده‌های تغییرات store
 // ============================================================
-addListener('inventory', async () => {
+addListener('inventory', function() {
     if (window.location.pathname.includes('dashboard.html')) {
-        await renderInventoryTable();
+        renderInventoryTable();
         generateAlerts();
         generateSuggestions();
-        document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
-            parseInt(document.getElementById('planDaysSelect')?.value || 7)
-        );
-        attachMealClickEvents();
-        await updateNutritionAnalysis();
+        updateConsumptionPlan();
+        updateNutritionAnalysis();
         refreshMealSuggestions();
     }
 });
-
-addListener('crisisMode', async () => {
+addListener('crisisMode', function() {
     if (window.location.pathname.includes('dashboard.html')) {
         generateAlerts();
         generateSuggestions();
-        document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
-            parseInt(document.getElementById('planDaysSelect')?.value || 7)
-        );
-        attachMealClickEvents();
-        await updateNutritionAnalysis();
+        updateConsumptionPlan();
+        updateNutritionAnalysis();
         refreshMealSuggestions();
     }
 });
-
-addListener('consumptionData', async () => {
+addListener('consumptionData', function() {
     if (window.location.pathname.includes('dashboard.html')) {
         renderChart();
         generateSuggestions();
-        document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
-            parseInt(document.getElementById('planDaysSelect')?.value || 7)
-        );
-        attachMealClickEvents();
+        updateConsumptionPlan();
     }
 });
-
-addListener('currentUserProfile', async () => {
+addListener('currentUserProfile', function() {
     if (window.location.pathname.includes('dashboard.html')) {
         generateAlerts();
         generateSuggestions();
-        document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
-            parseInt(document.getElementById('planDaysSelect')?.value || 7)
-        );
-        attachMealClickEvents();
-        await updateNutritionAnalysis();
+        updateConsumptionPlan();
+        updateNutritionAnalysis();
         refreshMealSuggestions();
     }
 });
