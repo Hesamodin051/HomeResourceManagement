@@ -1,8 +1,80 @@
 // modules/consumption-planner.js
 import { store } from './store.js';
 
+let recipesCache = [];
+
 // ============================================================
-// دریافت اطلاعات پایه
+// بارگذاری دستورهای غذایی (همانند meal-planner)
+// ============================================================
+async function loadRecipes() {
+    if (recipesCache.length > 0) return recipesCache;
+    try {
+        const response = await fetch('assets/data/recipes.json');
+        const data = await response.json();
+        recipesCache = data;
+        return data;
+    } catch (error) {
+        console.warn('⚠️ خطا در بارگذاری recipes.json:', error);
+        return getFallbackRecipes();
+    }
+}
+
+function getFallbackRecipes() {
+    return [
+        {
+            id: 1,
+            name: 'عدسی',
+            category: 'خورش',
+            ingredients: [
+                { name: 'عدس', quantity: 0.05, unit: 'کیلوگرم' },
+                { name: 'برنج', quantity: 0.1, unit: 'کیلوگرم' },
+                { name: 'پیاز', quantity: 0.02, unit: 'کیلوگرم' },
+                { name: 'روغن', quantity: 0.02, unit: 'لیتر' }
+            ],
+            servings: 4,
+            cook_time: 45,
+            difficulty: 'آسان',
+            nutrition: { calories: 180, protein: 8, carbs: 28, fat: 2, fiber: 5 },
+            tags: ['گیاهی', 'ارزان', 'سریع'],
+            season: 'همه فصول'
+        },
+        {
+            id: 2,
+            name: 'ماکارونی با رب',
+            category: 'پاستا',
+            ingredients: [
+                { name: 'ماکارونی', quantity: 0.15, unit: 'کیلوگرم' },
+                { name: 'رب گوجه', quantity: 0.01, unit: 'کیلوگرم' },
+                { name: 'روغن', quantity: 0.02, unit: 'لیتر' }
+            ],
+            servings: 4,
+            cook_time: 30,
+            difficulty: 'آسان',
+            nutrition: { calories: 250, protein: 8, carbs: 40, fat: 3, fiber: 3 },
+            tags: ['سریع', 'ارزان'],
+            season: 'همه فصول'
+        },
+        {
+            id: 3,
+            name: 'املت ساده',
+            category: 'صبحانه',
+            ingredients: [
+                { name: 'تخم‌مرغ', quantity: 2, unit: 'عدد' },
+                { name: 'روغن', quantity: 0.02, unit: 'لیتر' },
+                { name: 'نمک', quantity: 0.002, unit: 'کیلوگرم' }
+            ],
+            servings: 2,
+            cook_time: 10,
+            difficulty: 'آسان',
+            nutrition: { calories: 180, protein: 12, carbs: 1, fat: 14, fiber: 0 },
+            tags: ['سریع', 'صبحانه'],
+            season: 'همه فصول'
+        }
+    ];
+}
+
+// ============================================================
+// توابع پایه
 // ============================================================
 function getFamilySize() {
     return store.currentUserProfile?.familySize || 4;
@@ -13,94 +85,131 @@ function getInventory() {
 }
 
 // ============================================================
-// محاسبه روزهای باقی‌مانده برای هر قلم
+// محاسبه تعداد دفعات قابل پخت یک غذا (با موجودی)
 // ============================================================
-function calculateDays(quantity, unit, dailyNeedPerPerson, familySize) {
-    if (unit === 'کیلوگرم' || unit === 'لیتر') {
-        const need = dailyNeedPerPerson * familySize;
-        return need > 0 ? quantity / need : Infinity;
-    } else if (unit === 'عدد' || unit === 'بسته') {
-        return quantity / (dailyNeedPerPerson * familySize);
+function calculateServings(recipe, inventory, familySize) {
+    let maxServings = Infinity;
+    for (let ingredient of recipe.ingredients) {
+        let available = 0;
+        const inventoryItem = inventory.find(item => 
+            item.name.includes(ingredient.name) || 
+            ingredient.name.includes(item.name)
+        );
+        if (inventoryItem) {
+            if (inventoryItem.unit === ingredient.unit) {
+                available = inventoryItem.quantity;
+            } else {
+                const conversion = {
+                    'کیلوگرم': { 'گرم': 1000 },
+                    'لیتر': { 'میلی‌لیتر': 1000 },
+                    'عدد': { 'عدد': 1 },
+                    'بسته': { 'بسته': 1 }
+                };
+                if (conversion[inventoryItem.unit] && conversion[inventoryItem.unit][ingredient.unit]) {
+                    available = inventoryItem.quantity * conversion[inventoryItem.unit][ingredient.unit];
+                } else {
+                    available = inventoryItem.quantity;
+                }
+            }
+        }
+        const needed = ingredient.quantity * familySize;
+        const servings = needed > 0 ? available / needed : Infinity;
+        if (servings < maxServings) maxServings = servings;
     }
-    return Infinity;
-}
-
-function getKeyItems(inventory, familySize) {
-    const items = {
-        water: { name: 'آب', quantity: 0, unit: 'لیتر', dailyPerPerson: 2, category: 'نوشیدنی' },
-        rice: { name: 'برنج', quantity: 0, unit: 'کیلوگرم', dailyPerPerson: 0.15, category: 'غلات' },
-        pasta: { name: 'ماکارونی', quantity: 0, unit: 'کیلوگرم', dailyPerPerson: 0.15, category: 'غلات' },
-        legumes: { name: 'حبوبات', quantity: 0, unit: 'کیلوگرم', dailyPerPerson: 0.05, category: 'حبوبات' },
-        canned: { name: 'کنسرو', quantity: 0, unit: 'عدد', dailyPerPerson: 0.5, category: 'پروتئین' },
-        bread: { name: 'نان', quantity: 0, unit: 'کیلوگرم', dailyPerPerson: 0.2, category: 'نان' },
-        eggs: { name: 'تخم‌مرغ', quantity: 0, unit: 'عدد', dailyPerPerson: 1, category: 'پروتئین' },
-        meat: { name: 'گوشت', quantity: 0, unit: 'کیلوگرم', dailyPerPerson: 0.1, category: 'پروتئین' },
-        dairy: { name: 'لبنیات', quantity: 0, unit: 'لیتر', dailyPerPerson: 0.2, category: 'لبنیات' },
-        oil: { name: 'روغن', quantity: 0, unit: 'لیتر', dailyPerPerson: 0.03, category: 'چاشنی' }
-    };
-
-    inventory.forEach(item => {
-        const name = item.name.toLowerCase();
-        if (name.includes('آب')) items.water.quantity += item.quantity;
-        if (name.includes('برنج')) items.rice.quantity += item.quantity;
-        if (name.includes('ماکارونی')) items.pasta.quantity += item.quantity;
-        if (name.includes('عدس') || name.includes('لوبیا') || name.includes('نخود')) items.legumes.quantity += item.quantity;
-        if (name.includes('کنسرو')) items.canned.quantity += item.quantity;
-        if (name.includes('نان')) items.bread.quantity += item.quantity;
-        if (name.includes('تخم‌مرغ')) items.eggs.quantity += item.quantity;
-        if (name.includes('گوشت') || name.includes('مرغ')) items.meat.quantity += item.quantity;
-        if (name.includes('شیر') || name.includes('ماست')) items.dairy.quantity += item.quantity;
-        if (name.includes('روغن')) items.oil.quantity += item.quantity;
-    });
-
-    const result = {};
-    for (let [key, val] of Object.entries(items)) {
-        result[key] = {
-            ...val,
-            daysLeft: calculateDays(val.quantity, val.unit, val.dailyPerPerson, familySize)
-        };
-    }
-    return result;
+    return maxServings > 0 ? Math.floor(maxServings) : 0;
 }
 
 // ============================================================
-// تولید برنامه هفتگی (یا ماهانه) با سه وعده
+// اولویت‌بندی غذاها بر اساس تاریخ انقضا و تعداد دفعات پخت
 // ============================================================
-export function generateWeeklyPlan(days = 7, startDate = null) {
+function getAvailableRecipes(inventory, familySize) {
+    const recipes = loadRecipes(); // باید await شود، اما در اینجا همگام می‌کنیم
+    // ولی loadRecipes async است، پس باید آن را await کنیم. برای سادگی، در تابع اصلی async می‌کنیم.
+    // اما این تابع به صورت همگام نیست، بنابراین ساختار را تغییر می‌دهیم.
+    // بهتر است همه عملیات async باشد.
+}
+
+// ============================================================
+// تابع اصلی تولید برنامه هوشمند (نسخه نهایی)
+// ============================================================
+export async function generateWeeklyPlan(days = 7, startDate = null) {
     const familySize = getFamilySize();
     const inventory = getInventory();
-    const keyItems = getKeyItems(inventory, familySize);
     const crisisMode = store.crisisMode;
+    const recipes = await loadRecipes();
 
-    // محاسبه حداقل روزهای ممکن
-    let minDays = Infinity;
-    for (let key of ['water', 'rice', 'legumes', 'canned']) {
-        if (keyItems[key] && keyItems[key].daysLeft < minDays) {
-            minDays = keyItems[key].daysLeft;
-        }
+    // محاسبه دفعات قابل پخت برای هر غذا
+    const recipeAvailability = recipes.map(recipe => ({
+        ...recipe,
+        servings: calculateServings(recipe, inventory, familySize),
+        isAvailable: calculateServings(recipe, inventory, familySize) > 0
+    }));
+
+    // فقط غذاهای قابل پخت را نگه دار
+    let availableRecipes = recipeAvailability.filter(r => r.isAvailable);
+
+    // اگر هیچ غذایی قابل پخت نبود، یک لیست پیش‌فرض با غذاهای ساده بساز
+    if (availableRecipes.length === 0) {
+        // از غذاهای پیش‌فرض استفاده کن (حتی اگر مواد نداشته باشند، اما به کاربر اعلام کن)
+        availableRecipes = recipeAvailability.slice(0, 5).map(r => ({ ...r, servings: 1, isAvailable: true }));
     }
-    const maxDays = Math.min(days, Math.floor(minDays) || 7);
 
-    // تاریخ شروع
+    // ===== اولویت‌بندی بر اساس تاریخ انقضا =====
+    // بررسی کنید کدام مواد غذایی تاریخ انقضای نزدیک دارند
+    const expiringItems = inventory.filter(item => {
+        if (!item.expiry) return false;
+        const daysLeft = (new Date(item.expiry) - new Date()) / (1000 * 60 * 60 * 24);
+        return daysLeft >= 0 && daysLeft <= 3;
+    });
+
+    // اولویت غذاهایی که از مواد در حال انقضا استفاده می‌کنند
+    const expiringNames = expiringItems.map(i => i.name);
+    availableRecipes.sort((a, b) => {
+        const aUsesExpiring = a.ingredients.some(ing => expiringNames.some(name => ing.name.includes(name)));
+        const bUsesExpiring = b.ingredients.some(ing => expiringNames.some(name => ing.name.includes(name)));
+        if (aUsesExpiring && !bUsesExpiring) return -1;
+        if (!aUsesExpiring && bUsesExpiring) return 1;
+        return 0;
+    });
+
+    // ===== انتخاب وعده‌ها برای هر روز =====
+    const mealTypes = ['صبحانه', 'ناهار', 'شام'];
+    // دسته‌بندی غذاها بر اساس نوع (صبحانه، ناهار، شام) - از tag یا category استفاده می‌کنیم
+    const breakfastOptions = availableRecipes.filter(r => r.tags && r.tags.includes('صبحانه'));
+    const lunchOptions = availableRecipes.filter(r => r.category === 'خورش' || r.category === 'پلو' || r.category === 'پاستا');
+    const dinnerOptions = availableRecipes.filter(r => r.category === 'سوپ' || r.category === 'نان' || r.category === 'صبحانه' || r.tags && r.tags.includes('سریع'));
+
+    // اگر گزینه‌های کافی نبود، از همه غذاها استفاده کن
+    const allMeals = availableRecipes;
+
+    // تابع انتخاب با چرخش و اولویت
+    function selectMeal(mealType, dayIndex, usedMeals) {
+        let pool;
+        if (mealType === 'صبحانه') pool = breakfastOptions.length > 0 ? breakfastOptions : allMeals;
+        else if (mealType === 'ناهار') pool = lunchOptions.length > 0 ? lunchOptions : allMeals;
+        else pool = dinnerOptions.length > 0 ? dinnerOptions : allMeals;
+
+        // حذف غذاهایی که قبلاً در روزهای قبل استفاده شده‌اند (برای تنوع)
+        const availablePool = pool.filter(recipe => !usedMeals.includes(recipe.id));
+        if (availablePool.length === 0) {
+            // اگر همه غذاها استفاده شدند، دوباره از همه استفاده کن
+            return pool[dayIndex % pool.length];
+        }
+        // انتخاب بر اساس روز (چرخشی) برای تنوع
+        const index = dayIndex % availablePool.length;
+        return availablePool[index];
+    }
+
+    // ساخت برنامه
     const start = startDate ? new Date(startDate) : new Date();
     const daysOfWeek = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
-
-    // برنامه وعده‌ها
-    const mealTypes = ['صبحانه', 'ناهار', 'شام'];
-    const mealSuggestions = {
-        'صبحانه': ['نان و پنیر', 'تخم‌مرغ', 'حلیم', 'فرنی', 'نان و کره', 'عدسی'],
-        'ناهار': ['برنج و خورش', 'ماکارونی', 'کباب', 'کتلت', 'سوپ', 'خورشت'],
-        'شام': ['نان و پنیر', 'تخم‌مرغ', 'سوپ', 'شیرینی', 'عدسی', 'ماکارونی']
-    };
-
-    // تابع انتخاب غذا بر اساس موجودی
-    function selectMeal(mealType, dayIndex) {
-        const options = mealSuggestions[mealType] || [];
-        // ساده: چرخشی انتخاب کن
-        return options[dayIndex % options.length];
-    }
-
     let plan = [];
+    let usedMeals = [];
+
+    // تعداد روزهای قابل برنامه‌ریزی (حداقل تعداد دفعات پخت)
+    const minServings = Math.min(...availableRecipes.map(r => r.servings));
+    const maxDays = Math.min(days, minServings || 7);
+
     for (let i = 0; i < maxDays; i++) {
         const date = new Date(start);
         date.setDate(start.getDate() + i);
@@ -111,29 +220,51 @@ export function generateWeeklyPlan(days = 7, startDate = null) {
             dayName: dayName,
             meals: {}
         };
+        // انتخاب سه وعده
         mealTypes.forEach(type => {
-            dayPlan.meals[type] = selectMeal(type, i);
+            const recipe = selectMeal(type, i, usedMeals);
+            dayPlan.meals[type] = {
+                name: recipe.name,
+                ingredients: recipe.ingredients,
+                cook_time: recipe.cook_time,
+                servings: recipe.servings
+            };
+            usedMeals.push(recipe.id);
         });
         plan.push(dayPlan);
     }
 
-    // نکات بهینه‌سازی
+    // ===== نکات بهینه‌سازی =====
     const tips = [];
-    if (keyItems.water.daysLeft < 7) {
-        tips.push('💧 مصرف آب را مدیریت کنید. روزانه کمتر از ۲ لیتر برای هر نفر مصرف کنید.');
+    // مواد در حال انقضا
+    if (expiringItems.length > 0) {
+        tips.push(`⏰ مواد زیر در حال انقضا هستند: ${expiringItems.map(i => i.name).join('، ')}. در برنامه گنجانده شده‌اند.`);
     }
-    if (keyItems.rice.daysLeft < 5) {
-        tips.push('🍚 برنج کم است. مصرف ماکارونی و نان را افزایش دهید.');
+    // کمبود آب
+    const waterItem = inventory.find(i => i.name.includes('آب'));
+    if (waterItem) {
+        const daysLeft = waterItem.quantity / (familySize * 2);
+        if (daysLeft < 7) tips.push(`💧 آب تنها برای ${Math.floor(daysLeft)} روز کافی است. مصرف را مدیریت کنید.`);
     }
-    if (keyItems.legumes.daysLeft > keyItems.rice.daysLeft) {
-        tips.push('🫘 حبوبات بیشتری دارید. از آن‌ها در وعده‌های غذایی استفاده کنید.');
+    // کمبود پروتئین
+    const proteinItems = inventory.filter(i => i.name.includes('گوشت') || i.name.includes('مرغ') || i.name.includes('تخم‌مرغ'));
+    if (proteinItems.reduce((sum, i) => sum + i.quantity, 0) < 1 * familySize) {
+        tips.push('🥩 پروتئین (گوشت/مرغ/تخم‌مرغ) کم است. از حبوبات و کنسرو استفاده کنید.');
     }
     if (crisisMode) {
         tips.push('⚠️ حالت بحران فعال است. مصرف را به حداقل برسانید و اولویت با آب و کنسروها باشد.');
     }
     if (tips.length === 0) {
-        tips.push('✅ وضعیت ذخایر مناسب است. با این برنامه می‌توانید به مدت یک هفته مدیریت کنید.');
+        tips.push('✅ وضعیت ذخایر مناسب است. برنامه بر اساس موجودی و تاریخ انقضا تنظیم شده است.');
     }
+
+    // ===== خلاصه ذخایر =====
+    const keyItems = {
+        water: waterItem ? { quantity: waterItem.quantity, unit: waterItem.unit } : null,
+        rice: inventory.find(i => i.name.includes('برنج')),
+        legumes: inventory.find(i => i.name.includes('عدس') || i.name.includes('لوبیا') || i.name.includes('نخود')),
+        canned: inventory.find(i => i.name.includes('کنسرو'))
+    };
 
     return {
         plan,
@@ -141,15 +272,16 @@ export function generateWeeklyPlan(days = 7, startDate = null) {
         totalDays: maxDays,
         tips,
         keyItems,
-        crisisMode
+        crisisMode,
+        availableRecipes
     };
 }
 
 // ============================================================
-// تابع اصلی برای نمایش در داشبورد (با انتخاب بازه)
+// تابع نمایش در داشبورد (همگام‌شده)
 // ============================================================
-export function generateConsumptionPlan(days = 7, startDate = null) {
-    const result = generateWeeklyPlan(days, startDate);
+export async function generateConsumptionPlan(days = 7, startDate = null) {
+    const result = await generateWeeklyPlan(days, startDate);
     const { plan, maxDays, tips, keyItems, crisisMode } = result;
 
     let html = `
@@ -169,9 +301,12 @@ export function generateConsumptionPlan(days = 7, startDate = null) {
                     <span class="text-xs text-gray-400">${day.date}</span>
                 </div>
                 <div class="space-y-1 text-sm">
-                    <div><span class="font-medium">🌅 صبحانه:</span> ${day.meals.صبحانه}</div>
-                    <div><span class="font-medium">🌞 ناهار:</span> ${day.meals.ناهار}</div>
-                    <div><span class="font-medium">🌙 شام:</span> ${day.meals.شام}</div>
+                    <div><span class="font-medium">🌅 صبحانه:</span> ${day.meals.صبحانه.name}</div>
+                    <div><span class="font-medium">🌞 ناهار:</span> ${day.meals.ناهار.name}</div>
+                    <div><span class="font-medium">🌙 شام:</span> ${day.meals.شام.name}</div>
+                    <div class="text-xs text-gray-400 mt-1">
+                        ⏱️ ${day.meals.صبحانه.cook_time || '?'} دقیقه | قابل تکرار: ${day.meals.صبحانه.servings || 0} بار
+                    </div>
                 </div>
             </div>
         `;
@@ -179,16 +314,15 @@ export function generateConsumptionPlan(days = 7, startDate = null) {
 
     html += `</div>`;
 
-    // خلاصه موجودی
+    // خلاصه ذخایر
     html += `
         <div class="mt-4 p-3 bg-gray-50 rounded-xl">
-            <h5 class="text-sm font-bold text-gray-700 mb-2">📊 خلاصه ذخایر</h5>
-            <div class="grid grid-cols-3 md:grid-cols-5 gap-2 text-xs">
-                <div>💧 آب: ${keyItems.water.daysLeft > 100 ? 'نامحدود' : Math.round(keyItems.water.daysLeft) + ' روز'}</div>
-                <div>🍚 برنج: ${Math.round(keyItems.rice.daysLeft)} روز</div>
-                <div>🫘 حبوبات: ${Math.round(keyItems.legumes.daysLeft)} روز</div>
-                <div>🥫 کنسرو: ${Math.round(keyItems.canned.daysLeft)} روز</div>
-                <div>🍞 نان: ${Math.round(keyItems.bread.daysLeft)} روز</div>
+            <h5 class="text-sm font-bold text-gray-700 mb-2">📊 خلاصه ذخایر کلیدی</h5>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                ${keyItems.water ? `<div>💧 آب: ${keyItems.water.quantity} ${keyItems.water.unit}</div>` : ''}
+                ${keyItems.rice ? `<div>🍚 برنج: ${keyItems.rice.quantity} ${keyItems.rice.unit}</div>` : ''}
+                ${keyItems.legumes ? `<div>🫘 حبوبات: ${keyItems.legumes.quantity} ${keyItems.legumes.unit}</div>` : ''}
+                ${keyItems.canned ? `<div>🥫 کنسرو: ${keyItems.canned.quantity} ${keyItems.canned.unit}</div>` : ''}
             </div>
         </div>
     `;
@@ -196,18 +330,17 @@ export function generateConsumptionPlan(days = 7, startDate = null) {
     // نکات
     html += `
         <div class="mt-3 p-3 bg-blue-50 rounded-xl border border-blue-200">
-            <h5 class="text-sm font-bold text-blue-700 mb-1">💡 نکات بهینه‌سازی</h5>
+            <h5 class="text-sm font-bold text-blue-700 mb-1">💡 نکات هوشمند</h5>
             <ul class="text-xs text-blue-600 space-y-1">
                 ${tips.map(t => `<li>${t}</li>`).join('')}
             </ul>
         </div>
     `;
 
-    // اگر بحران فعال است
     if (crisisMode) {
         html += `
             <div class="mt-3 p-3 bg-red-50 rounded-xl border border-red-200">
-                <p class="text-sm text-red-700">⚠️ حالت بحران: اولویت با آب، کنسرو و مواد خشک است. مصرف گوشت را کاهش دهید.</p>
+                <p class="text-sm text-red-700">⚠️ حالت بحران: اولویت با آب، کنسرو و مواد خشک است.</p>
             </div>
         `;
     }
@@ -217,7 +350,7 @@ export function generateConsumptionPlan(days = 7, startDate = null) {
 }
 
 // ============================================================
-// تنظیمات پیشرفته (تعداد روز، تاریخ شروع)
+// تنظیمات
 // ============================================================
 export function getConsumptionPlanOptions() {
     return {
