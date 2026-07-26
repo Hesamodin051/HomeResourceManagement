@@ -9,29 +9,19 @@
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="https://js.puter.com/v2/"></script>
-    
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     fontFamily: { 'vazir': ['Vazirmatn', 'sans-serif'] },
-                    colors: {
-                        'primary': '#0f172a',
-                        'secondary': '#3b82f6',
-                        'accent': '#f59e0b',
-                    }
+                    colors: { 'primary': '#0f172a', 'secondary': '#3b82f6', 'accent': '#f59e0b' }
                 }
             }
         }
     </script>
     <style>
-        .hero-gradient {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-        }
-        .card-hover:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.12);
-        }
+        .hero-gradient { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); }
+        .card-hover:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(0,0,0,0.12); }
     </style>
 </head>
 <body class="font-vazir bg-gray-50 min-h-screen">
@@ -44,33 +34,22 @@
                 <h1 class="text-xl font-bold text-primary">سامانه تدبیر منزل</h1>
             </div>
             <div class="hamburger-menu cursor-pointer" id="hamburgerMenu">
-                <i class="fas fa-bars text-2xl text-gray-700 hover:text-secondary transition-colors"></i>
+                <i class="fas fa-bars text-2xl text-gray-700"></i>
             </div>
         </div>
     </header>
 
     <!-- ===== بخش اصلی ===== -->
     <main class="max-w-6xl mx-auto px-4 py-12">
-
         <div class="hero-gradient rounded-3xl p-8 md:p-16 text-center text-white shadow-2xl relative overflow-hidden mb-12">
             <div class="relative z-10">
                 <div class="text-6xl mb-4">🏠</div>
-                <h1 class="text-3xl md:text-5xl font-black leading-tight mb-4">
-                    سامانه هوشمند مدیریت و پایش مصرف آب، برق، گاز و ذخایر غذایی
-                </h1>
-                <p class="text-lg md:text-2xl text-yellow-400 font-bold mb-2">
-                    در شرایط عادی و بحرانی
-                </p>
-                <p class="text-gray-300 text-base md:text-lg max-w-2xl mx-auto">
-                    هر خانه، یک سامانه هوشمند برای مدیریت بحران
-                </p>
+                <h1 class="text-3xl md:text-5xl font-black leading-tight mb-4">سامانه هوشمند مدیریت و پایش مصرف آب، برق، گاز و ذخایر غذایی</h1>
+                <p class="text-lg md:text-2xl text-yellow-400 font-bold mb-2">در شرایط عادی و بحرانی</p>
+                <p class="text-gray-300 text-base md:text-lg max-w-2xl mx-auto">هر خانه، یک سامانه هوشمند برای مدیریت بحران</p>
                 <div class="flex flex-wrap justify-center gap-4 mt-8">
-                    <a href="login.html" class="btn-gradient">
-                        <i class="fas fa-sign-in-alt"></i> ورود به پرتال شخصی
-                    </a>
-                    <a href="login.html" class="btn-outline">
-                        <i class="fas fa-user-plus"></i> ثبت‌نام
-                    </a>
+                    <a href="login.html" class="btn-gradient"><i class="fas fa-sign-in-alt"></i> ورود به پرتال شخصی</a>
+                    <a href="login.html" class="btn-outline"><i class="fas fa-user-plus"></i> ثبت‌نام</a>
                 </div>
             </div>
             <div class="absolute top-0 left-0 w-64 h-64 bg-secondary/20 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
@@ -78,46 +57,21 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="card-modern card-hover text-center">
-                <div class="text-4xl mb-3">💧</div>
-                <h3 class="text-lg font-bold text-primary">پایش مصرف آب</h3>
-                <p class="text-sm text-gray-500 mt-1">مدیریت هوشمند مصرف آب خانگی</p>
-            </div>
-            <div class="card-modern card-hover text-center">
-                <div class="text-4xl mb-3">⚡</div>
-                <h3 class="text-lg font-bold text-primary">پایش مصرف برق</h3>
-                <p class="text-sm text-gray-500 mt-1">کاهش هزینه‌ها با آگاهی لحظه‌ای</p>
-            </div>
-            <div class="card-modern card-hover text-center">
-                <div class="text-4xl mb-3">🔥</div>
-                <h3 class="text-lg font-bold text-primary">پایش مصرف گاز</h3>
-                <p class="text-sm text-gray-500 mt-1">بهینه‌سازی مصرف انرژی</p>
-            </div>
-            <div class="card-modern card-hover text-center">
-                <div class="text-4xl mb-3">🍚</div>
-                <h3 class="text-lg font-bold text-primary">مدیریت ذخایر غذایی</h3>
-                <p class="text-sm text-gray-500 mt-1">ثبت، دسته‌بندی و هشدار انقضا</p>
-            </div>
-            <div class="card-modern card-hover text-center md:col-span-2">
-                <div class="text-4xl mb-3">⚠️</div>
-                <h3 class="text-lg font-bold text-primary">حالت بحران هوشمند</h3>
-                <p class="text-sm text-gray-500 mt-1">۷ سناریوی بحران با اولویت‌بندی منابع</p>
-            </div>
+            <div class="card-modern card-hover text-center"><div class="text-4xl mb-3">💧</div><h3 class="text-lg font-bold text-primary">پایش مصرف آب</h3><p class="text-sm text-gray-500 mt-1">مدیریت هوشمند مصرف آب خانگی</p></div>
+            <div class="card-modern card-hover text-center"><div class="text-4xl mb-3">⚡</div><h3 class="text-lg font-bold text-primary">پایش مصرف برق</h3><p class="text-sm text-gray-500 mt-1">کاهش هزینه‌ها با آگاهی لحظه‌ای</p></div>
+            <div class="card-modern card-hover text-center"><div class="text-4xl mb-3">🔥</div><h3 class="text-lg font-bold text-primary">پایش مصرف گاز</h3><p class="text-sm text-gray-500 mt-1">بهینه‌سازی مصرف انرژی</p></div>
+            <div class="card-modern card-hover text-center"><div class="text-4xl mb-3">🍚</div><h3 class="text-lg font-bold text-primary">مدیریت ذخایر غذایی</h3><p class="text-sm text-gray-500 mt-1">ثبت، دسته‌بندی و هشدار انقضا</p></div>
+            <div class="card-modern card-hover text-center md:col-span-2"><div class="text-4xl mb-3">⚠️</div><h3 class="text-lg font-bold text-primary">حالت بحران هوشمند</h3><p class="text-sm text-gray-500 mt-1">۷ سناریوی بحران با اولویت‌بندی منابع</p></div>
         </div>
 
-        <footer class="mt-12 text-center text-sm text-gray-400 border-t border-gray-200 pt-6">
-            پروژه درس مدیریت پروژه فناوری اطلاعات – تیم بین‌رشته‌ای ۵ نفره
-        </footer>
-
+        <footer class="mt-12 text-center text-sm text-gray-400 border-t border-gray-200 pt-6">پروژه درس مدیریت پروژه فناوری اطلاعات – تیم بین‌رشته‌ای ۵ نفره</footer>
     </main>
 
     <!-- ===== منوی کشو ===== -->
     <div id="drawer" class="drawer-modern">
         <div class="flex justify-between items-center mb-6">
             <span class="text-lg font-bold text-primary">منو</span>
-            <button id="closeDrawerBtn" class="text-gray-400 hover:text-gray-600 transition-colors">
-                <i class="fas fa-times text-2xl"></i>
-            </button>
+            <button id="closeDrawerBtn" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-2xl"></i></button>
         </div>
         <div id="drawerItems" class="space-y-2"></div>
     </div>
@@ -154,23 +108,31 @@
         </div>
     </div>
 
-    <!-- ===== اسکریپت‌های ضروری (بدون app.js) ===== -->
+    <!-- ===== اسکریپت‌های ضروری ===== -->
     <script>
-        // ===== بررسی لاگین و هدایت به داشبورد (فقط یک بار) =====
+        // ===== بررسی لاگین و هدایت به داشبورد (با فلگ) =====
         (function() {
+            // اگر در حال حاضر در حال ریدایرکت هستیم، متوقف کن
+            if (sessionStorage.getItem('redirect_in_progress') === 'true') {
+                console.log('⏳ ریدایرکت در حال انجام است، صبر کنید...');
+                return;
+            }
+
             const loggedInUser = sessionStorage.getItem('loggedInUser');
             if (loggedInUser) {
                 console.log('🔄 کاربر لاگین است، رفتن به داشبورد...');
+                sessionStorage.setItem('redirect_in_progress', 'true');
                 window.location.href = 'dashboard.html';
             } else {
                 console.log('🌿 کاربر مهمان، نمایش صفحه اصلی.');
+                // اگر فلگ ریدایرکت باقی مانده بود پاک کن
+                sessionStorage.removeItem('redirect_in_progress');
             }
         })();
     </script>
 
     <script src="menu.js"></script>
     <script src="chatbot-widget.js"></script>
-    <!-- ===== حذف app.js ===== -->
-    <!-- <script type="module" src="app.js"></script> -->
+    <!-- ===== حذف app.js از index ===== -->
 </body>
 </html>
