@@ -4,82 +4,229 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>داشبورد | سامانه تدبیر منزل</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;900&display=swap" rel="stylesheet">
-    <!-- کتابخانه Chart.js برای رسم نمودار -->
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://js.puter.com/v2/"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 'vazir': ['Vazirmatn', 'sans-serif'] },
+                    colors: { 'primary': '#0f172a', 'secondary': '#3b82f6', 'accent': '#f59e0b' }
+                }
+            }
+        }
+    </script>
 </head>
-<body>
-    <div class="container">
-        <header>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h1>🏠 سامانه تدبیر منزل</h1>
-                <div>
-                    <span id="userDisplay" style="margin-left: 15px; background: #eef2ff; padding: 5px 12px; border-radius: 30px;"></span>
-                    <button id="logoutBtn" style="background: #dc2626; color: white; border: none; padding: 5px 15px; border-radius: 30px; cursor: pointer;">خروج</button>
+<body class="font-vazir bg-gray-50 min-h-screen">
+
+    <!-- ===== هدر ===== -->
+    <header class="glass-header sticky top-0 z-50 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-home text-2xl text-secondary"></i>
+                <h1 class="text-xl font-bold text-primary">سامانه تدبیر منزل</h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <div id="profileClickable" class="flex items-center gap-2 cursor-pointer" onclick="window.location.href='profile.html'">
+                    <img id="userAvatar" src="" alt="avatar" class="w-8 h-8 rounded-full border-2 border-secondary object-cover">
+                    <span id="userDisplay" class="text-sm font-medium text-gray-700 hidden sm:inline">کاربر</span>
+                </div>
+                <div class="notification-bell-wrapper" onclick="window.location.href='notifications.html'">
+                    <button id="notificationBell" class="notification-bell relative" aria-label="اعلان‌ها">
+                        <i class="fas fa-bell text-xl text-gray-700 hover:text-secondary transition-colors"></i>
+                        <span id="notificationBadge" class="notification-badge hidden">0</span>
+                    </button>
+                </div>
+                <button id="logoutBtn" class="text-gray-500 hover:text-red-500 transition-colors">
+                    <i class="fas fa-sign-out-alt text-lg"></i>
+                </button>
+                <div class="hamburger-menu cursor-pointer" id="hamburgerMenu">
+                    <i class="fas fa-bars text-2xl text-gray-700"></i>
                 </div>
             </div>
-            <p class="subtitle">مدیریت هوشمند ذخایر خانگی در شرایط عادی و بحرانی</p>
-            <div class="mode-switch">
-                <span>🌿 حالت عادی</span>
-                <label class="toggle">
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6">
+
+        <!-- ===== وضعیت بحران ===== -->
+        <div class="flex flex-wrap items-center justify-between gap-4 card-modern p-4 mb-6">
+            <div class="flex items-center gap-4">
+                <span class="text-sm font-medium text-gray-600">🌿 حالت عادی</span>
+                <label class="switch-modern">
                     <input type="checkbox" id="crisisModeToggle">
                     <span class="slider"></span>
                 </label>
-                <span>⚠️ حالت بحران</span>
+                <span class="text-sm font-medium text-gray-600">⚠️ حالت بحران</span>
             </div>
-        </header>
+            <div class="flex items-center gap-2">
+                <i class="fas fa-circle text-green-500 text-xs"></i>
+                <span class="text-sm text-gray-500" id="statusText">سیستم فعال</span>
+            </div>
+        </div>
 
-        <!-- بخش جدید: ثبت مصرف روزانه آب، برق، گاز و نمودار -->
-        <section class="consumption-section">
-            <h2>📊 ثبت مصرف روزانه</h2>
-            <div class="form-row">
-                <div class="consumption-item">
-                    <label>💧 آب (لیتر)</label>
-                    <input type="number" id="waterConsumption" placeholder="مصرف امروز آب" step="any">
+        <!-- ===== انتخاب سناریو ===== -->
+        <div class="card-modern p-4 mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+                <i class="fas fa-triangle-exclamation text-accent ml-2"></i> انتخاب سناریوی بحران
+            </label>
+            <select id="scenarioSelect" class="input-modern">
+                <option value="">-- انتخاب کنید --</option>
+            </select>
+            <div id="scenarioTip" class="mt-3 text-sm text-gray-600 bg-gray-50 rounded-xl p-3 hidden"></div>
+        </div>
+
+        <!-- ===== کارت‌های آمار ===== -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="card-modern p-4 text-center">
+                <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 mx-auto mb-2">
+                    <i class="fas fa-water"></i>
                 </div>
-                <div class="consumption-item">
-                    <label>⚡ برق (کیلووات)</label>
-                    <input type="number" id="electricityConsumption" placeholder="مصرف امروز برق" step="any">
+                <p class="text-2xl font-bold text-primary" id="todayWater">--</p>
+                <p class="text-xs text-gray-400">آب امروز (لیتر)</p>
+            </div>
+            <div class="card-modern p-4 text-center">
+                <div class="w-10 h-10 rounded-full bg-yellow-50 flex items-center justify-center text-yellow-500 mx-auto mb-2">
+                    <i class="fas fa-bolt"></i>
                 </div>
-                <div class="consumption-item">
-                    <label>🔥 گاز (متر مکعب)</label>
-                    <input type="number" id="gasConsumption" placeholder="مصرف امروز گاز" step="any">
+                <p class="text-2xl font-bold text-primary" id="todayElectricity">--</p>
+                <p class="text-xs text-gray-400">برق امروز (کیلووات)</p>
+            </div>
+            <div class="card-modern p-4 text-center">
+                <div class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-500 mx-auto mb-2">
+                    <i class="fas fa-fire"></i>
                 </div>
-                <button id="saveConsumptionBtn" class="consumption-btn">💾 ذخیره مصرف</button>
+                <p class="text-2xl font-bold text-primary" id="todayGas">--</p>
+                <p class="text-xs text-gray-400">گاز امروز (مترمکعب)</p>
             </div>
-            <div id="consumptionChart" style="margin-top: 20px; background: #f8fafc; padding: 10px; border-radius: 1rem;">
-                <canvas id="myChart" width="400" height="200" style="max-width:100%; height:auto;"></canvas>
+            <div class="card-modern p-4 text-center">
+                <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-500 mx-auto mb-2">
+                    <i class="fas fa-utensils"></i>
+                </div>
+                <p class="text-2xl font-bold text-primary" id="foodCount">--</p>
+                <p class="text-xs text-gray-400">اقلام غذایی</p>
             </div>
-        </section>
+        </div>
 
-        <div class="alert-panel" id="alertPanel"></div>
-
-        <section class="add-item">
-            <h2>➕ افزودن ذخیره جدید</h2>
-            <div class="form-row">
-                <input type="text" id="itemName" placeholder="نام ذخیره (مثلاً آب، برنج، باتری)" autocomplete="off">
-                <input type="number" id="itemQuantity" placeholder="مقدار" step="any">
-                <input type="text" id="itemUnit" placeholder="واحد (لیتر، کیلو، عدد)" autocomplete="off">
-                <input type="date" id="itemExpiry" placeholder="تاریخ انقضا (اختیاری)">
-                <button id="addBtn">➕ افزودن</button>
+        <!-- ===== ثبت مصرف روزانه ===== -->
+        <div class="card-modern p-4 mb-6">
+            <h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-pen-to-square text-secondary ml-2"></i> ثبت مصرف روزانه</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div><label class="block text-sm text-gray-600 mb-1">💧 آب (لیتر)</label><input type="number" id="waterConsumption" class="input-modern" placeholder="مصرف امروز"></div>
+                <div><label class="block text-sm text-gray-600 mb-1">⚡ برق (کیلووات)</label><input type="number" id="electricityConsumption" class="input-modern" placeholder="مصرف امروز"></div>
+                <div><label class="block text-sm text-gray-600 mb-1">🔥 گاز (مترمکعب)</label><input type="number" id="gasConsumption" class="input-modern" placeholder="مصرف امروز"></div>
             </div>
-        </section>
+            <button id="saveConsumptionBtn" class="btn-gradient w-full mt-4 justify-center"><i class="fas fa-save ml-2"></i> ذخیره مصرف</button>
+        </div>
 
-        <section class="inventory-list">
-            <h2>📋 فهرست ذخایر منزل</h2>
-            <div class="table-wrapper">
-                <table id="inventoryTable">
-                    <thead>
-                        <tr><th>نام</th><th>مقدار</th><th>واحد</th><th>تاریخ انقضا</th><th>عملیات</th></tr>
-                    </thead>
+        <!-- ===== نمودار ===== -->
+        <div class="card-modern p-4 mb-6">
+            <h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-chart-line text-secondary ml-2"></i> روند مصرف</h3>
+            <canvas id="myChart" height="200"></canvas>
+        </div>
+
+        <!-- ===== تحلیل ارزش غذایی ===== -->
+        <div class="card-modern p-4 mb-6" id="nutritionAnalysis">
+            <h3 class="text-lg font-bold text-primary mb-4">
+                <i class="fas fa-apple-alt text-secondary ml-2"></i>
+                تحلیل ارزش غذایی موجودی
+                <span class="text-xs bg-secondary text-white px-2 py-0.5 rounded-full ml-2">جدید</span>
+            </h3>
+            <div id="nutritionDisplay" class="text-center text-gray-400 py-4">در حال تحلیل موجودی...</div>
+        </div>
+
+        <!-- ===== هشدارها ===== -->
+        <div class="mb-6" id="alertPanel"></div>
+
+        <!-- ===== پیشنهادات هوشمند ===== -->
+        <div class="card-modern p-4 mb-6">
+            <h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-lightbulb text-accent ml-2"></i> پیشنهادات هوشمند مصرف</h3>
+            <div id="suggestionsList" class="space-y-2"></div>
+        </div>
+
+        <!-- ===== الگوی مصرف جامع ===== -->
+        <div class="card-modern p-4 mb-6">
+            <h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-list-check text-secondary ml-2"></i> الگوی مصرف هوشمند</h3>
+            <div id="consumptionPlanDisplay">در حال تحلیل موجودی...</div>
+        </div>
+
+        <!-- ===== پیشنهادات غذایی ===== -->
+        <div class="card-modern p-4 mb-6">
+            <h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-utensils text-accent ml-2"></i> پیشنهادات غذایی</h3>
+            <div id="mealSuggestionsDisplay">در حال تحلیل...</div>
+        </div>
+
+        <!-- ===== هوش مصنوعی ===== -->
+        <div class="ai-section-modern p-4 mb-6">
+            <h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-robot text-secondary ml-2"></i> دستیار هوشمند (AI)</h3>
+            <div id="aiSuggestionDisplay" class="text-gray-600 text-sm mb-3">برای دریافت پیشنهادات، روی دکمه کلیک کنید.</div>
+            <button id="aiSuggestionBtn" class="btn-gradient justify-center"><i class="fas fa-wand-magic-sparkles ml-2"></i> دریافت پیشنهادات هوشمند</button>
+            <button id="aiLoadingBtn" class="btn-gradient justify-center bg-gray-400 cursor-not-allowed hidden"><i class="fas fa-spinner fa-spin ml-2"></i> در حال دریافت...</button>
+        </div>
+
+        <!-- ===== لیست ذخایر ===== -->
+        <div class="card-modern p-4">
+            <h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-boxes-stacked text-secondary ml-2"></i> فهرست ذخایر منزل</h3>
+            <div class="overflow-x-auto">
+                <table class="table-modern" id="inventoryTable">
+                    <thead><tr><th>نام</th><th>مقدار</th><th>واحد</th><th>تاریخ انقضا</th><th>عملیات</th></tr></thead>
                     <tbody id="inventoryBody"></tbody>
                 </table>
             </div>
-        </section>
+        </div>
+
+    </main>
+
+    <!-- ===== منوی کشو ===== -->
+    <div id="drawer" class="drawer-modern">
+        <div class="flex justify-between items-center mb-6">
+            <span class="text-lg font-bold text-primary">منو</span>
+            <button id="closeDrawerBtn" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        <div id="drawerItems" class="space-y-2"></div>
+    </div>
+    <div id="drawerBackdrop"></div>
+
+    <!-- ===== ویجت چت‌بات ===== -->
+    <div id="chatbotWidget">
+        <button class="chatbot-fab" id="chatbotFab" aria-label="دستیار هوشمند">
+            <i class="fas fa-robot"></i>
+            <span class="badge" id="chatbotBadge" style="display:none;">1</span>
+        </button>
+        <div class="chatbot-window" id="chatbotWindow">
+            <div class="chatbot-header">
+                <div class="title"><span class="icon">🤖</span> دستیار هوشمند تدبیر</div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div class="status"><span class="dot"></span><span>آنلاین</span></div>
+                    <button class="close-btn" id="chatbotCloseBtn"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <div class="chatbot-messages" id="chatbotMessages">
+                <div class="message assistant">سلام! 👋 من دستیار هوشمند سامانه‌ی تدبیر منزل هستم. سوال خود را بپرسید! 😊<span class="time">اکنون</span></div>
+                <div class="typing-indicator" id="typingIndicator"><span></span><span></span><span></span></div>
+            </div>
+            <div class="chatbot-quick-suggestions" id="quickSuggestions">
+                <button data-question="وضعیت ذخایر من چگونه است؟">📊 وضعیت ذخایر</button>
+                <button data-question="چطور مصرف آب را کاهش دهم؟">💧 کاهش مصرف آب</button>
+                <button data-question="برای بحران چه کنم؟">⚠️ راهنمای بحران</button>
+                <button data-question="یک برنامه غذایی پیشنهاد بده">🍲 برنامه غذایی</button>
+            </div>
+            <div class="chatbot-input">
+                <textarea id="chatbotInput" rows="1" placeholder="پیام خود را بنویسید..."></textarea>
+                <button class="send-btn" id="chatbotSendBtn"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
     </div>
 
-    <script src="auth.js"></script>
-    <script src="script.js"></script>
+    <!-- ===== اسکریپت‌ها ===== -->
+    <script src="chatbot-widget.js"></script>
+    <script src="menu.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
