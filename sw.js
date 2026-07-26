@@ -1,13 +1,13 @@
-// sw.js
-const CACHE_NAME = 'home-cache-v1';
-const urlsToCache = [
+// sw.js - نسخه پایدار با مدیریت خطا
+const CACHE_NAME = 'tadbir-cache-v2';
+const STATIC_URLS = [
     '/',
     '/index.html',
     '/dashboard.html',
+    '/login.html',
+    '/profile.html',
     '/food.html',
     '/energy.html',
-    '/profile.html',
-    '/login.html',
     '/style.css',
     '/app.js',
     '/modules/auth.js',
@@ -16,20 +16,26 @@ const urlsToCache = [
     '/modules/consumption.js',
     '/modules/drawer.js',
     '/modules/dataLoader.js',
-    '/modules/suggestions.js',
+    '/modules/suggestion.js',
     '/modules/consumption-planner.js',
     '/modules/meal-planner.js',
     '/modules/ai.js',
+    '/modules/chatbot.js',
+    '/assets/data/recipes.json',
     '/assets/data/food_items.json',
-    '/assets/data/health_medication_items.json',
-    '/assets/data/crisis_scenarios.json',
-    '/assets/data/alert_messages.json'
+    '/assets/data/crisis_scenarios.json'
 ];
 
+// نصب با مدیریت خطا
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then(cache => cache.addAll(urlsToCache))
+            .then(cache => {
+                return cache.addAll(STATIC_URLS).catch(err => {
+                    console.warn('⚠️ برخی فایل‌ها در کش ذخیره نشدند:', err);
+                    // ادامه می‌دهیم حتی اگر برخی فایل‌ها وجود نداشته باشند
+                });
+            })
             .then(() => self.skipWaiting())
     );
 });
@@ -50,10 +56,11 @@ self.addEventListener('fetch', event => {
         caches.match(event.request)
             .then(response => {
                 if (response) return response;
-                return fetch(event.request).then(fetchResponse => {
-                    return caches.open(CACHE_NAME).then(cache => {
-                        cache.put(event.request, fetchResponse.clone());
-                        return fetchResponse;
+                return fetch(event.request).catch(() => {
+                    // در صورت خطا، یک پاسخ پیش‌فرض برمی‌گردانیم
+                    return new Response('⛔ صفحه در حالت آفلاین در دسترس نیست.', {
+                        status: 404,
+                        statusText: 'Not Found'
                     });
                 });
             })
