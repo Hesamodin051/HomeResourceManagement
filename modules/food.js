@@ -53,7 +53,7 @@ async function loadNutritionData() {
 }
 
 // ============================================================
-// دریافت اطلاعات تغذیه‌ای از هوش مصنوعی (اصلاح‌شده)
+// دریافت اطلاعات تغذیه‌ای از هوش مصنوعی (نسخه مقاوم)
 // ============================================================
 export async function fetchNutritionFromAI(foodName) {
     try {
@@ -93,18 +93,23 @@ export async function fetchNutritionFromAI(foodName) {
             temperature: 0.1
         });
 
-        // پردازش پاسخ (رشته یا شیء)
+        // ===== استخراج متن پاسخ به‌صورت مقاوم =====
         let responseText = '';
+
         if (typeof response === 'string') {
             responseText = response;
         } else if (response && typeof response === 'object') {
+            // بررسی ساختارهای رایج
             if (response.message && typeof response.message.content === 'string') {
                 responseText = response.message.content;
+            } else if (response.message && typeof response.message === 'string') {
+                responseText = response.message;
             } else if (typeof response.text === 'string') {
                 responseText = response.text;
             } else if (typeof response.response === 'string') {
                 responseText = response.response;
             } else {
+                // اگر هیچکدام نبود، به JSON تبدیل کن
                 responseText = JSON.stringify(response);
             }
         } else {
@@ -112,9 +117,10 @@ export async function fetchNutritionFromAI(foodName) {
             return null;
         }
 
-        // استخراج JSON از پاسخ
+        // ===== استخراج JSON از متن =====
         let jsonMatch = responseText.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
+            // اگر بریس پیدا نشد، احتمالاً کل پاسخ JSON است
             jsonMatch = [responseText];
         }
         
