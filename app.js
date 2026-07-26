@@ -57,7 +57,7 @@ async function handleAISuggestion() {
 }
 
 // ============================================================
-// 3. رندر جدول ذخایر (غیر async)
+// 3. رندر جدول ذخایر
 // ============================================================
 function renderInventoryTable() {
     const tbody = document.getElementById('inventoryBody');
@@ -159,18 +159,27 @@ function renderChart() {
 // ============================================================
 function updateConsumptionPlan() {
     const display = document.getElementById('consumptionPlanDisplay');
-    if (!display) return;
+    if (!display) {
+        console.warn('⚠️ المان consumptionPlanDisplay پیدا نشد.');
+        return;
+    }
     const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
+    display.innerHTML = '<div class="text-center text-gray-400 py-4"><i class="fas fa-spinner fa-spin text-2xl"></i> در حال بروزرسانی...</div>';
     generateConsumptionPlan(days).then(html => {
         display.innerHTML = html;
         attachMealClickEvents();
-    }).catch(err => console.error('خطا در به‌روزرسانی الگوی مصرف:', err));
+        console.log('✅ الگوی مصرف به‌روزرسانی شد.');
+    }).catch(err => {
+        console.error('❌ خطا در به‌روزرسانی الگوی مصرف:', err);
+        display.innerHTML = `<div class="text-center text-red-400 py-4">❌ خطا در بروزرسانی. لطفاً دوباره تلاش کنید.</div>`;
+    });
 }
 
 // ============================================================
 // 7. اتصال رویدادهای داشبورد
 // ============================================================
 function bindDashboardUI() {
+    // دکمه ذخیره مصرف
     const saveBtn = document.getElementById('saveConsumptionBtn');
     if (saveBtn) {
         saveBtn.addEventListener('click', function() {
@@ -191,6 +200,8 @@ function bindDashboardUI() {
             updateConsumptionPlan();
         });
     }
+
+    // سوئیچ حالت بحران
     const crisisToggle = document.getElementById('crisisModeToggle');
     if (crisisToggle) {
         crisisToggle.addEventListener('change', function(e) {
@@ -204,8 +215,26 @@ function bindDashboardUI() {
             refreshMealSuggestions();
         });
     }
+
+    // دکمه خروج
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) logoutBtn.addEventListener('click', () => logout());
+
+    // دکمه بروزرسانی الگوی مصرف
+    const generatePlanBtn = document.getElementById('generatePlanBtn');
+    if (generatePlanBtn) {
+        generatePlanBtn.addEventListener('click', function() {
+            updateConsumptionPlan();
+        });
+    }
+
+    // دکمه بازنشانی پیشنهادات غذایی
+    const refreshBtn = document.getElementById('refreshMealSuggestionsBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            refreshMealSuggestions();
+        });
+    }
 }
 
 // ============================================================
@@ -426,8 +455,6 @@ function initDashboard() {
                     profileClickable.addEventListener('click', () => window.location.href = 'profile.html');
                 }
             }
-            document.getElementById('generatePlanBtn')?.addEventListener('click', function() { updateConsumptionPlan(); });
-            document.getElementById('refreshMealSuggestionsBtn')?.addEventListener('click', function() { refreshMealSuggestions(); });
         });
 }
 
