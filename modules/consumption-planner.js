@@ -1,6 +1,6 @@
 // modules/consumption-planner.js
 import { store } from './store.js';
-import { generateConsumptionPlanAI, getAlternativeMealAI } from './ai-fallback.js';
+import { generateConsumptionPlanAI, getAlternativeMealAI } from './huggingface.js';
 
 function getFamilySize() {
     return store.currentUserProfile?.familySize || 4;
@@ -15,7 +15,7 @@ function isOnline() {
 }
 
 // ============================================================
-// تولید برنامه مصرف با هوش مصنوعی (با jsllm7)
+// تولید برنامه مصرف با هوش مصنوعی (Hugging Face)
 // ============================================================
 export async function generateConsumptionPlan(days = 7, startDate = null) {
     const familySize = getFamilySize();
@@ -50,7 +50,7 @@ export async function generateConsumptionPlan(days = 7, startDate = null) {
         return processAIResponseToCards(result, days, familySize);
 
     } catch (error) {
-        console.error('❌ خطا در ارتباط با AI:', error);
+        console.error('❌ خطا در ارتباط با Hugging Face:', error);
         return generateFallbackPlan(days, familySize);
     }
 }
@@ -99,7 +99,7 @@ function processAIResponseToCards(aiResponse, days, familySize) {
         <div class="consumption-plan">
             <div class="flex justify-between items-center mb-4">
                 <h4 class="text-lg font-bold text-primary">📅 برنامه مصرف (${plan.length} روز)</h4>
-                <span class="text-sm text-gray-500">🤖 هوش مصنوعی</span>
+                <span class="text-sm text-gray-500">🤖 Hugging Face AI</span>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     `;
@@ -147,7 +147,7 @@ function processAIResponseToCards(aiResponse, days, familySize) {
     html += `
             </div>
             <div class="mt-3 p-3 bg-blue-50 rounded-xl border border-blue-200 text-xs text-blue-600">
-                🤖 تولید شده توسط هوش مصنوعی بر اساس موجودی واقعی انبار
+                🤖 تولید شده توسط Hugging Face AI بر اساس موجودی واقعی انبار
             </div>
         </div>
     `;
@@ -231,7 +231,8 @@ function generateFallbackPlan(days, familySize) {
     html += `
             </div>
             <div class="mt-3 p-3 bg-yellow-50 rounded-xl border border-yellow-200 text-xs text-yellow-600">
-                ⚠️ حالت آفلاین: برنامه بر اساس داده‌های پیش‌فرض است. برای برنامه‌ریزی دقیق‌تر، اتصال اینترنت را برقرار کنید.
+                ⚠️ حالت آفلاین: برنامه بر اساس داده‌های پیش‌فرض است.
+                <br>برای برنامه‌ریزی هوشمند، اتصال به Hugging Face AI را بررسی کنید.
             </div>
         </div>
     `;
@@ -240,7 +241,7 @@ function generateFallbackPlan(days, familySize) {
 }
 
 // ============================================================
-// دریافت پیشنهاد جایگزین از AI (با jsllm7)
+// دریافت پیشنهاد جایگزین از AI (Hugging Face)
 // ============================================================
 export async function getAlternativeMeal(mealType, dayIndex) {
     const familySize = getFamilySize();
