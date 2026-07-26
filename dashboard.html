@@ -27,7 +27,7 @@
 </head>
 <body class="font-vazir bg-gray-50 min-h-screen">
 
-    <!-- ===== هدر شیشه‌ای ===== -->
+    <!-- ===== هدر ===== -->
     <header class="glass-header sticky top-0 z-50 px-4 py-3">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
@@ -39,18 +39,15 @@
                     <img id="userAvatar" src="" alt="avatar" class="w-8 h-8 rounded-full border-2 border-secondary object-cover">
                     <span id="userDisplay" class="text-sm font-medium text-gray-700 hidden sm:inline">کاربر</span>
                 </div>
-
                 <div class="notification-bell-wrapper" onclick="window.location.href='notifications.html'">
                     <button id="notificationBell" class="notification-bell relative" aria-label="اعلان‌ها">
                         <i class="fas fa-bell text-xl text-gray-700 hover:text-secondary transition-colors"></i>
                         <span id="notificationBadge" class="notification-badge hidden">0</span>
                     </button>
                 </div>
-
                 <button id="logoutBtn" class="text-gray-500 hover:text-red-500 transition-colors">
                     <i class="fas fa-sign-out-alt text-lg"></i>
                 </button>
-
                 <div class="hamburger-menu cursor-pointer" id="hamburgerMenu">
                     <i class="fas fa-bars text-2xl text-gray-700"></i>
                 </div>
@@ -176,10 +173,6 @@
             <div id="suggestionsList" class="space-y-2"></div>
         </div>
 
-        <!-- ============================================================ -->
-        <!-- ===== بخش جدید: الگوی مصرف و پیشنهادات غذایی ===== -->
-        <!-- ============================================================ -->
-
         <!-- ===== الگوی مصرف هوشمند ===== -->
         <div class="card-modern p-4 mb-6">
             <h3 class="text-lg font-bold text-primary mb-4">
@@ -202,7 +195,7 @@
             <div id="consumptionPlanDisplay">در حال تحلیل موجودی...</div>
         </div>
 
-        <!-- ===== پیشنهادات غذایی ===== -->
+        <!-- ===== پیشنهادات غذایی امروز ===== -->
         <div class="card-modern p-4 mb-6">
             <h3 class="text-lg font-bold text-primary mb-4">
                 <i class="fas fa-utensils text-accent ml-2"></i>
@@ -215,10 +208,7 @@
             <div id="mealSuggestionsDisplay">در حال تحلیل...</div>
         </div>
 
-        <!-- ============================================================ -->
-        <!-- ===== بخش قبلی: دستیار هوشمند ===== -->
-        <!-- ============================================================ -->
-
+        <!-- ===== دستیار هوشمند ===== -->
         <div class="ai-section-modern p-4 mb-6">
             <h3 class="text-lg font-bold text-primary mb-4">
                 <i class="fas fa-robot text-secondary ml-2"></i>
@@ -301,9 +291,23 @@
         </div>
     </div>
 
+    <!-- ===== مدال تأیید مصرف مواد ===== -->
+    <div id="consumeModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-primary" id="consumeModalTitle">🍽️ تأیید مصرف</h3>
+                <button id="closeConsumeModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+            <div id="consumeModalBody">
+                <!-- محتوای داینامیک -->
+            </div>
+        </div>
+    </div>
+
     <!-- ===== اسکریپت‌ها ===== -->
     <script>
-        // ===== بررسی لاگین =====
         (function() {
             const loggedInUser = sessionStorage.getItem('loggedInUser');
             if (!loggedInUser) {
@@ -321,7 +325,6 @@
     <script src="chatbot-widget.js"></script>
     <script type="module" src="app.js"></script>
 
-    <!-- ===== به‌روزرسانی نشانگر اعلان ===== -->
     <script>
         function updateNotificationBadge() {
             const badge = document.getElementById('notificationBadge');
