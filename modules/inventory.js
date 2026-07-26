@@ -13,7 +13,6 @@ export function loadInventory() {
     if (stored) {
         inv = JSON.parse(stored);
     } else {
-        // ✅ داده‌های پیش‌فرض حذف شد - آرایه خالی
         inv = [];
         saveInventory(inv);
     }
@@ -60,17 +59,4 @@ export function deleteItem(id) {
     const newInventory = store.inventory.filter(item => item.id !== id);
     saveInventory(newInventory);
     return newInventory;
-}
-
-export function getNormalItems() {
-    return store.inventory.filter(item => item.type === 'normal' || !item.type);
-}
-
-export function getCrisisItems() {
-    return store.inventory.filter(item => item.type === 'crisis');
-}
-
-export function getCrisisWater() {
-    const items = getCrisisItems();
-    return items.find(item => item.name.toLowerCase().includes('آب'));
 }
