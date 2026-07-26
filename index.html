@@ -4,135 +4,115 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>سامانه تدبیر منزل | مدیریت هوشمند مصرف و ذخایر خانگی</title>
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://js.puter.com/v2/"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 'vazir': ['Vazirmatn', 'sans-serif'] },
+                    colors: { 'primary': '#0f172a', 'secondary': '#3b82f6', 'accent': '#f59e0b' }
+                }
+            }
+        }
+    </script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Vazirmatn', sans-serif;
-        }
-        body {
-            background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
-        }
-        .hero {
-            max-width: 1000px;
-            background: rgba(255,255,255,0.95);
-            border-radius: 2rem;
-            box-shadow: 0 25px 45px rgba(0,0,0,0.2);
-            padding: 3rem 2rem;
-            text-align: center;
-        }
-        h1 {
-            font-size: 2.5rem;
-            color: #1e466e;
-            margin-bottom: 1rem;
-        }
-        .sub {
-            font-size: 1.2rem;
-            color: #2c3e66;
-            margin-bottom: 2rem;
-            border-right: 4px solid #f97316;
-            padding-right: 1rem;
-            display: inline-block;
-        }
-        .desc {
-            text-align: justify;
-            line-height: 1.8;
-            color: #334155;
-            margin: 2rem 0;
-            font-size: 1rem;
-        }
-        .features {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1.5rem;
-            justify-content: center;
-            margin: 2rem 0;
-        }
-        .feature-card {
-            background: #f1f5f9;
-            border-radius: 1.5rem;
-            padding: 1rem;
-            width: 180px;
-            text-align: center;
-        }
-        .feature-card span {
-            font-size: 2rem;
-            display: block;
-        }
-        .buttons {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            margin-top: 2rem;
-        }
-        .btn {
-            padding: 0.8rem 2rem;
-            border-radius: 3rem;
-            font-weight: bold;
-            text-decoration: none;
-            transition: 0.2s;
-        }
-        .btn-primary {
-            background: #1e466e;
-            color: white;
-        }
-        .btn-primary:hover {
-            background: #0f2b44;
-            transform: scale(1.05);
-        }
-        .btn-outline {
-            border: 2px solid #1e466e;
-            color: #1e466e;
-        }
-        .btn-outline:hover {
-            background: #1e466e;
-            color: white;
-        }
-        footer {
-            margin-top: 2rem;
-            font-size: 0.8rem;
-            color: #475569;
-        }
-        @media (max-width: 700px) {
-            .hero { padding: 1.5rem; }
-            h1 { font-size: 1.8rem; }
-            .features { gap: 1rem; }
-            .feature-card { width: 140px; }
-        }
+        .hero-gradient { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); }
+        .card-hover:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(0,0,0,0.12); }
     </style>
 </head>
-<body>
-    <div class="hero">
-        <h1>🏠 سامانه تدبیر منزل</h1>
-        <div class="sub">مدیریت هوشمند مصرف آب، برق، گاز و ذخایر غذایی</div>
-        <div class="desc">
-            در شرایط عادی و بحرانی (زلزله، قطعی برق، جنگ) همراه شما هستیم.  
-            با ثبت‌نام در سامانه، می‌توانید مصرف لحظه‌ای آب، برق و گاز منزل خود را پایش کنید،  
-            تاریخ انقضای مواد غذایی را مدیریت کنید و در زمان بحران، توصیه‌های هوشمند برای اولویت‌بندی منابع دریافت کنید.  
-            تمام امکانات به صورت آفلاین نیز کار می‌کند.
+<body class="font-vazir bg-gray-50 min-h-screen">
+
+    <!-- ===== هدر ===== -->
+    <header class="glass-header sticky top-0 z-50 px-4 py-3">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-home text-2xl text-secondary"></i>
+                <h1 class="text-xl font-bold text-primary">سامانه تدبیر منزل</h1>
+            </div>
+            <div class="hamburger-menu cursor-pointer" id="hamburgerMenu">
+                <i class="fas fa-bars text-2xl text-gray-700"></i>
+            </div>
         </div>
-        <div class="features">
-            <div class="feature-card"><span>💧</span> پایش مصرف آب</div>
-            <div class="feature-card"><span>⚡</span> پایش مصرف برق</div>
-            <div class="feature-card"><span>🔥</span> پایش مصرف گاز</div>
-            <div class="feature-card"><span>🍚</span> مدیریت ذخایر غذایی</div>
-            <div class="feature-card"><span>⚠️</span> حالت بحران هوشمند</div>
+    </header>
+
+    <!-- ===== بخش اصلی ===== -->
+    <main class="max-w-6xl mx-auto px-4 py-12">
+        <div class="hero-gradient rounded-3xl p-8 md:p-16 text-center text-white shadow-2xl relative overflow-hidden mb-12">
+            <div class="relative z-10">
+                <div class="text-6xl mb-4">🏠</div>
+                <h1 class="text-3xl md:text-5xl font-black leading-tight mb-4">سامانه هوشمند مدیریت و پایش مصرف آب، برق، گاز و ذخایر غذایی</h1>
+                <p class="text-lg md:text-2xl text-yellow-400 font-bold mb-2">در شرایط عادی و بحرانی</p>
+                <p class="text-gray-300 text-base md:text-lg max-w-2xl mx-auto">هر خانه، یک سامانه هوشمند برای مدیریت بحران</p>
+                <div class="flex flex-wrap justify-center gap-4 mt-8">
+                    <a href="login.html" class="btn-gradient"><i class="fas fa-sign-in-alt"></i> ورود به پرتال شخصی</a>
+                    <a href="login.html" class="btn-outline"><i class="fas fa-user-plus"></i> ثبت‌نام</a>
+                </div>
+            </div>
+            <div class="absolute top-0 left-0 w-64 h-64 bg-secondary/20 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
+            <div class="absolute bottom-0 right-0 w-64 h-64 bg-accent/20 rounded-full blur-3xl translate-x-1/2 translate-y-1/2"></div>
         </div>
-        <div class="buttons">
-            <a href="login.html" class="btn btn-primary">ورود به پرتال شخصی</a>
-            <a href="login.html" class="btn btn-outline">ثبت‌نام</a>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="card-modern card-hover text-center"><div class="text-4xl mb-3">💧</div><h3 class="text-lg font-bold text-primary">پایش مصرف آب</h3><p class="text-sm text-gray-500 mt-1">مدیریت هوشمند مصرف آب خانگی</p></div>
+            <div class="card-modern card-hover text-center"><div class="text-4xl mb-3">⚡</div><h3 class="text-lg font-bold text-primary">پایش مصرف برق</h3><p class="text-sm text-gray-500 mt-1">کاهش هزینه‌ها با آگاهی لحظه‌ای</p></div>
+            <div class="card-modern card-hover text-center"><div class="text-4xl mb-3">🔥</div><h3 class="text-lg font-bold text-primary">پایش مصرف گاز</h3><p class="text-sm text-gray-500 mt-1">بهینه‌سازی مصرف انرژی</p></div>
+            <div class="card-modern card-hover text-center"><div class="text-4xl mb-3">🍚</div><h3 class="text-lg font-bold text-primary">مدیریت ذخایر غذایی</h3><p class="text-sm text-gray-500 mt-1">ثبت، دسته‌بندی و هشدار انقضا</p></div>
+            <div class="card-modern card-hover text-center md:col-span-2"><div class="text-4xl mb-3">⚠️</div><h3 class="text-lg font-bold text-primary">حالت بحران هوشمند</h3><p class="text-sm text-gray-500 mt-1">۷ سناریوی بحران با اولویت‌بندی منابع</p></div>
         </div>
-        <footer>
-            پروژه درس مدیریت پروژه فناوری اطلاعات – تیم بین‌رشته‌ای
-        </footer>
+
+        <footer class="mt-12 text-center text-sm text-gray-400 border-t border-gray-200 pt-6">پروژه درس مدیریت پروژه فناوری اطلاعات – تیم بین‌رشته‌ای ۵ نفره</footer>
+    </main>
+
+    <!-- ===== منوی کشو ===== -->
+    <div id="drawer" class="drawer-modern">
+        <div class="flex justify-between items-center mb-6">
+            <span class="text-lg font-bold text-primary">منو</span>
+            <button id="closeDrawerBtn" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        <div id="drawerItems" class="space-y-2"></div>
     </div>
+    <div id="drawerBackdrop"></div>
+
+    <!-- ===== ویجت چت‌بات ===== -->
+    <div id="chatbotWidget">
+        <button class="chatbot-fab" id="chatbotFab" aria-label="دستیار هوشمند">
+            <i class="fas fa-robot"></i>
+            <span class="badge" id="chatbotBadge" style="display:none;">1</span>
+        </button>
+        <div class="chatbot-window" id="chatbotWindow">
+            <div class="chatbot-header">
+                <div class="title"><span class="icon">🤖</span> دستیار هوشمند تدبیر</div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div class="status"><span class="dot"></span><span>آنلاین</span></div>
+                    <button class="close-btn" id="chatbotCloseBtn"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <div class="chatbot-messages" id="chatbotMessages">
+                <div class="message assistant">سلام! 👋 من دستیار هوشمند سامانه‌ی تدبیر منزل هستم. سوال خود را بپرسید! 😊<span class="time">اکنون</span></div>
+                <div class="typing-indicator" id="typingIndicator"><span></span><span></span><span></span></div>
+            </div>
+            <div class="chatbot-quick-suggestions" id="quickSuggestions">
+                <button data-question="وضعیت ذخایر من چگونه است؟">📊 وضعیت ذخایر</button>
+                <button data-question="چطور مصرف آب را کاهش دهم؟">💧 کاهش مصرف آب</button>
+                <button data-question="برای بحران چه کنم؟">⚠️ راهنمای بحران</button>
+                <button data-question="یک برنامه غذایی پیشنهاد بده">🍲 برنامه غذایی</button>
+            </div>
+            <div class="chatbot-input">
+                <textarea id="chatbotInput" rows="1" placeholder="پیام خود را بنویسید..."></textarea>
+                <button class="send-btn" id="chatbotSendBtn"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== اسکریپت‌ها ===== -->
+    <script src="menu.js"></script>
+    <script src="chatbot-widget.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
