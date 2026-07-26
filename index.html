@@ -36,7 +36,7 @@
 </head>
 <body class="font-vazir bg-gray-50 min-h-screen">
 
-    <!-- ===== هدر شیشه‌ای ===== -->
+    <!-- ===== هدر ===== -->
     <header class="glass-header sticky top-0 z-50 px-4 py-3">
         <div class="max-w-6xl mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
@@ -52,7 +52,6 @@
     <!-- ===== بخش اصلی ===== -->
     <main class="max-w-6xl mx-auto px-4 py-12">
 
-        <!-- ===== Hero Section ===== -->
         <div class="hero-gradient rounded-3xl p-8 md:p-16 text-center text-white shadow-2xl relative overflow-hidden mb-12">
             <div class="relative z-10">
                 <div class="text-6xl mb-4">🏠</div>
@@ -78,7 +77,6 @@
             <div class="absolute bottom-0 right-0 w-64 h-64 bg-accent/20 rounded-full blur-3xl translate-x-1/2 translate-y-1/2"></div>
         </div>
 
-        <!-- ===== ویژگی‌ها ===== -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="card-modern card-hover text-center">
                 <div class="text-4xl mb-3">💧</div>
@@ -107,7 +105,6 @@
             </div>
         </div>
 
-        <!-- ===== فوتر ===== -->
         <footer class="mt-12 text-center text-sm text-gray-400 border-t border-gray-200 pt-6">
             پروژه درس مدیریت پروژه فناوری اطلاعات – تیم بین‌رشته‌ای ۵ نفره
         </footer>
@@ -124,79 +121,46 @@
         </div>
         <div id="drawerItems" class="space-y-2"></div>
     </div>
-
-    <!-- ===== پس‌زمینه تاریک ===== -->
     <div id="drawerBackdrop"></div>
 
-    <!-- ===== ویجت چت‌بات هوشمند ===== -->
+    <!-- ===== ویجت چت‌بات ===== -->
     <div id="chatbotWidget">
         <button class="chatbot-fab" id="chatbotFab" aria-label="دستیار هوشمند">
             <i class="fas fa-robot"></i>
             <span class="badge" id="chatbotBadge" style="display:none;">1</span>
         </button>
-
         <div class="chatbot-window" id="chatbotWindow">
             <div class="chatbot-header">
-                <div class="title">
-                    <span class="icon">🤖</span>
-                    دستیار هوشمند تدبیر
-                </div>
+                <div class="title"><span class="icon">🤖</span> دستیار هوشمند تدبیر</div>
                 <div style="display:flex;align-items:center;gap:12px;">
-                    <div class="status">
-                        <span class="dot"></span>
-                        <span id="chatbotStatus">آنلاین</span>
-                    </div>
-                    <button class="close-btn" id="chatbotCloseBtn">
-                        <i class="fas fa-times"></i>
-                    </button>
+                    <div class="status"><span class="dot"></span><span>آنلاین</span></div>
+                    <button class="close-btn" id="chatbotCloseBtn"><i class="fas fa-times"></i></button>
                 </div>
             </div>
-
             <div class="chatbot-messages" id="chatbotMessages">
-                <div class="message assistant">
-                    سلام! 👋 من دستیار هوشمند سامانه‌ی تدبیر منزل هستم.
-                    می‌توانم در مورد مصرف انرژی، مدیریت ذخایر، برنامه‌ریزی غذایی و شرایط بحران به شما کمک کنم.
-                    سوال خود را بپرسید! 😊
-                    <span class="time">اکنون</span>
-                </div>
-                <div class="typing-indicator" id="typingIndicator">
-                    <span></span><span></span><span></span>
-                </div>
+                <div class="message assistant">سلام! 👋 من دستیار هوشمند سامانه‌ی تدبیر منزل هستم. سوال خود را بپرسید! 😊<span class="time">اکنون</span></div>
+                <div class="typing-indicator" id="typingIndicator"><span></span><span></span><span></span></div>
             </div>
-
             <div class="chatbot-quick-suggestions" id="quickSuggestions">
                 <button data-question="وضعیت ذخایر من چگونه است؟">📊 وضعیت ذخایر</button>
                 <button data-question="چطور مصرف آب را کاهش دهم؟">💧 کاهش مصرف آب</button>
                 <button data-question="برای بحران چه کنم؟">⚠️ راهنمای بحران</button>
                 <button data-question="یک برنامه غذایی پیشنهاد بده">🍲 برنامه غذایی</button>
             </div>
-
             <div class="chatbot-input">
                 <textarea id="chatbotInput" rows="1" placeholder="پیام خود را بنویسید..."></textarea>
-                <button class="send-btn" id="chatbotSendBtn">
-                    <i class="fas fa-paper-plane"></i>
-                </button>
+                <button class="send-btn" id="chatbotSendBtn"><i class="fas fa-paper-plane"></i></button>
             </div>
         </div>
     </div>
 
-    <!-- ===== اسکریپت‌ها ===== -->
+    <!-- ===== اسکریپت‌های ضروری (بدون app.js) ===== -->
     <script>
-        // ===== جلوگیری از لوپ رفرش =====
+        // ===== بررسی لاگین و هدایت به داشبورد (فقط یک بار) =====
         (function() {
-            // فقط یک بار در هر بار بارگذاری صفحه اجرا شود
-            if (sessionStorage.getItem('redirect_done') === 'true') {
-                console.log('ℹ️ ریدایرکت قبلاً انجام شده است، ادامه می‌دهیم...');
-                sessionStorage.removeItem('redirect_done');
-                return;
-            }
-
             const loggedInUser = sessionStorage.getItem('loggedInUser');
-            console.log('🔍 بررسی لاگین در index.html:', loggedInUser);
-
             if (loggedInUser) {
                 console.log('🔄 کاربر لاگین است، رفتن به داشبورد...');
-                sessionStorage.setItem('redirect_done', 'true');
                 window.location.href = 'dashboard.html';
             } else {
                 console.log('🌿 کاربر مهمان، نمایش صفحه اصلی.');
@@ -206,6 +170,7 @@
 
     <script src="menu.js"></script>
     <script src="chatbot-widget.js"></script>
-    <script type="module" src="app.js"></script>
+    <!-- ===== حذف app.js ===== -->
+    <!-- <script type="module" src="app.js"></script> -->
 </body>
 </html>
