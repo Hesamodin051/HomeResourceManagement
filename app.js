@@ -1,5 +1,5 @@
 // ============================================================
-// app.js - فایل ورودی اصلی سامانه تدبیر منزل
+// app.js - فایل ورودی اصلی سامانه تدبیر منزل (نسخه نهایی)
 // ============================================================
 
 import { checkAuth, getLoggedInUser, logout, getUserProfile, getUserAvatar } from './modules/auth.js';
@@ -58,9 +58,9 @@ async function handleAISuggestion() {
 }
 
 // ============================================================
-// 3. رندر جدول ذخایر
+// 3. رندر جدول ذخایر (اکنون async)
 // ============================================================
-function renderInventoryTable() {
+async function renderInventoryTable() {
     const tbody = document.getElementById('inventoryBody');
     if (!tbody) return;
     tbody.innerHTML = '';
@@ -74,36 +74,36 @@ function renderInventoryTable() {
         const editBtn = document.createElement('button');
         editBtn.innerText = '✏️';
         editBtn.className = 'edit-btn';
-        editBtn.onclick = () => {
+        editBtn.onclick = async () => {
             const newName = prompt('نام جدید:', item.name);
             const newQty = parseFloat(prompt('مقدار جدید:', item.quantity));
             const newUnit = prompt('واحد جدید:', item.unit);
             const newExpiry = prompt('تاریخ انقضا (YYYY-MM-DD):', item.expiry);
             if (newName && !isNaN(newQty) && newQty > 0 && newUnit) {
                 editItem(item.id, newName.trim(), newQty, newUnit.trim(), newExpiry || '');
-                renderInventoryTable();
+                await renderInventoryTable();
                 generateAlerts();
                 document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
                     parseInt(document.getElementById('planDaysSelect')?.value || 7)
                 );
                 generateSuggestions();
-                updateNutritionAnalysis();
+                await updateNutritionAnalysis();
                 refreshMealSuggestions();
             } else alert('ورودی نامعتبر');
         };
         const delBtn = document.createElement('button');
         delBtn.innerText = '🗑️';
         delBtn.className = 'delete-btn';
-        delBtn.onclick = () => {
+        delBtn.onclick = async () => {
             if (confirm('آیا از حذف این قلم اطمینان دارید؟')) {
                 deleteItem(item.id);
-                renderInventoryTable();
+                await renderInventoryTable();
                 generateAlerts();
                 document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
                     parseInt(document.getElementById('planDaysSelect')?.value || 7)
                 );
                 generateSuggestions();
-                updateNutritionAnalysis();
+                await updateNutritionAnalysis();
                 refreshMealSuggestions();
             }
         };
@@ -113,7 +113,7 @@ function renderInventoryTable() {
 }
 
 // ============================================================
-// 4. تولید هشدارها
+// 4. تولید هشدارها (ساده - بدون async)
 // ============================================================
 function generateAlerts() {
     const alertPanel = document.getElementById('alertPanel');
@@ -135,7 +135,7 @@ function generateAlerts() {
 }
 
 // ============================================================
-// 5. رندر نمودار مصرف
+// 5. رندر نمودار مصرف (بدون async)
 // ============================================================
 function renderChart() {
     const ctx = document.getElementById('myChart');
@@ -158,12 +158,12 @@ function renderChart() {
 }
 
 // ============================================================
-// 6. اتصال رویدادهای داشبورد
+// 6. اتصال رویدادهای داشبورد (اکنون async)
 // ============================================================
-function bindDashboardUI() {
+async function bindDashboardUI() {
     const saveBtn = document.getElementById('saveConsumptionBtn');
     if (saveBtn) {
-        saveBtn.addEventListener('click', () => {
+        saveBtn.addEventListener('click', async () => {
             const water = parseFloat(document.getElementById('waterConsumption').value);
             const elec = parseFloat(document.getElementById('electricityConsumption').value);
             const gas = parseFloat(document.getElementById('gasConsumption').value);
@@ -185,7 +185,7 @@ function bindDashboardUI() {
     }
     const crisisToggle = document.getElementById('crisisModeToggle');
     if (crisisToggle) {
-        crisisToggle.addEventListener('change', (e) => {
+        crisisToggle.addEventListener('change', async (e) => {
             setCrisisMode(e.target.checked);
             document.body.classList.toggle('crisis', e.target.checked);
             generateAlerts();
@@ -194,7 +194,7 @@ function bindDashboardUI() {
                 parseInt(document.getElementById('planDaysSelect')?.value || 7)
             );
             localStorage.setItem('crisis_mode', e.target.checked);
-            updateNutritionAnalysis();
+            await updateNutritionAnalysis();
             refreshMealSuggestions();
         });
     }
@@ -203,9 +203,9 @@ function bindDashboardUI() {
 }
 
 // ============================================================
-// 7. سناریوهای بحران
+// 7. سناریوهای بحران (اکنون async)
 // ============================================================
-function populateScenarioDropdown() {
+async function populateScenarioDropdown() {
     const scenarios = window.crisisScenarios || [];
     const select = document.getElementById('scenarioSelect');
     if (!select) return;
@@ -216,7 +216,7 @@ function populateScenarioDropdown() {
         option.textContent = scenario.name;
         select.appendChild(option);
     });
-    select.addEventListener('change', (e) => {
+    select.addEventListener('change', async (e) => {
         const selectedId = parseInt(e.target.value);
         const scenario = scenarios.find(s => s.id === selectedId);
         const tipDiv = document.getElementById('scenarioTip');
@@ -235,7 +235,7 @@ function populateScenarioDropdown() {
 }
 
 // ============================================================
-// 8. تحلیل ارزش غذایی
+// 8. تحلیل ارزش غذایی (async)
 // ============================================================
 async function updateNutritionAnalysis() {
     const display = document.getElementById('nutritionDisplay');
@@ -409,9 +409,9 @@ async function regeneratePlan() {
         display.innerHTML = await generateConsumptionPlan(days);
         attachMealClickEvents();
     }
-    renderInventoryTable();
+    await renderInventoryTable();
     generateAlerts();
-    updateNutritionAnalysis();
+    await updateNutritionAnalysis();
     refreshMealSuggestions();
 }
 
@@ -450,11 +450,11 @@ async function initDashboard() {
     
     loadInventory();
     loadConsumptionData();
-    renderInventoryTable();
+    await renderInventoryTable();
     renderChart();
     generateAlerts();
-    bindDashboardUI();
-    populateScenarioDropdown();
+    await bindDashboardUI();
+    await populateScenarioDropdown();
     generateSuggestions();
     
     // ===== الگوی مصرف =====
@@ -678,18 +678,18 @@ if (currentPath.includes('login.html')) {
 }
 
 // ============================================================
-// 14. شنونده‌های تغییرات store
+// 14. شنونده‌های تغییرات store (اکنون async)
 // ============================================================
 addListener('inventory', async () => {
     if (window.location.pathname.includes('dashboard.html')) {
-        renderInventoryTable();
+        await renderInventoryTable();
         generateAlerts();
         generateSuggestions();
         document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
             parseInt(document.getElementById('planDaysSelect')?.value || 7)
         );
         attachMealClickEvents();
-        updateNutritionAnalysis();
+        await updateNutritionAnalysis();
         refreshMealSuggestions();
     }
 });
@@ -702,7 +702,7 @@ addListener('crisisMode', async () => {
             parseInt(document.getElementById('planDaysSelect')?.value || 7)
         );
         attachMealClickEvents();
-        updateNutritionAnalysis();
+        await updateNutritionAnalysis();
         refreshMealSuggestions();
     }
 });
@@ -726,7 +726,7 @@ addListener('currentUserProfile', async () => {
             parseInt(document.getElementById('planDaysSelect')?.value || 7)
         );
         attachMealClickEvents();
-        updateNutritionAnalysis();
+        await updateNutritionAnalysis();
         refreshMealSuggestions();
     }
 });
