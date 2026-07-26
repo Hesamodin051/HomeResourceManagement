@@ -1,10 +1,11 @@
 // modules/consumption-planner.js
 import { store } from './store.js';
+import { consumeIngredients } from './inventory.js';
 
 let recipesCache = [];
 
 // ============================================================
-// بارگذاری دستورهای غذایی (همانند meal-planner)
+// بارگذاری دستورهای غذایی
 // ============================================================
 async function loadRecipes() {
     if (recipesCache.length > 0) return recipesCache;
@@ -120,17 +121,7 @@ function calculateServings(recipe, inventory, familySize) {
 }
 
 // ============================================================
-// اولویت‌بندی غذاها بر اساس تاریخ انقضا و تعداد دفعات پخت
-// ============================================================
-function getAvailableRecipes(inventory, familySize) {
-    const recipes = loadRecipes(); // باید await شود، اما در اینجا همگام می‌کنیم
-    // ولی loadRecipes async است، پس باید آن را await کنیم. برای سادگی، در تابع اصلی async می‌کنیم.
-    // اما این تابع به صورت همگام نیست، بنابراین ساختار را تغییر می‌دهیم.
-    // بهتر است همه عملیات async باشد.
-}
-
-// ============================================================
-// تابع اصلی تولید برنامه هوشمند (نسخه نهایی)
+// تابع اصلی تولید برنامه هوشمند
 // ============================================================
 export async function generateWeeklyPlan(days = 7, startDate = null) {
     const familySize = getFamilySize();
@@ -150,19 +141,16 @@ export async function generateWeeklyPlan(days = 7, startDate = null) {
 
     // اگر هیچ غذایی قابل پخت نبود، یک لیست پیش‌فرض با غذاهای ساده بساز
     if (availableRecipes.length === 0) {
-        // از غذاهای پیش‌فرض استفاده کن (حتی اگر مواد نداشته باشند، اما به کاربر اعلام کن)
         availableRecipes = recipeAvailability.slice(0, 5).map(r => ({ ...r, servings: 1, isAvailable: true }));
     }
 
     // ===== اولویت‌بندی بر اساس تاریخ انقضا =====
-    // بررسی کنید کدام مواد غذایی تاریخ انقضای نزدیک دارند
     const expiringItems = inventory.filter(item => {
         if (!item.expiry) return false;
         const daysLeft = (new Date(item.expiry) - new Date()) / (1000 * 60 * 60 * 24);
         return daysLeft >= 0 && daysLeft <= 3;
     });
 
-    // اولویت غذاهایی که از مواد در حال انقضا استفاده می‌کنند
     const expiringNames = expiringItems.map(i => i.name);
     availableRecipes.sort((a, b) => {
         const aUsesExpiring = a.ingredients.some(ing => expiringNames.some(name => ing.name.includes(name)));
@@ -174,28 +162,21 @@ export async function generateWeeklyPlan(days = 7, startDate = null) {
 
     // ===== انتخاب وعده‌ها برای هر روز =====
     const mealTypes = ['صبحانه', 'ناهار', 'شام'];
-    // دسته‌بندی غذاها بر اساس نوع (صبحانه، ناهار، شام) - از tag یا category استفاده می‌کنیم
     const breakfastOptions = availableRecipes.filter(r => r.tags && r.tags.includes('صبحانه'));
     const lunchOptions = availableRecipes.filter(r => r.category === 'خورش' || r.category === 'پلو' || r.category === 'پاستا');
-    const dinnerOptions = availableRecipes.filter(r => r.category === 'سوپ' || r.category === 'نان' || r.category === 'صبحانه' || r.tags && r.tags.includes('سریع'));
-
-    // اگر گزینه‌های کافی نبود، از همه غذاها استفاده کن
+    const dinnerOptions = availableRecipes.filter(r => r.category === 'سوپ' || r.category === 'نان' || r.category === 'صبحانه' || (r.tags && r.tags.includes('سریع')));
     const allMeals = availableRecipes;
 
-    // تابع انتخاب با چرخش و اولویت
     function selectMeal(mealType, dayIndex, usedMeals) {
         let pool;
         if (mealType === 'صبحانه') pool = breakfastOptions.length > 0 ? breakfastOptions : allMeals;
         else if (mealType === 'ناهار') pool = lunchOptions.length > 0 ? lunchOptions : allMeals;
         else pool = dinnerOptions.length > 0 ? dinnerOptions : allMeals;
 
-        // حذف غذاهایی که قبلاً در روزهای قبل استفاده شده‌اند (برای تنوع)
         const availablePool = pool.filter(recipe => !usedMeals.includes(recipe.id));
         if (availablePool.length === 0) {
-            // اگر همه غذاها استفاده شدند، دوباره از همه استفاده کن
             return pool[dayIndex % pool.length];
         }
-        // انتخاب بر اساس روز (چرخشی) برای تنوع
         const index = dayIndex % availablePool.length;
         return availablePool[index];
     }
@@ -206,7 +187,6 @@ export async function generateWeeklyPlan(days = 7, startDate = null) {
     let plan = [];
     let usedMeals = [];
 
-    // تعداد روزهای قابل برنامه‌ریزی (حداقل تعداد دفعات پخت)
     const minServings = Math.min(...availableRecipes.map(r => r.servings));
     const maxDays = Math.min(days, minServings || 7);
 
@@ -220,7 +200,6 @@ export async function generateWeeklyPlan(days = 7, startDate = null) {
             dayName: dayName,
             meals: {}
         };
-        // انتخاب سه وعده
         mealTypes.forEach(type => {
             const recipe = selectMeal(type, i, usedMeals);
             dayPlan.meals[type] = {
@@ -236,29 +215,21 @@ export async function generateWeeklyPlan(days = 7, startDate = null) {
 
     // ===== نکات بهینه‌سازی =====
     const tips = [];
-    // مواد در حال انقضا
     if (expiringItems.length > 0) {
         tips.push(`⏰ مواد زیر در حال انقضا هستند: ${expiringItems.map(i => i.name).join('، ')}. در برنامه گنجانده شده‌اند.`);
     }
-    // کمبود آب
     const waterItem = inventory.find(i => i.name.includes('آب'));
     if (waterItem) {
         const daysLeft = waterItem.quantity / (familySize * 2);
         if (daysLeft < 7) tips.push(`💧 آب تنها برای ${Math.floor(daysLeft)} روز کافی است. مصرف را مدیریت کنید.`);
     }
-    // کمبود پروتئین
     const proteinItems = inventory.filter(i => i.name.includes('گوشت') || i.name.includes('مرغ') || i.name.includes('تخم‌مرغ'));
     if (proteinItems.reduce((sum, i) => sum + i.quantity, 0) < 1 * familySize) {
         tips.push('🥩 پروتئین (گوشت/مرغ/تخم‌مرغ) کم است. از حبوبات و کنسرو استفاده کنید.');
     }
-    if (crisisMode) {
-        tips.push('⚠️ حالت بحران فعال است. مصرف را به حداقل برسانید و اولویت با آب و کنسروها باشد.');
-    }
-    if (tips.length === 0) {
-        tips.push('✅ وضعیت ذخایر مناسب است. برنامه بر اساس موجودی و تاریخ انقضا تنظیم شده است.');
-    }
+    if (crisisMode) tips.push('⚠️ حالت بحران فعال است. مصرف را به حداقل برسانید و اولویت با آب و کنسروها باشد.');
+    if (tips.length === 0) tips.push('✅ وضعیت ذخایر مناسب است. برنامه بر اساس موجودی و تاریخ انقضا تنظیم شده است.');
 
-    // ===== خلاصه ذخایر =====
     const keyItems = {
         water: waterItem ? { quantity: waterItem.quantity, unit: waterItem.unit } : null,
         rice: inventory.find(i => i.name.includes('برنج')),
@@ -278,11 +249,14 @@ export async function generateWeeklyPlan(days = 7, startDate = null) {
 }
 
 // ============================================================
-// تابع نمایش در داشبورد (همگام‌شده)
+// تابع نمایش در داشبورد
 // ============================================================
 export async function generateConsumptionPlan(days = 7, startDate = null) {
     const result = await generateWeeklyPlan(days, startDate);
     const { plan, maxDays, tips, keyItems, crisisMode } = result;
+    
+    // ذخیره برنامه برای استفاده در رویدادها
+    window.currentPlanData = result;
 
     let html = `
         <div class="consumption-plan">
@@ -293,7 +267,7 @@ export async function generateConsumptionPlan(days = 7, startDate = null) {
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     `;
 
-    plan.forEach(day => {
+    plan.forEach((day, idx) => {
         html += `
             <div class="day-card bg-white rounded-xl p-3 border border-gray-200 shadow-sm">
                 <div class="flex justify-between items-center mb-2">
@@ -301,11 +275,20 @@ export async function generateConsumptionPlan(days = 7, startDate = null) {
                     <span class="text-xs text-gray-400">${day.date}</span>
                 </div>
                 <div class="space-y-1 text-sm">
-                    <div><span class="font-medium">🌅 صبحانه:</span> ${day.meals.صبحانه.name}</div>
-                    <div><span class="font-medium">🌞 ناهار:</span> ${day.meals.ناهار.name}</div>
-                    <div><span class="font-medium">🌙 شام:</span> ${day.meals.شام.name}</div>
-                    <div class="text-xs text-gray-400 mt-1">
-                        ⏱️ ${day.meals.صبحانه.cook_time || '?'} دقیقه | قابل تکرار: ${day.meals.صبحانه.servings || 0} بار
+                    <div class="meal-item cursor-pointer hover:bg-blue-50 p-1 rounded transition-colors" 
+                         data-day-index="${idx}" data-meal-type="صبحانه">
+                        <span class="font-medium">🌅 صبحانه:</span> ${day.meals.صبحانه.name}
+                        <span class="text-xs text-gray-400">(⏱️ ${day.meals.صبحانه.cook_time || '?'} دقیقه)</span>
+                    </div>
+                    <div class="meal-item cursor-pointer hover:bg-green-50 p-1 rounded transition-colors" 
+                         data-day-index="${idx}" data-meal-type="ناهار">
+                        <span class="font-medium">🌞 ناهار:</span> ${day.meals.ناهار.name}
+                        <span class="text-xs text-gray-400">(⏱️ ${day.meals.ناهار.cook_time || '?'} دقیقه)</span>
+                    </div>
+                    <div class="meal-item cursor-pointer hover:bg-yellow-50 p-1 rounded transition-colors" 
+                         data-day-index="${idx}" data-meal-type="شام">
+                        <span class="font-medium">🌙 شام:</span> ${day.meals.شام.name}
+                        <span class="text-xs text-gray-400">(⏱️ ${day.meals.شام.cook_time || '?'} دقیقه)</span>
                     </div>
                 </div>
             </div>
@@ -348,7 +331,6 @@ export async function generateConsumptionPlan(days = 7, startDate = null) {
     html += `</div>`;
     return html;
 }
-// modules/consumption-planner.js (اضافه کردن تابع جدید)
 
 // ============================================================
 // دریافت جزئیات یک وعده برای نمایش در مدال
@@ -370,6 +352,7 @@ export function getMealDetails(dayIndex, mealType, plan) {
         dayIndex: dayIndex
     };
 }
+
 // ============================================================
 // تنظیمات
 // ============================================================
