@@ -1,3 +1,18 @@
+<script>
+    (function() {
+        // جلوگیری از لوپ رفرش
+        const loggedInUser = sessionStorage.getItem('loggedInUser');
+        if (!loggedInUser) {
+            console.warn('⚠️ کاربر لاگین نیست، رفتن به صفحه اصلی...');
+            sessionStorage.setItem('redirect_done', 'true');
+            window.location.href = 'index.html';
+            return;
+        }
+        console.log('✅ کاربر لاگین است، ادامه می‌دهیم...');
+        // پاک کردن فلگ ریدایرکت
+        sessionStorage.removeItem('redirect_done');
+    })();
+</script>
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
