@@ -1,13 +1,16 @@
 // modules/inventory.js
 import { store, setInventory } from './store.js';
+import { getLoggedInUser } from './auth.js';
 
 function getInventoryKey() {
-    const user = store.currentUser || 'default';
+    // اولویت با کاربر لاگین‌شده از sessionStorage
+    const user = getLoggedInUser() || store.currentUser || 'default';
     return `home_inventory_${user}`;
 }
 
 export function loadInventory() {
     const key = getInventoryKey();
+    console.log('🔑 بارگذاری موجودی با کلید:', key);
     const stored = localStorage.getItem(key);
     let inv = [];
     if (stored) {
@@ -17,6 +20,7 @@ export function loadInventory() {
         saveInventory(inv);
     }
     setInventory(inv);
+    console.log('✅ موجودی بارگذاری شد. تعداد:', inv.length);
     return inv;
 }
 
