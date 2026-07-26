@@ -3,130 +3,222 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ورود / ثبت‌نام | سامانه مدیریت ذخایر</title>
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <title>ورود / ثبت‌نام | سامانه تدبیر منزل</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 'vazir': ['Vazirmatn', 'sans-serif'] },
+                    colors: { 'primary': '#0f172a', 'secondary': '#3b82f6', 'accent': '#f59e0b' }
+                }
+            }
+        }
+    </script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Vazirmatn', sans-serif;
-        }
-        body {
-            background: linear-gradient(145deg, #e9f0f5 0%, #d9e2ec 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        .auth-container {
-            max-width: 500px;
-            width: 100%;
-            background: rgba(255,255,255,0.95);
-            border-radius: 2rem;
-            box-shadow: 0 25px 45px rgba(0,0,0,0.1);
-            padding: 2rem;
-        }
-        .tabs {
-            display: flex;
-            gap: 1rem;
-            border-bottom: 2px solid #e2e8f0;
-            margin-bottom: 2rem;
-        }
-        .tab {
-            padding: 0.5rem 1rem;
-            cursor: pointer;
-            font-weight: 500;
-            color: #4b5563;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -2px;
-        }
-        .tab.active {
-            color: #1e466e;
-            border-bottom-color: #1e466e;
-        }
-        .form-group {
-            margin-bottom: 1.2rem;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 0.8rem;
-            border: 1px solid #cbd5e1;
-            border-radius: 1rem;
-            font-family: inherit;
-            font-size: 1rem;
-        }
-        button {
-            width: 100%;
-            padding: 0.8rem;
-            background: #1e466e;
-            color: white;
-            border: none;
-            border-radius: 1.5rem;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 0.5rem;
-            font-size: 1rem;
-        }
-        .error-msg {
-            color: #dc2626;
-            font-size: 0.85rem;
-            margin-top: 0.5rem;
-            text-align: center;
-        }
-        .success-msg {
-            color: #16a34a;
-            font-size: 0.85rem;
-            margin-top: 0.5rem;
-            text-align: center;
-        }
+        .tab-btn.active { background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.06); color: #0f172a; }
+        .form-panel { transition: all 0.3s ease; }
     </style>
 </head>
-<body>
-    <div class="auth-container">
-        <div class="tabs">
-            <div class="tab active" data-tab="login">ورود</div>
-            <div class="tab" data-tab="register">ثبت‌نام</div>
+<body class="font-vazir bg-gray-50 min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-md">
+        <div class="text-center mb-8">
+            <div class="text-4xl mb-2">🏠</div>
+            <h1 class="text-2xl font-bold text-primary">سامانه تدبیر منزل</h1>
+            <p class="text-gray-500 text-sm">مدیریت هوشمند مصرف و ذخایر خانگی</p>
         </div>
 
-        <div id="loginForm" class="form-panel">
-            <div class="form-group">
-                <label>نام کاربری</label>
-                <input type="text" id="loginUsername" placeholder="نام کاربری خود را وارد کنید">
-            </div>
-            <div class="form-group">
-                <label>رمز عبور</label>
-                <input type="password" id="loginPassword" placeholder="رمز عبور">
-            </div>
-            <button id="doLogin">ورود</button>
-            <div id="loginError" class="error-msg"></div>
-        </div>
+        <div class="card-modern p-6 md:p-8">
 
-        <div id="registerForm" class="form-panel" style="display: none;">
-            <div class="form-group">
-                <label>نام کاربری</label>
-                <input type="text" id="regUsername" placeholder="نام کاربری (حداقل ۳ کاراکتر)">
+            <!-- ===== تب‌ها ===== -->
+            <div class="flex bg-gray-100 rounded-2xl p-1 mb-6">
+                <button class="tab-btn active flex-1 py-2.5 text-sm font-medium rounded-xl transition-all duration-300" data-tab="login">
+                    <i class="fas fa-sign-in-alt ml-2"></i> ورود
+                </button>
+                <button class="tab-btn flex-1 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 text-gray-500" data-tab="register">
+                    <i class="fas fa-user-plus ml-2"></i> ثبت‌نام
+                </button>
             </div>
-            <div class="form-group">
-                <label>رمز عبور</label>
-                <input type="password" id="regPassword" placeholder="رمز عبور (حداقل ۴ کاراکتر)">
+
+            <!-- ===== فرم ورود ===== -->
+            <div id="loginForm" class="form-panel">
+                <div class="form-group">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">نام کاربری</label>
+                    <div class="relative">
+                        <i class="fas fa-user absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" id="loginUsername" class="input-modern pr-10" placeholder="نام کاربری خود را وارد کنید">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">رمز عبور</label>
+                    <div class="relative">
+                        <i class="fas fa-lock absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="password" id="loginPassword" class="input-modern pr-10" placeholder="رمز عبور">
+                    </div>
+                </div>
+                <button id="doLogin" class="btn-gradient w-full justify-center"><i class="fas fa-sign-in-alt"></i> ورود</button>
+                <div id="loginError" class="text-red-500 text-sm mt-3 text-center"></div>
             </div>
-            <div class="form-group">
-                <label>تکرار رمز عبور</label>
-                <input type="password" id="regConfirm" placeholder="دوباره وارد کنید">
+
+            <!-- ===== فرم ثبت‌نام ===== -->
+            <div id="registerForm" class="form-panel hidden">
+                <div class="form-group">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">نام کاربری</label>
+                    <div class="relative">
+                        <i class="fas fa-user absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" id="regUsername" class="input-modern pr-10" placeholder="حداقل ۳ کاراکتر">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">رمز عبور</label>
+                    <div class="relative">
+                        <i class="fas fa-lock absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="password" id="regPassword" class="input-modern pr-10" placeholder="حداقل ۴ کاراکتر">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">تکرار رمز عبور</label>
+                    <div class="relative">
+                        <i class="fas fa-check-circle absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="password" id="regConfirm" class="input-modern pr-10" placeholder="دوباره وارد کنید">
+                    </div>
+                </div>
+                <button id="doRegister" class="btn-gradient w-full justify-center"><i class="fas fa-user-plus"></i> ثبت‌نام</button>
+                <div id="registerError" class="text-red-500 text-sm mt-3 text-center"></div>
+                <div id="registerSuccess" class="text-green-500 text-sm mt-3 text-center"></div>
             </div>
-            <button id="doRegister">ثبت‌نام</button>
-            <div id="registerError" class="error-msg"></div>
-            <div id="registerSuccess" class="success-msg"></div>
+
         </div>
     </div>
 
-    <script src="auth.js"></script>
+    <!-- ===== اسکریپت مستقل (بدون وابستگی به modules) ===== -->
+    <script>
+        (function() {
+            'use strict';
+
+            // ===== مدیریت تب‌ها =====
+            const tabs = document.querySelectorAll('.tab-btn');
+            const loginPanel = document.getElementById('loginForm');
+            const registerPanel = document.getElementById('registerForm');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    if (this.dataset.tab === 'login') {
+                        loginPanel.style.display = 'block';
+                        registerPanel.style.display = 'none';
+                    } else {
+                        loginPanel.style.display = 'none';
+                        registerPanel.style.display = 'block';
+                    }
+                });
+            });
+
+            // ===== توابع احراز هویت =====
+            const USERS_KEY = 'app_users';
+
+            function getUsers() {
+                const users = localStorage.getItem(USERS_KEY);
+                return users ? JSON.parse(users) : {};
+            }
+
+            function saveUsers(users) {
+                localStorage.setItem(USERS_KEY, JSON.stringify(users));
+            }
+
+            function register(username, password) {
+                const users = getUsers();
+                if (users[username]) {
+                    return { success: false, message: 'این نام کاربری قبلاً ثبت شده است.' };
+                }
+                if (username.length < 3) {
+                    return { success: false, message: 'نام کاربری باید حداقل ۳ کاراکتر باشد.' };
+                }
+                if (password.length < 4) {
+                    return { success: false, message: 'رمز عبور باید حداقل ۴ کاراکتر باشد.' };
+                }
+                users[username] = {
+                    password: password,
+                    registeredAt: new Date().toISOString(),
+                    familySize: 4,
+                    storageDays: 7,
+                    email: '',
+                    avatar: null
+                };
+                saveUsers(users);
+                sessionStorage.setItem('loggedInUser', username);
+                return { success: true, message: 'ثبت‌نام موفق' };
+            }
+
+            function login(username, password) {
+                const users = getUsers();
+                const user = users[username];
+                if (!user || user.password !== password) {
+                    return { success: false, message: 'نام کاربری یا رمز عبور اشتباه است.' };
+                }
+                sessionStorage.setItem('loggedInUser', username);
+                return { success: true, message: 'ورود موفق' };
+            }
+
+            // ===== دکمه ورود =====
+            document.getElementById('doLogin').addEventListener('click', function() {
+                const username = document.getElementById('loginUsername').value.trim();
+                const password = document.getElementById('loginPassword').value;
+                const result = login(username, password);
+                if (result.success) {
+                    window.location.href = 'dashboard.html';
+                } else {
+                    document.getElementById('loginError').textContent = result.message;
+                }
+            });
+
+            // ===== دکمه ثبت‌نام =====
+            document.getElementById('doRegister').addEventListener('click', function() {
+                const username = document.getElementById('regUsername').value.trim();
+                const password = document.getElementById('regPassword').value;
+                const confirm = document.getElementById('regConfirm').value;
+
+                const errorEl = document.getElementById('registerError');
+                const successEl = document.getElementById('registerSuccess');
+
+                errorEl.textContent = '';
+                successEl.textContent = '';
+
+                if (password !== confirm) {
+                    errorEl.textContent = 'رمز عبور و تکرار آن مطابقت ندارند.';
+                    return;
+                }
+
+                const result = register(username, password);
+                if (result.success) {
+                    successEl.textContent = result.message + '! در حال انتقال به داشبورد...';
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 1000);
+                } else {
+                    errorEl.textContent = result.message;
+                }
+            });
+
+            // ===== Enter key support =====
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    const activeTab = document.querySelector('.tab-btn.active');
+                    if (activeTab && activeTab.dataset.tab === 'login') {
+                        document.getElementById('doLogin').click();
+                    } else if (activeTab && activeTab.dataset.tab === 'register') {
+                        document.getElementById('doRegister').click();
+                    }
+                }
+            });
+
+        })();
+    </script>
+
 </body>
 </html>
