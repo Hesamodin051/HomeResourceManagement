@@ -8,8 +8,9 @@ import { loadConsumptionData, saveTodayConsumption } from './modules/consumption
 import { store, setCrisisMode, addListener, setCurrentUserProfile } from './modules/store.js';
 import { generateSuggestions } from './modules/suggestion.js';
 import { generateConsumptionPlan } from './modules/consumption-planner.js';
-import { generateMealSuggestions } from './modules/meal-planner.js';
 import { getSmartSuggestions } from './modules/ai.js';
+import { analyzeInventoryNutrition } from './modules/food.js';
+import { generateMealSuggestions, initMealPlanner } from './modules/meal-planner.js';
 
 // ===== غیرفعال کردن پیام Puter.js =====
 if (typeof puter !== 'undefined') {
@@ -85,6 +86,7 @@ function renderInventoryTable() {
                 document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
                 document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
                 generateSuggestions();
+                updateNutritionAnalysis();
             } else alert('ورودی نامعتبر');
         };
         const delBtn = document.createElement('button');
@@ -98,6 +100,7 @@ function renderInventoryTable() {
                 document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
                 document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
                 generateSuggestions();
+                updateNutritionAnalysis();
             }
         };
         actionsCell.appendChild(editBtn);
@@ -184,6 +187,7 @@ function bindDashboardUI() {
             document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
             document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
             localStorage.setItem('crisis_mode', e.target.checked);
+            updateNutritionAnalysis();
         });
     }
     const logoutBtn = document.getElementById('logoutBtn');
@@ -222,7 +226,81 @@ function populateScenarioDropdown() {
 }
 
 // ============================================================
-// 8. مقداردهی اولیه داشبورد
+// 8. تحلیل ارزش غذایی
+// ============================================================
+function updateNutritionAnalysis() {
+    const display = document.getElementById('nutritionDisplay');
+    if (!display) return;
+
+    const inventory = store.inventory;
+    if (!inventory || inventory.length === 0) {
+        display.innerHTML = `
+            <div class="text-center text-gray-400 py-2">
+                <i class="fas fa-info-circle text-secondary ml-2"></i>
+                هنوز مواد غذایی ثبت نشده است. پس از ثبت مواد، تحلیل ارزش غذایی نمایش داده می‌شود.
+            </div>
+        `;
+        return;
+    }
+
+    try {
+        const nutrition = analyzeInventoryNutrition();
+        if (!nutrition || nutrition.calories === 0) {
+            display.innerHTML = `
+                <div class="text-center text-gray-400 py-2">
+                    <i class="fas fa-info-circle text-secondary ml-2"></i>
+                    اطلاعات ارزش غذایی برای مواد ثبت‌شده موجود نیست.
+                </div>
+            `;
+            return;
+        }
+
+        const vitaminHtml = Object.keys(nutrition.vitamins || {}).length > 0 ? `
+            <div class="flex flex-wrap gap-1 mt-2">
+                ${Object.keys(nutrition.vitamins).map(v => `<span class="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">${v}</span>`).join('')}
+            </div>
+        ` : '';
+
+        display.innerHTML = `
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div class="text-center p-2 bg-blue-50 rounded-lg">
+                    <span class="text-xs text-gray-500">کالری</span>
+                    <p class="text-lg font-bold text-blue-600">${nutrition.calories}</p>
+                    <span class="text-xs text-gray-400">کیلوکالری</span>
+                </div>
+                <div class="text-center p-2 bg-green-50 rounded-lg">
+                    <span class="text-xs text-gray-500">پروتئین</span>
+                    <p class="text-lg font-bold text-green-600">${nutrition.protein}g</p>
+                </div>
+                <div class="text-center p-2 bg-yellow-50 rounded-lg">
+                    <span class="text-xs text-gray-500">کربوهیدرات</span>
+                    <p class="text-lg font-bold text-yellow-600">${nutrition.carbs}g</p>
+                </div>
+                <div class="text-center p-2 bg-red-50 rounded-lg">
+                    <span class="text-xs text-gray-500">چربی</span>
+                    <p class="text-lg font-bold text-red-600">${nutrition.fat}g</p>
+                </div>
+                <div class="text-center p-2 bg-purple-50 rounded-lg">
+                    <span class="text-xs text-gray-500">فیبر</span>
+                    <p class="text-lg font-bold text-purple-600">${nutrition.fiber}g</p>
+                </div>
+            </div>
+            ${vitaminHtml}
+            <div class="text-xs text-gray-400 mt-2 text-center">تحلیل بر اساس ${inventory.length} قلم مواد غذایی</div>
+        `;
+    } catch (error) {
+        console.error('خطا در تحلیل ارزش غذایی:', error);
+        display.innerHTML = `
+            <div class="text-center text-red-400 py-2">
+                <i class="fas fa-exclamation-triangle ml-2"></i>
+                خطا در تحلیل ارزش غذایی. لطفاً مجدداً تلاش کنید.
+            </div>
+        `;
+    }
+}
+
+// ============================================================
+// 9. مقداردهی اولیه داشبورد
 // ============================================================
 async function initDashboard() {
     if (!checkAuth()) return;
@@ -241,14 +319,15 @@ async function initDashboard() {
     loadInventory();
     loadConsumptionData();
     renderInventoryTable();
+    initMealPlanner();
     renderChart();
     generateAlerts();
     bindDashboardUI();
-    
     populateScenarioDropdown();
     generateSuggestions();
     document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
     document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
+    updateNutritionAnalysis();
     
     const aiBtn = document.getElementById('aiSuggestionBtn');
     if (aiBtn) aiBtn.addEventListener('click', handleAISuggestion);
@@ -263,6 +342,7 @@ async function initDashboard() {
         generateSuggestions();
         document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
         document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
+        updateNutritionAnalysis();
     }
     
     const userDisplay = document.getElementById('userDisplay');
@@ -284,7 +364,7 @@ async function initDashboard() {
 }
 
 // ============================================================
-// 9. مقداردهی اولیه صفحه اصلی (index.html)
+// 10. مقداردهی اولیه صفحه اصلی (index.html)
 // ============================================================
 function initIndex() {
     checkAuth();
@@ -292,7 +372,7 @@ function initIndex() {
 }
 
 // ============================================================
-// 10. چت‌بات هوشمند (ویجت شناور)
+// 11. چت‌بات هوشمند
 // ============================================================
 async function loadChatbotWidget() {
     try {
@@ -407,39 +487,73 @@ async function loadChatbotWidget() {
     }
 }
 
-// ============================================================
-// 11. مدیریت مسیرها و بارگذاری اولیه
+/// ============================================================
+// 11. مدیریت مسیرها و بارگذاری اولیه (اصلاح شده برای جلوگیری از رفرش)
 // ============================================================
 const currentPath = window.location.pathname;
 
-if (currentPath.includes('login.html')) {
-    import('./modules/auth.js').then(module => module.initAuthPage());
-} else if (currentPath.includes('dashboard.html')) {
-    document.addEventListener('DOMContentLoaded', initDashboard);
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', loadChatbotWidget);
-    } else {
-        loadChatbotWidget();
-    }
-} else if (currentPath.includes('profile.html') || 
-           currentPath.includes('food.html') || 
-           currentPath.includes('energy.html')) {
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', loadChatbotWidget);
-    } else {
-        loadChatbotWidget();
-    }
+// دریافت کاربر لاگین شده
+const loggedInUser = getLoggedInUser();
+
+// صفحات محافظت‌شده
+const protectedPages = ['dashboard.html', 'profile.html', 'food.html', 'energy.html', 
+                        'reports.html', 'notifications.html', 'help.html', 'contact.html', 
+                        'chat-history.html', 'medications.html'];
+
+// آیا صفحه فعلی محافظت‌شده است؟
+const isProtected = protectedPages.some(page => currentPath.includes(page));
+
+// آیا صفحه فعلی صفحه اصلی یا لاگین است؟
+const isPublic = currentPath.includes('index.html') || currentPath.includes('login.html') || currentPath === '/';
+
+// ===== مدیریت ریدایرکت‌ها =====
+if (isProtected && !loggedInUser) {
+    // اگر صفحه محافظت‌شده و کاربر لاگین نیست → برو به صفحه اصلی
+    window.location.href = 'index.html';
+} else if (isPublic && loggedInUser) {
+    // اگر صفحه عمومی و کاربر لاگین است → برو به داشبورد
+    window.location.href = 'dashboard.html';
 } else {
-    document.addEventListener('DOMContentLoaded', initIndex);
+    // ===== بارگذاری عادی صفحه =====
+    
+    if (currentPath.includes('login.html')) {
+        // صفحه لاگین
+        import('./modules/auth.js').then(module => module.initAuthPage());
+    } else if (currentPath.includes('dashboard.html')) {
+        // صفحه داشبورد
+        document.addEventListener('DOMContentLoaded', initDashboard);
+    } else if (currentPath.includes('profile.html') || 
+               currentPath.includes('food.html') || 
+               currentPath.includes('energy.html') ||
+               currentPath.includes('reports.html') ||
+               currentPath.includes('notifications.html') ||
+               currentPath.includes('help.html') ||
+               currentPath.includes('contact.html') ||
+               currentPath.includes('chat-history.html') ||
+               currentPath.includes('medications.html')) {
+        // سایر صفحات توسط فایل‌های خودشان مدیریت می‌شوند
+        // فقط چت‌بات را بارگذاری می‌کنیم
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadChatbotWidget);
+        } else {
+            loadChatbotWidget();
+        }
+    } else {
+        // صفحه اصلی (index.html)
+        document.addEventListener('DOMContentLoaded', initIndex);
+    }
+}
+
+// ===== بارگذاری چت‌بات در تمام صفحات (به جز login) =====
+if (!currentPath.includes('login.html') && !isProtected) {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', loadChatbotWidget);
     } else {
         loadChatbotWidget();
     }
 }
-
 // ============================================================
-// 12. شنونده‌های تغییرات store
+// 13. شنونده‌های تغییرات store
 // ============================================================
 addListener('inventory', () => {
     if (window.location.pathname.includes('dashboard.html')) {
@@ -448,6 +562,7 @@ addListener('inventory', () => {
         generateSuggestions();
         document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
         document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
+        updateNutritionAnalysis();
     }
 });
 
@@ -457,6 +572,7 @@ addListener('crisisMode', () => {
         generateSuggestions();
         document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
         document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
+        updateNutritionAnalysis();
     }
 });
 
@@ -474,6 +590,7 @@ addListener('currentUserProfile', () => {
         generateSuggestions();
         document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
         document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
+        updateNutritionAnalysis();
     }
 });
 
