@@ -1,4 +1,4 @@
-// modules/food.js
+// modules/food.js (نسخه نهایی با همگام‌سازی کامل)
 import { getLoggedInUser } from './auth.js';
 import { initDrawer, updateDrawerItems } from './drawer.js';
 import {
@@ -38,16 +38,29 @@ function syncInventoryToLocalStorage() {
             category: item.category
         }));
         
+        // ذخیره در localStorage
         localStorage.setItem(key, JSON.stringify(inventoryData));
         
-        // به‌روزرسانی store (برای بارگذاری مجدد در داشبورد)
+        // به‌روزرسانی مستقیم store (برای داشبورد)
         if (typeof setInventory === 'function') {
             setInventory(inventoryData);
+        } else if (store) {
+            store.inventory = inventoryData;
+            // اطلاع‌رسانی به شنونده‌ها
+            if (store.listeners) {
+                store.listeners.forEach(listener => {
+                    if (listener.key === 'inventory') {
+                        listener.callback(inventoryData);
+                    }
+                });
+            }
         }
         
         console.log('✅ داده‌ها با localStorage همگام شدند. تعداد:', inventoryData.length);
+        return true;
     } catch (error) {
         console.error('❌ خطا در همگام‌سازی با localStorage:', error);
+        return false;
     }
 }
 
@@ -56,8 +69,10 @@ function syncInventoryToLocalStorage() {
 // ============================================================
 async function loadData() {
     try {
+        // مقداردهی اولیه دسته‌بندی‌ها
         await seedDefaultCategories();
 
+        // دریافت دسته‌بندی‌ها
         const categoriesData = await getAllCategories();
         categories = categoriesData.map(cat => cat.name);
         window.categoryMap = {};
@@ -65,7 +80,10 @@ async function loadData() {
             window.categoryMap[cat.name] = cat.id;
         });
 
+        // دریافت مواد غذایی
         foodItems = await getAllFoodItems();
+
+        // دریافت تاریخچه
         foodHistory = await getHistory(50);
 
         // همگام‌سازی با localStorage (برای داشبورد)
@@ -75,6 +93,7 @@ async function loadData() {
         console.log('✅ داده‌ها با موفقیت بارگذاری و همگام شدند.');
     } catch (error) {
         console.error('❌ خطا در بارگذاری داده‌ها:', error);
+        // در صورت خطا، از داده‌های پیش‌فرض استفاده کنید
         categories = ['غلات', 'حبوبات', 'لبنیات', 'پروتئین', 'سبزیجات', 'میوه‌ها', 'چاشنی‌ها', 'نان', 'نوشیدنی', 'سایر'];
         foodItems = [];
         foodHistory = [];
@@ -214,6 +233,7 @@ async function deleteItem(index, silent = false) {
         syncInventoryToLocalStorage();
         
         renderAll();
+        console.log('🗑️ ماده غذایی حذف شد و همگام‌سازی انجام شد.');
     } catch (error) {
         console.error('خطا در حذف:', error);
         alert('خطا در حذف ماده غذایی.');
@@ -227,7 +247,6 @@ async function resetOnlyFoodItems() {
                 await deleteFoodItem(item.id);
             }
             foodItems = [];
-            await clearHistory();
             foodHistory = [];
             
             // همگام‌سازی با localStorage
@@ -239,6 +258,18 @@ async function resetOnlyFoodItems() {
             console.error('خطا در ریست:', error);
             alert('خطا در پاک کردن داده‌ها.');
         }
+    }
+}
+
+// ============================================================
+// تاریخچه تغییرات
+// ============================================================
+async function addToHistory(action, item) {
+    try {
+        await addHistory(action, item);
+        foodHistory = await getHistory(50);
+    } catch (error) {
+        console.error('خطا در ثبت تاریخچه:', error);
     }
 }
 
@@ -311,6 +342,7 @@ function setupEventListeners() {
             if (window.updateNutritionAnalysis) {
                 window.updateNutritionAnalysis();
             }
+            console.log('✅ ماده غذایی ذخیره شد و همگام‌سازی انجام شد.');
         } catch (error) {
             alert(error.message);
         }
@@ -353,18 +385,6 @@ function setupEventListeners() {
 
     // تغییر دسته برای پیشنهاد نام
     document.getElementById('foodCategory')?.addEventListener('change', updateNameSuggestions);
-}
-
-// ============================================================
-// تاریخچه تغییرات
-// ============================================================
-async function addToHistory(action, item) {
-    try {
-        await addHistory(action, item);
-        foodHistory = await getHistory(50);
-    } catch (error) {
-        console.error('خطا در ثبت تاریخچه:', error);
-    }
 }
 
 // ============================================================
