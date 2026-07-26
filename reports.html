@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>گزارش‌ها | سامانه تدبیر منزل</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://js.puter.com/v2/"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 'vazir': ['Vazirmatn', 'sans-serif'] },
+                    colors: { 'primary': '#0f172a', 'secondary': '#3b82f6', 'accent': '#f59e0b' }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="font-vazir bg-gray-50 min-h-screen">
+
+    <!-- ===== هدر ===== -->
+    <header class="glass-header sticky top-0 z-50 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-chart-line text-2xl text-secondary"></i>
+                <h1 class="text-xl font-bold text-primary">گزارش‌های مصرف</h1>
+            </div>
+            <div class="hamburger-menu cursor-pointer" id="hamburgerMenu">
+                <i class="fas fa-bars text-2xl text-gray-700"></i>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6">
+
+        <!-- ===== انتخاب بازه ===== -->
+        <div class="card-modern p-4 mb-6">
+            <h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-calendar-alt text-secondary ml-2"></i> انتخاب بازه زمانی</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">نوع گزارش</label><select id="reportType" class="input-modern"><option value="weekly">هفتگی</option><option value="monthly">ماهانه</option><option value="custom">دلخواه</option></select></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">از تاریخ</label><input type="date" id="startDate" class="input-modern"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">تا تاریخ</label><input type="date" id="endDate" class="input-modern"></div>
+            </div>
+            <button id="generateReportBtn" class="btn-gradient w-full mt-4 justify-center"><i class="fas fa-file-pdf ml-2"></i> تولید گزارش</button>
+        </div>
+
+        <!-- ===== خلاصه آمار ===== -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="card-modern p-4 text-center"><p class="text-2xl font-bold text-blue-600" id="totalWater">--</p><p class="text-xs text-gray-400">کل مصرف آب (لیتر)</p></div>
+            <div class="card-modern p-4 text-center"><p class="text-2xl font-bold text-yellow-600" id="totalElectricity">--</p><p class="text-xs text-gray-400">کل مصرف برق (کیلووات)</p></div>
+            <div class="card-modern p-4 text-center"><p class="text-2xl font-bold text-orange-600" id="totalGas">--</p><p class="text-xs text-gray-400">کل مصرف گاز (مترمکعب)</p></div>
+            <div class="card-modern p-4 text-center"><p class="text-2xl font-bold text-green-600" id="totalCost">--</p><p class="text-xs text-gray-400">هزینه کل (تومان)</p></div>
+        </div>
+
+        <!-- ===== نمودار ===== -->
+        <div class="card-modern p-4 mb-6">
+            <h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-chart-bar text-secondary ml-2"></i> روند مصرف در بازه انتخابی</h3>
+            <canvas id="reportChart" height="250"></canvas>
+        </div>
+
+        <!-- ===== جدول جزئیات ===== -->
+        <div class="card-modern p-4">
+            <h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-table text-secondary ml-2"></i> جزئیات روزانه</h3>
+            <div class="overflow-x-auto">
+                <table class="table-modern" id="reportTable">
+                    <thead><tr><th>تاریخ</th><th>آب (لیتر)</th><th>برق (کیلووات)</th><th>گاز (مترمکعب)</th><th>هزینه (تومان)</th></tr></thead>
+                    <tbody id="reportTableBody"><tr><td colspan="5" class="text-center text-gray-400">لطفاً بازه را انتخاب کنید و روی تولید گزارش کلیک کنید.</td></tr></tbody>
+                </table>
+            </div>
+            <div class="flex justify-between items-center mt-4">
+                <button id="exportCSVBtn" class="btn-gradient !py-2 !px-4 text-sm"><i class="fas fa-file-csv ml-2"></i> خروجی CSV</button>
+                <button id="exportPDFBtn" class="btn-gradient !py-2 !px-4 text-sm bg-red-600 hover:bg-red-700"><i class="fas fa-file-pdf ml-2"></i> خروجی PDF</button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ===== منوی کشو ===== -->
+    <div id="drawer" class="drawer-modern">
+        <div class="flex justify-between items-center mb-6">
+            <span class="text-lg font-bold text-primary">منو</span>
+            <button id="closeDrawerBtn" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        <div id="drawerItems" class="space-y-2"></div>
+    </div>
+    <div id="drawerBackdrop"></div>
+
+    <!-- ===== ویجت چت‌بات ===== -->
+    <div id="chatbotWidget">
+        <button class="chatbot-fab" id="chatbotFab" aria-label="دستیار هوشمند">
+            <i class="fas fa-robot"></i>
+            <span class="badge" id="chatbotBadge" style="display:none;">1</span>
+        </button>
+        <div class="chatbot-window" id="chatbotWindow">
+            <div class="chatbot-header">
+                <div class="title"><span class="icon">🤖</span> دستیار هوشمند تدبیر</div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div class="status"><span class="dot"></span><span>آنلاین</span></div>
+                    <button class="close-btn" id="chatbotCloseBtn"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <div class="chatbot-messages" id="chatbotMessages">
+                <div class="message assistant">سلام! 👋 من دستیار هوشمند سامانه‌ی تدبیر منزل هستم. سوال خود را بپرسید! 😊<span class="time">اکنون</span></div>
+                <div class="typing-indicator" id="typingIndicator"><span></span><span></span><span></span></div>
+            </div>
+            <div class="chatbot-quick-suggestions" id="quickSuggestions">
+                <button data-question="وضعیت ذخایر من چگونه است؟">📊 وضعیت ذخایر</button>
+                <button data-question="چطور مصرف آب را کاهش دهم؟">💧 کاهش مصرف آب</button>
+                <button data-question="برای بحران چه کنم؟">⚠️ راهنمای بحران</button>
+                <button data-question="یک برنامه غذایی پیشنهاد بده">🍲 برنامه غذایی</button>
+            </div>
+            <div class="chatbot-input">
+                <textarea id="chatbotInput" rows="1" placeholder="پیام خود را بنویسید..."></textarea>
+                <button class="send-btn" id="chatbotSendBtn"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== اسکریپت‌ها ===== -->
+    <script src="chatbot-widget.js"></script>
+    <script src="menu.js"></script>
+    <script type="module" src="reports.js"></script>
+</body>
+</html>
