@@ -1,0 +1,59 @@
+<!-- ===== ویجت چت‌بات هوشمند ===== -->
+<div id="chatbotWidget">
+    <!-- دکمه‌ی شناور -->
+    <button class="chatbot-fab" id="chatbotFab" aria-label="دستیار هوشمند">
+        <i class="fas fa-robot"></i>
+        <span class="badge" id="chatbotBadge" style="display:none;">1</span>
+    </button>
+
+    <!-- پنجره‌ی چت -->
+    <div class="chatbot-window" id="chatbotWindow">
+        <!-- هدر -->
+        <div class="chatbot-header">
+            <div class="title">
+                <span class="icon">🤖</span>
+                دستیار هوشمند تدبیر
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;">
+                <div class="status">
+                    <span class="dot"></span>
+                    <span id="chatbotStatus">آنلاین</span>
+                </div>
+                <button class="close-btn" id="chatbotCloseBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- پیام‌ها -->
+        <div class="chatbot-messages" id="chatbotMessages">
+            <!-- پیام خوش‌آمدگویی -->
+            <div class="message assistant">
+                سلام! 👋 من دستیار هوشمند سامانه‌ی تدبیر منزل هستم.
+                می‌توانم در مورد مصرف انرژی، مدیریت ذخایر، برنامه‌ریزی غذایی و شرایط بحران به شما کمک کنم.
+                سوال خود را بپرسید! 😊
+                <span class="time">اکنون</span>
+            </div>
+            <!-- نشانگر تایپ -->
+            <div class="typing-indicator" id="typingIndicator">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+
+        <!-- پیشنهادات سریع -->
+        <div class="chatbot-quick-suggestions" id="quickSuggestions">
+            <button data-question="وضعیت ذخایر من چگونه است؟">📊 وضعیت ذخایر</button>
+            <button data-question="چطور مصرف آب را کاهش دهم؟">💧 کاهش مصرف آب</button>
+            <button data-question="برای بحران چه کنم؟">⚠️ راهنمای بحران</button>
+            <button data-question="یک برنامه غذایی پیشنهاد بده">🍲 برنامه غذایی</button>
+        </div>
+
+        <!-- ورودی -->
+        <div class="chatbot-input">
+            <textarea id="chatbotInput" rows="1" placeholder="پیام خود را بنویسید..."></textarea>
+            <button class="send-btn" id="chatbotSendBtn">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+</div>
