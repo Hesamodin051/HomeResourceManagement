@@ -1,9 +1,23 @@
 // modules/consumption-planner.js
 import { store } from './store.js';
 
+// ============================================================
+// دریافت اطلاعات پایه
+// ============================================================
+function getFamilySize() {
+    return store.currentUserProfile?.familySize || 4;
+}
+
+function getInventory() {
+    return store.inventory || [];
+}
+
+// ============================================================
+// محاسبه روزهای باقی‌مانده برای هر قلم
+// ============================================================
 function calculateDays(quantity, unit, dailyNeedPerPerson, familySize) {
     if (unit === 'کیلوگرم' || unit === 'لیتر') {
-        let need = dailyNeedPerPerson * familySize;
+        const need = dailyNeedPerPerson * familySize;
         return need > 0 ? quantity / need : Infinity;
     } else if (unit === 'عدد' || unit === 'بسته') {
         return quantity / (dailyNeedPerPerson * familySize);
@@ -13,13 +27,18 @@ function calculateDays(quantity, unit, dailyNeedPerPerson, familySize) {
 
 function getKeyItems(inventory, familySize) {
     const items = {
-        water: { name: 'آب', quantity: 0, unit: 'لیتر', dailyPerPerson: 2 },
-        rice: { name: 'برنج', quantity: 0, unit: 'کیلوگرم', dailyPerPerson: 0.15 },
-        pasta: { name: 'ماکارونی', quantity: 0, unit: 'کیلوگرم', dailyPerPerson: 0.15 },
-        legumes: { name: 'حبوبات', quantity: 0, unit: 'کیلوگرم', dailyPerPerson: 0.05 },
-        canned: { name: 'کنسرو', quantity: 0, unit: 'عدد', dailyPerPerson: 0.5 },
-        bread: { name: 'نان', quantity: 0, unit: 'کیلوگرم', dailyPerPerson: 0.2 }
+        water: { name: 'آب', quantity: 0, unit: 'لیتر', dailyPerPerson: 2, category: 'نوشیدنی' },
+        rice: { name: 'برنج', quantity: 0, unit: 'کیلوگرم', dailyPerPerson: 0.15, category: 'غلات' },
+        pasta: { name: 'ماکارونی', quantity: 0, unit: 'کیلوگرم', dailyPerPerson: 0.15, category: 'غلات' },
+        legumes: { name: 'حبوبات', quantity: 0, unit: 'کیلوگرم', dailyPerPerson: 0.05, category: 'حبوبات' },
+        canned: { name: 'کنسرو', quantity: 0, unit: 'عدد', dailyPerPerson: 0.5, category: 'پروتئین' },
+        bread: { name: 'نان', quantity: 0, unit: 'کیلوگرم', dailyPerPerson: 0.2, category: 'نان' },
+        eggs: { name: 'تخم‌مرغ', quantity: 0, unit: 'عدد', dailyPerPerson: 1, category: 'پروتئین' },
+        meat: { name: 'گوشت', quantity: 0, unit: 'کیلوگرم', dailyPerPerson: 0.1, category: 'پروتئین' },
+        dairy: { name: 'لبنیات', quantity: 0, unit: 'لیتر', dailyPerPerson: 0.2, category: 'لبنیات' },
+        oil: { name: 'روغن', quantity: 0, unit: 'لیتر', dailyPerPerson: 0.03, category: 'چاشنی' }
     };
+
     inventory.forEach(item => {
         const name = item.name.toLowerCase();
         if (name.includes('آب')) items.water.quantity += item.quantity;
@@ -28,89 +47,181 @@ function getKeyItems(inventory, familySize) {
         if (name.includes('عدس') || name.includes('لوبیا') || name.includes('نخود')) items.legumes.quantity += item.quantity;
         if (name.includes('کنسرو')) items.canned.quantity += item.quantity;
         if (name.includes('نان')) items.bread.quantity += item.quantity;
+        if (name.includes('تخم‌مرغ')) items.eggs.quantity += item.quantity;
+        if (name.includes('گوشت') || name.includes('مرغ')) items.meat.quantity += item.quantity;
+        if (name.includes('شیر') || name.includes('ماست')) items.dairy.quantity += item.quantity;
+        if (name.includes('روغن')) items.oil.quantity += item.quantity;
     });
+
     const result = {};
     for (let [key, val] of Object.entries(items)) {
-        result[key] = { ...val, daysLeft: calculateDays(val.quantity, val.unit, val.dailyPerPerson, familySize) };
+        result[key] = {
+            ...val,
+            daysLeft: calculateDays(val.quantity, val.unit, val.dailyPerPerson, familySize)
+        };
     }
     return result;
 }
 
-function generateDailyPlan(keyItems, familySize) {
-    const plan = [];
-    let riceLeft = keyItems.rice.quantity, legumesLeft = keyItems.legumes.quantity, pastaLeft = keyItems.pasta.quantity;
-    const days = Math.min(Math.floor(keyItems.rice.daysLeft), 7);
-    for (let i=1; i<=days; i++) {
-        let meal = `روز ${i}: `;
-        if (i%3===0 && pastaLeft > 0) {
-            meal += 'ماکارونی با رب گوجه‌فرنگی (در صورت وجود)';
-            pastaLeft -= 0.15 * familySize;
-        } else if (i%2===0 && legumesLeft > 0) {
-            meal += 'عدسی یا خورشت لوبیا با برنج';
-            legumesLeft -= 0.05 * familySize;
-        } else {
-            meal += 'برنج با کنسرو یا حبوبات';
-            riceLeft -= 0.15 * familySize;
-        }
-        plan.push(meal);
-    }
-    return plan;
-}
-
-function getExtensionTips(keyItems) {
-    const tips = [];
-    if (keyItems.rice.daysLeft < 7 && keyItems.legumes.daysLeft > keyItems.rice.daysLeft) {
-        tips.push('🍛 برنج کم است، می‌توانید با افزایش مصرف حبوبات (عدس، لوبیا) و پخت غذاهای بدون برنج مثل عدسی یا آبگوشت، مدت بیشتری دوام بیاورید.');
-    }
-    if (keyItems.canned.daysLeft > 5) {
-        tips.push('🥫 کنسروها را برای روزهای پایانی بحران نگه دارید؛ اولویت مصرف مواد خشک (برنج، ماکارونی) باشد.');
-    }
-    if (keyItems.bread.daysLeft < 3) {
-        tips.push('🍞 نان محدود است. با آرد موجود می‌توانید نان خانگی بپزید (در صورت وجود فر یا تابه).');
-    }
-    if (tips.length===0) {
-        tips.push('✅ وضعیت ذخایر مناسب است. با مدیریت مصرف می‌توانید مدت طولانی تری دوام بیاورید.');
-    }
-    return tips;
-}
-
-export function generateConsumptionPlan() {
-    const familySize = store.currentUserProfile?.familySize || 4;
-    const inventory = store.inventory;
+// ============================================================
+// تولید برنامه هفتگی (یا ماهانه) با سه وعده
+// ============================================================
+export function generateWeeklyPlan(days = 7, startDate = null) {
+    const familySize = getFamilySize();
+    const inventory = getInventory();
+    const keyItems = getKeyItems(inventory, familySize);
     const crisisMode = store.crisisMode;
 
-    const keyItems = getKeyItems(inventory, familySize);
-    const dailyPlan = generateDailyPlan({ ...keyItems }, familySize);
-    const extensionTips = getExtensionTips(keyItems);
+    // محاسبه حداقل روزهای ممکن
+    let minDays = Infinity;
+    for (let key of ['water', 'rice', 'legumes', 'canned']) {
+        if (keyItems[key] && keyItems[key].daysLeft < minDays) {
+            minDays = keyItems[key].daysLeft;
+        }
+    }
+    const maxDays = Math.min(days, Math.floor(minDays) || 7);
 
-    let html = `<div class="plan-summary">
-        <h4>📊 وضعیت ذخایر (خانواده ${familySize} نفره)</h4>
-        <ul>
-            <li>💧 آب: ${keyItems.water.daysLeft > 1000 ? 'نامحدود' : keyItems.water.daysLeft.toFixed(1)} روز</li>
-            <li>🍚 برنج: ${keyItems.rice.daysLeft.toFixed(1)} روز</li>
-            <li>🍝 ماکارونی: ${keyItems.pasta.daysLeft.toFixed(1)} روز</li>
-            <li>🫘 حبوبات: ${keyItems.legumes.daysLeft.toFixed(1)} روز</li>
-            <li>🥫 کنسرو: ${keyItems.canned.daysLeft.toFixed(1)} روز</li>
-            <li>🍞 نان: ${keyItems.bread.daysLeft.toFixed(1)} روز</li>
-        </ul>
-    </div>`;
+    // تاریخ شروع
+    const start = startDate ? new Date(startDate) : new Date();
+    const daysOfWeek = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
 
-    if (dailyPlan.length > 0) {
-        html += `<div class="plan-daily">
-            <h4>🗓️ الگوی مصرف پیشنهادی (برای ${dailyPlan.length} روز)</h4>
-            <ul>${dailyPlan.map(day => `<li>${day}</li>`).join('')}</ul>
-        </div>`;
-    } else {
-        html += `<div class="plan-daily"><p>⚠️ برای برنامه‌ریزی روزانه، ذخیره مواد غذایی کافی نیست. لطفاً خرید کنید.</p></div>`;
+    // برنامه وعده‌ها
+    const mealTypes = ['صبحانه', 'ناهار', 'شام'];
+    const mealSuggestions = {
+        'صبحانه': ['نان و پنیر', 'تخم‌مرغ', 'حلیم', 'فرنی', 'نان و کره', 'عدسی'],
+        'ناهار': ['برنج و خورش', 'ماکارونی', 'کباب', 'کتلت', 'سوپ', 'خورشت'],
+        'شام': ['نان و پنیر', 'تخم‌مرغ', 'سوپ', 'شیرینی', 'عدسی', 'ماکارونی']
+    };
+
+    // تابع انتخاب غذا بر اساس موجودی
+    function selectMeal(mealType, dayIndex) {
+        const options = mealSuggestions[mealType] || [];
+        // ساده: چرخشی انتخاب کن
+        return options[dayIndex % options.length];
     }
 
-    html += `<div class="plan-tips">
-        <h4>💡 نکات افزایش طول مدت بدون خرید</h4>
-        <ul>${extensionTips.map(tip => `<li>${tip}</li>`).join('')}</ul>
-    </div>`;
+    let plan = [];
+    for (let i = 0; i < maxDays; i++) {
+        const date = new Date(start);
+        date.setDate(start.getDate() + i);
+        const dayName = daysOfWeek[date.getDay()] || 'روز';
+        const dayPlan = {
+            day: i + 1,
+            date: date.toISOString().slice(0, 10),
+            dayName: dayName,
+            meals: {}
+        };
+        mealTypes.forEach(type => {
+            dayPlan.meals[type] = selectMeal(type, i);
+        });
+        plan.push(dayPlan);
+    }
 
+    // نکات بهینه‌سازی
+    const tips = [];
+    if (keyItems.water.daysLeft < 7) {
+        tips.push('💧 مصرف آب را مدیریت کنید. روزانه کمتر از ۲ لیتر برای هر نفر مصرف کنید.');
+    }
+    if (keyItems.rice.daysLeft < 5) {
+        tips.push('🍚 برنج کم است. مصرف ماکارونی و نان را افزایش دهید.');
+    }
+    if (keyItems.legumes.daysLeft > keyItems.rice.daysLeft) {
+        tips.push('🫘 حبوبات بیشتری دارید. از آن‌ها در وعده‌های غذایی استفاده کنید.');
+    }
     if (crisisMode) {
-        html += `<div class="crisis-tips"><h4>⚠️ توصیه‌های ویژه در حالت بحران</h4><ul><li>🔹 اولویت مصرف آب و غذاهای پرکالری.</li><li>🔹 از پخت غذاهای آبکی زیاد خودداری کنید.</li></ul></div>`;
+        tips.push('⚠️ حالت بحران فعال است. مصرف را به حداقل برسانید و اولویت با آب و کنسروها باشد.');
     }
+    if (tips.length === 0) {
+        tips.push('✅ وضعیت ذخایر مناسب است. با این برنامه می‌توانید به مدت یک هفته مدیریت کنید.');
+    }
+
+    return {
+        plan,
+        maxDays,
+        totalDays: maxDays,
+        tips,
+        keyItems,
+        crisisMode
+    };
+}
+
+// ============================================================
+// تابع اصلی برای نمایش در داشبورد (با انتخاب بازه)
+// ============================================================
+export function generateConsumptionPlan(days = 7, startDate = null) {
+    const result = generateWeeklyPlan(days, startDate);
+    const { plan, maxDays, tips, keyItems, crisisMode } = result;
+
+    let html = `
+        <div class="consumption-plan">
+            <div class="flex justify-between items-center mb-4">
+                <h4 class="text-lg font-bold text-primary">📅 برنامه مصرف (${maxDays} روز)</h4>
+                <span class="text-sm text-gray-500">${crisisMode ? '⚠️ بحران' : '🌿 عادی'}</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    `;
+
+    plan.forEach(day => {
+        html += `
+            <div class="day-card bg-white rounded-xl p-3 border border-gray-200 shadow-sm">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="font-bold text-sm text-primary">${day.dayName}</span>
+                    <span class="text-xs text-gray-400">${day.date}</span>
+                </div>
+                <div class="space-y-1 text-sm">
+                    <div><span class="font-medium">🌅 صبحانه:</span> ${day.meals.صبحانه}</div>
+                    <div><span class="font-medium">🌞 ناهار:</span> ${day.meals.ناهار}</div>
+                    <div><span class="font-medium">🌙 شام:</span> ${day.meals.شام}</div>
+                </div>
+            </div>
+        `;
+    });
+
+    html += `</div>`;
+
+    // خلاصه موجودی
+    html += `
+        <div class="mt-4 p-3 bg-gray-50 rounded-xl">
+            <h5 class="text-sm font-bold text-gray-700 mb-2">📊 خلاصه ذخایر</h5>
+            <div class="grid grid-cols-3 md:grid-cols-5 gap-2 text-xs">
+                <div>💧 آب: ${keyItems.water.daysLeft > 100 ? 'نامحدود' : Math.round(keyItems.water.daysLeft) + ' روز'}</div>
+                <div>🍚 برنج: ${Math.round(keyItems.rice.daysLeft)} روز</div>
+                <div>🫘 حبوبات: ${Math.round(keyItems.legumes.daysLeft)} روز</div>
+                <div>🥫 کنسرو: ${Math.round(keyItems.canned.daysLeft)} روز</div>
+                <div>🍞 نان: ${Math.round(keyItems.bread.daysLeft)} روز</div>
+            </div>
+        </div>
+    `;
+
+    // نکات
+    html += `
+        <div class="mt-3 p-3 bg-blue-50 rounded-xl border border-blue-200">
+            <h5 class="text-sm font-bold text-blue-700 mb-1">💡 نکات بهینه‌سازی</h5>
+            <ul class="text-xs text-blue-600 space-y-1">
+                ${tips.map(t => `<li>${t}</li>`).join('')}
+            </ul>
+        </div>
+    `;
+
+    // اگر بحران فعال است
+    if (crisisMode) {
+        html += `
+            <div class="mt-3 p-3 bg-red-50 rounded-xl border border-red-200">
+                <p class="text-sm text-red-700">⚠️ حالت بحران: اولویت با آب، کنسرو و مواد خشک است. مصرف گوشت را کاهش دهید.</p>
+            </div>
+        `;
+    }
+
+    html += `</div>`;
     return html;
+}
+
+// ============================================================
+// تنظیمات پیشرفته (تعداد روز، تاریخ شروع)
+// ============================================================
+export function getConsumptionPlanOptions() {
+    return {
+        daysOptions: [3, 5, 7, 14, 30],
+        defaultDays: 7
+    };
 }
