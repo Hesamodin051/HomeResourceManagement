@@ -83,7 +83,7 @@ function addToHistory(action, item) {
 }
 
 // ============================================================
-// مدیریت مواد غذایی در localStorage
+// مدیریت مواد غذایی در localStorage و همگام‌سازی با store
 // ============================================================
 function loadFoodItems() {
     const key = getInventoryKey();
