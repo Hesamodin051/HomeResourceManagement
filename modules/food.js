@@ -384,6 +384,78 @@ function setupEventListeners() {
         categorySelect.addEventListener('change', updateNameSuggestions);
     }
 }
+// modules/food.js - بخش مدیریت دسته‌بندی‌ها با localStorage
+
+// ============================================================
+// دسته‌بندی‌های پیش‌فرض (به‌عنوان fallback)
+// ============================================================
+const DEFAULT_CATEGORIES = [
+    'غلات',
+    'حبوبات',
+    'لبنیات',
+    'پروتئین',
+    'سبزیجات',
+    'میوه‌ها',
+    'چاشنی‌ها',
+    'نان',
+    'نوشیدنی',
+    'سایر'
+];
+
+// ============================================================
+// دریافت دسته‌بندی‌ها از localStorage با fallback
+// ============================================================
+function getCategories() {
+    const key = getCategoriesKey();
+    const stored = localStorage.getItem(key);
+    if (stored) {
+        const parsed = JSON.parse(stored);
+        // اگر دسته‌بندی ذخیره‌شده خالی است، از پیش‌فرض استفاده کن
+        if (parsed.length === 0) {
+            return [...DEFAULT_CATEGORIES];
+        }
+        return parsed;
+    }
+    // اگر هیچ دسته‌ای ذخیره نشده، پیش‌فرض را ذخیره کن و برگردان
+    saveCategories(DEFAULT_CATEGORIES);
+    return [...DEFAULT_CATEGORIES];
+}
+
+// ============================================================
+// ذخیره دسته‌بندی‌ها در localStorage
+// ============================================================
+function saveCategories(categoriesList) {
+    const key = getCategoriesKey();
+    localStorage.setItem(key, JSON.stringify(categoriesList));
+}
+
+// ============================================================
+// افزودن دسته‌بندی جدید
+// ============================================================
+function addCategory(newCategory) {
+    const current = getCategories();
+    if (!current.includes(newCategory)) {
+        current.push(newCategory);
+        saveCategories(current);
+        return true;
+    }
+    return false;
+}
+
+// ============================================================
+// حذف دسته‌بندی
+// ============================================================
+function removeCategory(category) {
+    let current = getCategories();
+    // جلوگیری از حذف آخرین دسته
+    if (current.length <= 1) {
+        alert('حداقل یک دسته باید وجود داشته باشد.');
+        return false;
+    }
+    current = current.filter(c => c !== category);
+    saveCategories(current);
+    return true;
+}
 
 // ============================================================
 // مقداردهی اولیه
