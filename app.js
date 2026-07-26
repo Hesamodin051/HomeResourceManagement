@@ -84,9 +84,9 @@ function renderInventoryTable() {
                 renderInventoryTable();
                 generateAlerts();
                 document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
-                document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
                 generateSuggestions();
                 updateNutritionAnalysis();
+                generateMealSuggestions();
             } else alert('ورودی نامعتبر');
         };
         const delBtn = document.createElement('button');
@@ -98,9 +98,9 @@ function renderInventoryTable() {
                 renderInventoryTable();
                 generateAlerts();
                 document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
-                document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
                 generateSuggestions();
                 updateNutritionAnalysis();
+                generateMealSuggestions();
             }
         };
         actionsCell.appendChild(editBtn);
@@ -185,9 +185,9 @@ function bindDashboardUI() {
             generateAlerts();
             generateSuggestions();
             document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
-            document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
             localStorage.setItem('crisis_mode', e.target.checked);
             updateNutritionAnalysis();
+            generateMealSuggestions();
         });
     }
     const logoutBtn = document.getElementById('logoutBtn');
@@ -221,7 +221,6 @@ function populateScenarioDropdown() {
         }
         generateSuggestions();
         document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
-        document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
     });
 }
 
@@ -319,15 +318,14 @@ async function initDashboard() {
     loadInventory();
     loadConsumptionData();
     renderInventoryTable();
-    initMealPlanner();
     renderChart();
     generateAlerts();
     bindDashboardUI();
     populateScenarioDropdown();
     generateSuggestions();
     document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
-    document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
     updateNutritionAnalysis();
+    await generateMealSuggestions();
     
     const aiBtn = document.getElementById('aiSuggestionBtn');
     if (aiBtn) aiBtn.addEventListener('click', handleAISuggestion);
@@ -341,8 +339,8 @@ async function initDashboard() {
         generateAlerts();
         generateSuggestions();
         document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
-        document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
         updateNutritionAnalysis();
+        await generateMealSuggestions();
     }
     
     const userDisplay = document.getElementById('userDisplay');
@@ -361,14 +359,18 @@ async function initDashboard() {
             profileClickable.addEventListener('click', () => window.location.href = 'profile.html');
         }
     }
+
+    // مقداردهی ماژول پیشنهادات غذایی
+    initMealPlanner();
 }
 
 // ============================================================
 // 10. مقداردهی اولیه صفحه اصلی (index.html)
 // ============================================================
 function initIndex() {
-    checkAuth();
-    console.log('✅ صفحه اصلی بارگذاری شد.');
+    // فقط برای زمانی که app.js در index بارگذاری شود (که الان نمی‌شود)
+    // این تابع در index استفاده نمی‌شود
+    console.log('ℹ️ این تابع در index استفاده نمی‌شود.');
 }
 
 // ============================================================
@@ -487,53 +489,40 @@ async function loadChatbotWidget() {
     }
 }
 
+// ============================================================
+// 12. مدیریت مسیرها
+// ============================================================
+const currentPath = window.location.pathname;
 
-// ===== مدیریت ریدایرکت‌ها =====
-if (isProtected && !loggedInUser) {
-    // اگر صفحه محافظت‌شده و کاربر لاگین نیست → برو به صفحه اصلی
-    window.location.href = 'index.html';
-} else if (isPublic && loggedInUser) {
-    // اگر صفحه عمومی و کاربر لاگین است → برو به داشبورد
-    window.location.href = 'dashboard.html';
-} else {
-    // ===== بارگذاری عادی صفحه =====
-    
-    if (currentPath.includes('login.html')) {
-        // صفحه لاگین
-        import('./modules/auth.js').then(module => module.initAuthPage());
-    } else if (currentPath.includes('dashboard.html')) {
-        // صفحه داشبورد
-        document.addEventListener('DOMContentLoaded', initDashboard);
-    } else if (currentPath.includes('profile.html') || 
-               currentPath.includes('food.html') || 
-               currentPath.includes('energy.html') ||
-               currentPath.includes('reports.html') ||
-               currentPath.includes('notifications.html') ||
-               currentPath.includes('help.html') ||
-               currentPath.includes('contact.html') ||
-               currentPath.includes('chat-history.html') ||
-               currentPath.includes('medications.html')) {
-        // سایر صفحات توسط فایل‌های خودشان مدیریت می‌شوند
-        // فقط چت‌بات را بارگذاری می‌کنیم
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', loadChatbotWidget);
-        } else {
-            loadChatbotWidget();
-        }
-    } else {
-        // صفحه اصلی (index.html)
-        document.addEventListener('DOMContentLoaded', initIndex);
-    }
-}
-
-// ===== بارگذاری چت‌بات در تمام صفحات (به جز login) =====
-if (!currentPath.includes('login.html') && !isProtected) {
+if (currentPath.includes('login.html')) {
+    import('./modules/auth.js').then(module => module.initAuthPage());
+} else if (currentPath.includes('dashboard.html')) {
+    document.addEventListener('DOMContentLoaded', initDashboard);
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', loadChatbotWidget);
     } else {
         loadChatbotWidget();
     }
+} else if (currentPath.includes('profile.html') || 
+           currentPath.includes('food.html') || 
+           currentPath.includes('energy.html') ||
+           currentPath.includes('reports.html') ||
+           currentPath.includes('notifications.html') ||
+           currentPath.includes('help.html') ||
+           currentPath.includes('contact.html') ||
+           currentPath.includes('chat-history.html') ||
+           currentPath.includes('medications.html')) {
+    // صفحات دیگر - چت‌بات بارگذاری شود
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadChatbotWidget);
+    } else {
+        loadChatbotWidget();
+    }
+} else {
+    // index.html - هیچ کاری نکن (چون app.js در آن بارگذاری نمی‌شود)
+    console.log('ℹ️ index.html - app.js اجرا نمی‌شود.');
 }
+
 // ============================================================
 // 13. شنونده‌های تغییرات store
 // ============================================================
@@ -543,8 +532,8 @@ addListener('inventory', () => {
         generateAlerts();
         generateSuggestions();
         document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
-        document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
         updateNutritionAnalysis();
+        generateMealSuggestions();
     }
 });
 
@@ -553,8 +542,8 @@ addListener('crisisMode', () => {
         generateAlerts();
         generateSuggestions();
         document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
-        document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
         updateNutritionAnalysis();
+        generateMealSuggestions();
     }
 });
 
@@ -571,8 +560,8 @@ addListener('currentUserProfile', () => {
         generateAlerts();
         generateSuggestions();
         document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
-        document.getElementById('mealSuggestionsDisplay').innerHTML = generateMealSuggestions();
         updateNutritionAnalysis();
+        generateMealSuggestions();
     }
 });
 
