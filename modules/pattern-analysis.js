@@ -4,18 +4,15 @@ import { getFeedback } from './feedback.js';
 
 const PATTERN_KEY = 'consumption_pattern';
 
-// ===== دریافت الگوهای ذخیره‌شده =====
 function getPatterns() {
     const stored = localStorage.getItem(PATTERN_KEY);
     return stored ? JSON.parse(stored) : {};
 }
 
-// ===== ذخیره الگوها =====
 function savePatterns(patterns) {
     localStorage.setItem(PATTERN_KEY, JSON.stringify(patterns));
 }
 
-// ===== تحلیل الگوی مصرف روزانه =====
 export function analyzeDailyPattern() {
     const consumptionData = store.consumptionData;
     if (!consumptionData || consumptionData.dates.length === 0) {
@@ -50,7 +47,6 @@ export function analyzeDailyPattern() {
     };
 }
 
-// ===== پیشنهاد بر اساس الگوی مصرف =====
 export function getPatternSuggestions() {
     const pattern = analyzeDailyPattern();
     if (!pattern) return [];
@@ -88,7 +84,6 @@ export function getPatternSuggestions() {
         });
     }
 
-    // پیشنهادات صرفه‌جویی
     if (!pattern.isWaterHigh && !pattern.isElectricityHigh && !pattern.isGasHigh) {
         suggestions.push({
             type: 'success',
@@ -102,7 +97,7 @@ export function getPatternSuggestions() {
     return suggestions;
 }
 
-// ===== تشخیص الگوی مصرف مواد غذایی =====
+// ===== تشخیص الگوی مصرف مواد غذایی (غیر بازگشتی) =====
 export function analyzeFoodPattern() {
     const inventory = store.inventory;
     if (!inventory || inventory.length === 0) return null;
@@ -130,13 +125,13 @@ export function analyzeFoodPattern() {
     };
 }
 
-// ===== پیشنهاد بهبود تنوع غذایی =====
+// ===== پیشنهاد بهبود تنوع غذایی (غیر بازگشتی) =====
 export function getFoodVarietySuggestions() {
     const pattern = analyzeFoodPattern();
     if (!pattern) return [];
 
     const suggestions = [];
-    const feedback = getFeedback();
+    const feedback = getFeedback ? getFeedback() : {};
 
     if (!pattern.isBalanced) {
         const missingCategories = [];
@@ -159,26 +154,27 @@ export function getFoodVarietySuggestions() {
         }
     }
 
-    // پیشنهاد بر اساس بازخورد کاربر
-    const mostLiked = Object.keys(feedback).filter(name => {
-        const avg = feedback[name].totalRating / feedback[name].count;
-        return avg >= 4 && feedback[name].count > 0;
-    });
-
-    if (mostLiked.length > 0 && pattern.isBalanced) {
-        suggestions.push({
-            type: 'liked',
-            severity: 'success',
-            title: '❤️ مواد غذایی محبوب شما',
-            message: `مواد غذایی ${mostLiked.slice(0, 3).join('، ')} امتیاز بالایی از شما گرفته‌اند. بیشتر از آنها استفاده کنید.`,
-            action: 'استفاده بیشتر'
+    // پیشنهاد بر اساس بازخورد کاربر (اگر موجود باشد)
+    if (feedback && typeof feedback === 'object') {
+        const mostLiked = Object.keys(feedback).filter(name => {
+            const avg = feedback[name].totalRating / feedback[name].count;
+            return avg >= 4 && feedback[name].count > 0;
         });
+
+        if (mostLiked.length > 0 && pattern.isBalanced) {
+            suggestions.push({
+                type: 'liked',
+                severity: 'success',
+                title: '❤️ مواد غذایی محبوب شما',
+                message: `مواد غذایی ${mostLiked.slice(0, 3).join('، ')} امتیاز بالایی از شما گرفته‌اند. بیشتر از آنها استفاده کنید.`,
+                action: 'استفاده بیشتر'
+            });
+        }
     }
 
     return suggestions;
 }
 
-// ===== صادرات پیش‌فرض =====
 export default {
     analyzeDailyPattern,
     getPatternSuggestions,
