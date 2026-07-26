@@ -1,7 +1,6 @@
 // modules/inventory.js
 import { store, setInventory } from './store.js';
 
-// ===== کلید ذخیره‌سازی وابسته به کاربر =====
 function getInventoryKey() {
     const user = store.currentUser || 'default';
     return `home_inventory_${user}`;
@@ -28,14 +27,7 @@ export function saveInventory(inventory) {
 }
 
 export function addItem(name, quantity, unit, expiry, type = 'normal') {
-    const newItem = { 
-        id: Date.now(), 
-        name, 
-        quantity, 
-        unit, 
-        expiry: expiry || '',
-        type: type || 'normal'
-    };
+    const newItem = { id: Date.now(), name, quantity, unit, expiry: expiry || '', type: type || 'normal' };
     const newInventory = [...store.inventory, newItem];
     saveInventory(newInventory);
     return newInventory;
@@ -43,14 +35,7 @@ export function addItem(name, quantity, unit, expiry, type = 'normal') {
 
 export function editItem(id, newName, newQty, newUnit, newExpiry, newType) {
     const newInventory = store.inventory.map(item =>
-        item.id === id ? { 
-            ...item, 
-            name: newName, 
-            quantity: newQty, 
-            unit: newUnit, 
-            expiry: newExpiry,
-            type: newType || item.type || 'normal'
-        } : item
+        item.id === id ? { ...item, name: newName, quantity: newQty, unit: newUnit, expiry: newExpiry, type: newType || item.type || 'normal' } : item
     );
     saveInventory(newInventory);
     return newInventory;
@@ -75,31 +60,17 @@ export function getCrisisWater() {
     return items.find(item => item.name.toLowerCase().includes('آب'));
 }
 
-// ============================================================
-// مصرف مواد اولیه برای یک غذا (کاهش موجودی)
-// ============================================================
 export function consumeIngredients(ingredients, familySize) {
     const inventory = store.inventory;
     let consumedItems = [];
     let errors = [];
-
     ingredients.forEach(ing => {
-        // مقدار مورد نیاز برای کل خانواده
         const needed = ing.quantity * familySize;
-        // پیدا کردن ماده در موجودی
-        const inventoryItem = inventory.find(item => 
-            item.name.includes(ing.name) || 
-            ing.name.includes(item.name)
-        );
+        const inventoryItem = inventory.find(item => item.name.includes(ing.name) || ing.name.includes(item.name));
         if (inventoryItem) {
             if (inventoryItem.quantity >= needed) {
                 inventoryItem.quantity -= needed;
-                consumedItems.push({
-                    name: inventoryItem.name,
-                    consumed: needed,
-                    unit: inventoryItem.unit,
-                    remaining: inventoryItem.quantity
-                });
+                consumedItems.push({ name: inventoryItem.name, consumed: needed, unit: inventoryItem.unit, remaining: inventoryItem.quantity });
             } else {
                 errors.push(`${inventoryItem.name} (موجودی: ${inventoryItem.quantity} ${inventoryItem.unit}، نیاز: ${needed} ${inventoryItem.unit})`);
             }
@@ -107,20 +78,9 @@ export function consumeIngredients(ingredients, familySize) {
             errors.push(`${ing.name} (در انبار موجود نیست)`);
         }
     });
-
     if (errors.length > 0) {
-        return { 
-            success: false, 
-            errors: errors,
-            message: 'مواد کافی برای این غذا وجود ندارد:\n' + errors.join('\n')
-        };
+        return { success: false, errors: errors, message: 'مواد کافی برای این غذا وجود ندارد:\n' + errors.join('\n') };
     }
-
-    // ذخیره موجودی جدید
     saveInventory(inventory);
-    return { 
-        success: true, 
-        consumedItems: consumedItems,
-        message: 'مواد با موفقیت مصرف شدند.' 
-    };
+    return { success: true, consumedItems: consumedItems, message: 'مواد با موفقیت مصرف شدند.' };
 }
