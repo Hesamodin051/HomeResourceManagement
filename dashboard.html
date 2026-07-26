@@ -35,13 +35,11 @@
                 <h1 class="text-xl font-bold text-primary">سامانه تدبیر منزل</h1>
             </div>
             <div class="flex items-center gap-4">
-                <!-- پروفایل کاربر -->
                 <div id="profileClickable" class="flex items-center gap-2 cursor-pointer" onclick="window.location.href='profile.html'">
                     <img id="userAvatar" src="" alt="avatar" class="w-8 h-8 rounded-full border-2 border-secondary object-cover">
                     <span id="userDisplay" class="text-sm font-medium text-gray-700 hidden sm:inline">کاربر</span>
                 </div>
 
-                <!-- نشانگر اعلان -->
                 <div class="notification-bell-wrapper" onclick="window.location.href='notifications.html'">
                     <button id="notificationBell" class="notification-bell relative" aria-label="اعلان‌ها">
                         <i class="fas fa-bell text-xl text-gray-700 hover:text-secondary transition-colors"></i>
@@ -49,12 +47,10 @@
                     </button>
                 </div>
 
-                <!-- دکمه خروج -->
                 <button id="logoutBtn" class="text-gray-500 hover:text-red-500 transition-colors">
                     <i class="fas fa-sign-out-alt text-lg"></i>
                 </button>
 
-                <!-- دکمه همبرگر -->
                 <div class="hamburger-menu cursor-pointer" id="hamburgerMenu">
                     <i class="fas fa-bars text-2xl text-gray-700"></i>
                 </div>
@@ -163,7 +159,7 @@
             <h3 class="text-lg font-bold text-primary mb-4">
                 <i class="fas fa-apple-alt text-secondary ml-2"></i>
                 تحلیل ارزش غذایی موجودی
-                <span class="text-xs bg-secondary text-white px-2 py-0.5 rounded-full ml-2">جدید</span>
+                <span class="text-xs bg-secondary text-white px-2 py-0.5 rounded-full ml-2">تغذیه</span>
             </h3>
             <div id="nutritionDisplay" class="text-center text-gray-400 py-4">در حال تحلیل موجودی...</div>
         </div>
@@ -180,21 +176,38 @@
             <div id="suggestionsList" class="space-y-2"></div>
         </div>
 
-        <!-- ===== الگوی مصرف جامع ===== -->
+        <!-- ============================================================ -->
+        <!-- ===== بخش جدید: الگوی مصرف و پیشنهادات غذایی ===== -->
+        <!-- ============================================================ -->
+
+        <!-- ===== الگوی مصرف هوشمند ===== -->
         <div class="card-modern p-4 mb-6">
             <h3 class="text-lg font-bold text-primary mb-4">
-                <i class="fas fa-list-check text-secondary ml-2"></i>
+                <i class="fas fa-calendar-alt text-secondary ml-2"></i>
                 الگوی مصرف هوشمند
+                <span class="text-xs bg-secondary text-white px-2 py-0.5 rounded-full ml-2">برنامه هفتگی</span>
             </h3>
+            <div class="flex flex-wrap items-center gap-3 mb-4">
+                <label class="text-sm text-gray-600">تعداد روز:</label>
+                <select id="planDaysSelect" class="input-modern !py-1 !px-3 w-24">
+                    <option value="3">۳ روز</option>
+                    <option value="7" selected>۷ روز</option>
+                    <option value="14">۱۴ روز</option>
+                    <option value="30">۳۰ روز</option>
+                </select>
+                <button id="generatePlanBtn" class="btn-gradient !py-1 !px-4 text-sm">
+                    <i class="fas fa-sync-alt ml-1"></i> بروزرسانی
+                </button>
+            </div>
             <div id="consumptionPlanDisplay">در حال تحلیل موجودی...</div>
         </div>
 
-        <!-- ===== پیشنهادات غذایی (نسخه جدید) ===== -->
+        <!-- ===== پیشنهادات غذایی ===== -->
         <div class="card-modern p-4 mb-6">
             <h3 class="text-lg font-bold text-primary mb-4">
                 <i class="fas fa-utensils text-accent ml-2"></i>
-                پیشنهادات غذایی
-                <span class="text-xs bg-secondary text-white px-2 py-0.5 rounded-full ml-2">هوشمند</span>
+                پیشنهادات غذایی امروز
+                <span class="text-xs bg-secondary text-white px-2 py-0.5 rounded-full ml-2">بر اساس الگوی مصرف</span>
                 <button id="refreshMealSuggestionsBtn" class="text-xs text-gray-400 hover:text-gray-600 ml-2">
                     <i class="fas fa-rotate"></i> بازنشانی
                 </button>
@@ -202,12 +215,15 @@
             <div id="mealSuggestionsDisplay">در حال تحلیل...</div>
         </div>
 
-        <!-- ===== دستیار هوشمند (AI) ===== -->
+        <!-- ============================================================ -->
+        <!-- ===== بخش قبلی: دستیار هوشمند ===== -->
+        <!-- ============================================================ -->
+
         <div class="ai-section-modern p-4 mb-6">
             <h3 class="text-lg font-bold text-primary mb-4">
                 <i class="fas fa-robot text-secondary ml-2"></i>
                 دستیار هوشمند (AI)
-                <span class="text-xs bg-secondary text-white px-2 py-0.5 rounded-full ml-2">جدید</span>
+                <span class="text-xs bg-secondary text-white px-2 py-0.5 rounded-full ml-2">مکالمه‌ای</span>
             </h3>
             <div id="aiSuggestionDisplay" class="text-gray-600 text-sm mb-3">برای دریافت پیشنهادات، روی دکمه کلیک کنید.</div>
             <button id="aiSuggestionBtn" class="btn-gradient justify-center">
@@ -287,7 +303,7 @@
 
     <!-- ===== اسکریپت‌ها ===== -->
     <script>
-        // ===== بررسی لاگین در داشبورد =====
+        // ===== بررسی لاگین =====
         (function() {
             const loggedInUser = sessionStorage.getItem('loggedInUser');
             if (!loggedInUser) {
@@ -332,13 +348,6 @@
             setInterval(updateNotificationBadge, 30000);
         });
         window.updateNotificationBadge = updateNotificationBadge;
-
-        // ===== دکمه بازنشانی پیشنهادات غذایی =====
-        document.getElementById('refreshMealSuggestionsBtn')?.addEventListener('click', function() {
-            import('./modules/meal-planner.js').then(module => {
-                module.refreshMealSuggestions();
-            });
-        });
     </script>
 
 </body>
