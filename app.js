@@ -1,5 +1,5 @@
 // ============================================================
-// app.js - فایل ورودی اصلی سامانه تدبیر منزل (نسخه نهایی بدون خطا)
+// app.js - فایل ورودی اصلی سامانه تدبیر منزل
 // ============================================================
 
 import { checkAuth, getLoggedInUser, logout, getUserProfile, getUserAvatar } from './modules/auth.js';
@@ -57,7 +57,7 @@ async function handleAISuggestion() {
 }
 
 // ============================================================
-// 3. رندر جدول ذخایر (با استفاده از then برای مدیریت async)
+// 3. رندر جدول ذخایر (غیر async)
 // ============================================================
 function renderInventoryTable() {
     const tbody = document.getElementById('inventoryBody');
@@ -80,7 +80,6 @@ function renderInventoryTable() {
             const newExpiry = prompt('تاریخ انقضا (YYYY-MM-DD):', item.expiry);
             if (newName && !isNaN(newQty) && newQty > 0 && newUnit) {
                 editItem(item.id, newName.trim(), newQty, newUnit.trim(), newExpiry || '');
-                // به‌روزرسانی با استفاده از then
                 Promise.all([
                     renderInventoryTable(),
                     updateConsumptionPlan(),
@@ -240,34 +239,21 @@ function populateScenarioDropdown() {
 }
 
 // ============================================================
-// 9. تحلیل ارزش غذایی (با استفاده از import پویا)
+// 9. تحلیل ارزش غذایی
 // ============================================================
 function updateNutritionAnalysis() {
     const display = document.getElementById('nutritionDisplay');
     if (!display) return;
-
     const inventory = store.inventory;
     if (!inventory || inventory.length === 0) {
-        display.innerHTML = `
-            <div class="text-center text-gray-400 py-4">
-                <i class="fas fa-info-circle text-secondary ml-2"></i>
-                هنوز مواد غذایی ثبت نشده است.
-            </div>
-        `;
+        display.innerHTML = `<div class="text-center text-gray-400 py-4">هنوز مواد غذایی ثبت نشده است.</div>`;
         return;
     }
-
     import('./modules/food.js').then(async (foodModule) => {
         try {
             const nutrition = await foodModule.analyzeInventoryNutrition();
             if (!nutrition || nutrition.calories === 0) {
-                display.innerHTML = `
-                    <div class="text-center text-gray-400 py-4">
-                        <i class="fas fa-info-circle text-secondary ml-2"></i>
-                        اطلاعات ارزش غذایی برای مواد ثبت‌شده موجود نیست.
-                        <br><span class="text-xs">برای دریافت اطلاعات، به صفحه مدیریت مواد غذایی بروید و روی دکمه 📥 کلیک کنید.</span>
-                    </div>
-                `;
+                display.innerHTML = `<div class="text-center text-gray-400 py-4">اطلاعات ارزش غذایی موجود نیست.</div>`;
                 return;
             }
             const vitaminHtml = Object.keys(nutrition.vitamins || {}).length > 0 ? `
@@ -277,34 +263,18 @@ function updateNutritionAnalysis() {
             ` : '';
             display.innerHTML = `
                 <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    <div class="text-center p-3 bg-blue-50 rounded-xl">
-                        <span class="text-xs text-gray-500">کالری</span>
-                        <p class="text-xl font-bold text-blue-600">${nutrition.calories}</p>
-                        <span class="text-xs text-gray-400">کیلوکالری</span>
-                    </div>
-                    <div class="text-center p-3 bg-green-50 rounded-xl">
-                        <span class="text-xs text-gray-500">پروتئین</span>
-                        <p class="text-xl font-bold text-green-600">${nutrition.protein}g</p>
-                    </div>
-                    <div class="text-center p-3 bg-yellow-50 rounded-xl">
-                        <span class="text-xs text-gray-500">کربوهیدرات</span>
-                        <p class="text-xl font-bold text-yellow-600">${nutrition.carbs}g</p>
-                    </div>
-                    <div class="text-center p-3 bg-red-50 rounded-xl">
-                        <span class="text-xs text-gray-500">چربی</span>
-                        <p class="text-xl font-bold text-red-600">${nutrition.fat}g</p>
-                    </div>
-                    <div class="text-center p-3 bg-purple-50 rounded-xl">
-                        <span class="text-xs text-gray-500">فیبر</span>
-                        <p class="text-xl font-bold text-purple-600">${nutrition.fiber}g</p>
-                    </div>
+                    <div class="text-center p-3 bg-blue-50 rounded-xl"><span class="text-xs text-gray-500">کالری</span><p class="text-xl font-bold text-blue-600">${nutrition.calories}</p><span class="text-xs text-gray-400">کیلوکالری</span></div>
+                    <div class="text-center p-3 bg-green-50 rounded-xl"><span class="text-xs text-gray-500">پروتئین</span><p class="text-xl font-bold text-green-600">${nutrition.protein}g</p></div>
+                    <div class="text-center p-3 bg-yellow-50 rounded-xl"><span class="text-xs text-gray-500">کربوهیدرات</span><p class="text-xl font-bold text-yellow-600">${nutrition.carbs}g</p></div>
+                    <div class="text-center p-3 bg-red-50 rounded-xl"><span class="text-xs text-gray-500">چربی</span><p class="text-xl font-bold text-red-600">${nutrition.fat}g</p></div>
+                    <div class="text-center p-3 bg-purple-50 rounded-xl"><span class="text-xs text-gray-500">فیبر</span><p class="text-xl font-bold text-purple-600">${nutrition.fiber}g</p></div>
                 </div>
                 ${vitaminHtml}
                 <div class="text-xs text-gray-400 mt-3 text-center">تحلیل بر اساس ${inventory.length} قلم مواد غذایی</div>
             `;
         } catch (error) {
             console.error('خطا در تحلیل ارزش غذایی:', error);
-            display.innerHTML = `<div class="text-center text-red-400 py-4">خطا در تحلیل ارزش غذایی. لطفاً مجدداً تلاش کنید.</div>`;
+            display.innerHTML = `<div class="text-center text-red-400 py-4">خطا در تحلیل ارزش غذایی.</div>`;
         }
     }).catch(err => console.error('خطا در بارگذاری food.js:', err));
 }
@@ -323,34 +293,22 @@ function showConsumeModal(mealData) {
     if (!modal || !body) return;
     const familySize = getFamilySize();
     title.textContent = `🍽️ ${mealData.mealName} - ${mealData.mealType} (${mealData.dayName})`;
-    let html = `
-        <p class="text-sm text-gray-600 mb-4">مواد اولیه مورد نیاز برای ${familySize} نفر:</p>
-        <div class="space-y-3">
-    `;
+    let html = `<p class="text-sm text-gray-600 mb-4">مواد اولیه مورد نیاز برای ${familySize} نفر:</p><div class="space-y-3">`;
     mealData.ingredients.forEach((ing, index) => {
         const needed = (ing.quantity * familySize).toFixed(2);
         html += `
             <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
                 <span class="w-1/3 text-sm font-medium text-gray-700">${ing.name}</span>
-                <input type="number" id="ing_${index}" value="${needed}" step="0.01" min="0" 
-                       class="input-modern w-24 text-center" data-ingredient="${ing.name}" />
+                <input type="number" id="ing_${index}" value="${needed}" step="0.01" min="0" class="input-modern w-24 text-center" data-ingredient="${ing.name}" />
                 <span class="text-sm text-gray-500">${ing.unit}</span>
                 <span class="text-xs text-gray-400">(نیاز: ${needed} ${ing.unit})</span>
             </div>
         `;
     });
-    html += `
-        </div>
-        <div class="flex gap-3 mt-6">
-            <button id="confirmConsumeBtn" class="btn-gradient flex-1 justify-center">
-                <i class="fas fa-check ml-2"></i> تأیید و مصرف
-            </button>
-            <button id="cancelConsumeBtn" class="btn-outline flex-1 justify-center">
-                <i class="fas fa-times ml-2"></i> لغو
-            </button>
-        </div>
-        <div id="consumeMessage" class="mt-3 text-center text-sm hidden"></div>
-    `;
+    html += `</div><div class="flex gap-3 mt-6">
+        <button id="confirmConsumeBtn" class="btn-gradient flex-1 justify-center"><i class="fas fa-check ml-2"></i> تأیید و مصرف</button>
+        <button id="cancelConsumeBtn" class="btn-outline flex-1 justify-center"><i class="fas fa-times ml-2"></i> لغو</button>
+    </div><div id="consumeMessage" class="mt-3 text-center text-sm hidden"></div>`;
     body.innerHTML = html;
     modal.classList.remove('hidden');
     document.getElementById('closeConsumeModal').addEventListener('click', closeConsumeModal);
@@ -376,10 +334,7 @@ function handleConsumeConfirm() {
     if (result.success) {
         messageDiv.className = 'mt-3 text-center text-sm text-green-600 p-2 bg-green-50 rounded-lg';
         messageDiv.textContent = `✅ ${result.message}`;
-        setTimeout(() => {
-            closeConsumeModal();
-            regeneratePlan();
-        }, 1500);
+        setTimeout(() => { closeConsumeModal(); regeneratePlan(); }, 1500);
     } else {
         messageDiv.className = 'mt-3 text-center text-sm text-red-600 p-2 bg-red-50 rounded-lg';
         messageDiv.textContent = `❌ ${result.message}`;
@@ -441,10 +396,8 @@ function initDashboard() {
             generateMealSuggestions(1);
             updateNutritionAnalysis();
             initMealPlanner();
-
             const aiBtn = document.getElementById('aiSuggestionBtn');
             if (aiBtn) aiBtn.addEventListener('click', handleAISuggestion);
-
             const savedCrisis = localStorage.getItem('crisis_mode');
             const crisisToggle = document.getElementById('crisisModeToggle');
             if (savedCrisis === 'true' && crisisToggle) {
@@ -457,7 +410,6 @@ function initDashboard() {
                 updateNutritionAnalysis();
                 generateMealSuggestions(1);
             }
-
             const userDisplay = document.getElementById('userDisplay');
             const userAvatar = document.getElementById('userAvatar');
             if (userDisplay && loggedInUser) userDisplay.innerText = loggedInUser;
@@ -474,12 +426,8 @@ function initDashboard() {
                     profileClickable.addEventListener('click', () => window.location.href = 'profile.html');
                 }
             }
-            document.getElementById('generatePlanBtn')?.addEventListener('click', function() {
-                updateConsumptionPlan();
-            });
-            document.getElementById('refreshMealSuggestionsBtn')?.addEventListener('click', function() {
-                refreshMealSuggestions();
-            });
+            document.getElementById('generatePlanBtn')?.addEventListener('click', function() { updateConsumptionPlan(); });
+            document.getElementById('refreshMealSuggestionsBtn')?.addEventListener('click', function() { refreshMealSuggestions(); });
         });
 }
 
