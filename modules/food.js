@@ -1,6 +1,7 @@
-// modules/food.js (نسخه کامل با همگام‌سازی)
+// modules/food.js
 import { getLoggedInUser } from './auth.js';
 import { initDrawer, updateDrawerItems } from './drawer.js';
+import { getAverageRating } from './feedback.js';
 import {
     getAllCategories,
     addCategory,
@@ -18,9 +19,26 @@ let foodItems = [];
 let categories = [];
 let foodHistory = [];
 let currentEditIndex = null;
+let nutritionDataCache = [];
 
 // ============================================================
-// همگام‌سازی داده‌ها با localStorage
+// بارگذاری داده‌های تغذیه‌ای از food_items.json
+// ============================================================
+async function loadNutritionData() {
+    if (nutritionDataCache.length > 0) return nutritionDataCache;
+    try {
+        const response = await fetch('assets/data/food_items.json');
+        const data = await response.json();
+        nutritionDataCache = data;
+        return data;
+    } catch (error) {
+        console.warn('⚠️ خطا در بارگذاری food_items.json:', error);
+        return [];
+    }
+}
+
+// ============================================================
+// همگام‌سازی داده‌ها با localStorage (برای داشبورد)
 // ============================================================
 function syncInventoryToLocalStorage() {
     try {
@@ -61,7 +79,7 @@ function syncInventoryToLocalStorage() {
 }
 
 // ============================================================
-// بارگذاری داده‌ها
+// بارگذاری داده‌ها از IndexedDB
 // ============================================================
 async function loadData() {
     try {
@@ -76,9 +94,7 @@ async function loadData() {
         foodItems = await getAllFoodItems();
         foodHistory = await getHistory(50);
 
-        // همگام‌سازی اولیه با localStorage
         syncInventoryToLocalStorage();
-
         renderAll();
         console.log('✅ داده‌ها بارگذاری و همگام شدند.');
     } catch (error) {
@@ -88,6 +104,60 @@ async function loadData() {
         foodHistory = [];
         renderAll();
     }
+}
+
+// ============================================================
+// تحلیل ارزش غذایی (نسخه کامل)
+// ============================================================
+export async function analyzeInventoryNutrition() {
+    const inventory = foodItems;
+    if (!inventory || inventory.length === 0) {
+        return {
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            fiber: 0,
+            vitamins: {}
+        };
+    }
+
+    const nutritionData = await loadNutritionData();
+    
+    let totalCalories = 0;
+    let totalProtein = 0;
+    let totalCarbs = 0;
+    let totalFat = 0;
+    let totalFiber = 0;
+    const vitamins = {};
+
+    inventory.forEach(item => {
+        const defaultItem = nutritionData.find(n => n.name === item.name);
+        if (defaultItem && defaultItem.nutrition) {
+            const qty = item.quantity;
+            const n = defaultItem.nutrition;
+            totalCalories += (n.calories || 0) * qty;
+            totalProtein += (n.protein || 0) * qty;
+            totalCarbs += (n.carbs || 0) * qty;
+            totalFat += (n.fat || 0) * qty;
+            totalFiber += (n.fiber || 0) * qty;
+            if (n.vitamins) {
+                n.vitamins.forEach(v => {
+                    if (!vitamins[v]) vitamins[v] = 0;
+                    vitamins[v] += qty;
+                });
+            }
+        }
+    });
+
+    return {
+        calories: Math.round(totalCalories),
+        protein: Math.round(totalProtein * 100) / 100,
+        carbs: Math.round(totalCarbs * 100) / 100,
+        fat: Math.round(totalFat * 100) / 100,
+        fiber: Math.round(totalFiber * 100) / 100,
+        vitamins
+    };
 }
 
 // ============================================================
@@ -346,21 +416,6 @@ function setupEventListeners() {
     }
 
     document.getElementById('foodCategory')?.addEventListener('change', updateNameSuggestions);
-}
-
-// ============================================================
-// تحلیل ارزش غذایی (برای داشبورد)
-// ============================================================
-export function analyzeInventoryNutrition() {
-    // خروجی ساده (در صورت نیاز قابل گسترش است)
-    return {
-        calories: 0,
-        protein: 0,
-        carbs: 0,
-        fat: 0,
-        fiber: 0,
-        vitamins: {}
-    };
 }
 
 // ============================================================
