@@ -3,13 +3,7 @@ import { getLoggedInUser } from './auth.js';
 import { initDrawer, updateDrawerItems } from './drawer.js';
 import { getAverageRating } from './feedback.js';
 import { store, setInventory } from './store.js';
-import {
-    getAllCategories,
-    addCategory,
-    addHistory,
-    getHistory,
-    seedDefaultCategories
-} from './db.js';
+import { addHistory, getHistory } from './db.js';
 
 // ===== کلید ذخیره‌سازی در localStorage =====
 function getInventoryKey() {
@@ -17,11 +11,43 @@ function getInventoryKey() {
     return `home_inventory_${user}`;
 }
 
+function getCategoriesKey() {
+    const user = getLoggedInUser() || 'default';
+    return `food_categories_${user}`;
+}
+
+// ===== دسته‌بندی‌های پیش‌فرض =====
+const DEFAULT_CATEGORIES = [
+    'غلات', 'حبوبات', 'لبنیات', 'پروتئین', 
+    'سبزیجات', 'میوه‌ها', 'چاشنی‌ها', 'نان', 
+    'نوشیدنی', 'سایر'
+];
+
 let foodItems = [];
 let categories = [];
 let foodHistory = [];
 let currentEditIndex = null;
 let nutritionDataCache = [];
+
+// ============================================================
+// مدیریت دسته‌بندی‌ها در localStorage
+// ============================================================
+function loadCategories() {
+    const key = getCategoriesKey();
+    const stored = localStorage.getItem(key);
+    if (stored) {
+        categories = JSON.parse(stored);
+    } else {
+        categories = [...DEFAULT_CATEGORIES];
+        localStorage.setItem(key, JSON.stringify(categories));
+    }
+    return categories;
+}
+
+function saveCategories() {
+    const key = getCategoriesKey();
+    localStorage.setItem(key, JSON.stringify(categories));
+}
 
 // ============================================================
 // بارگذاری داده‌های تغذیه‌ای
@@ -53,7 +79,6 @@ function loadFoodItems() {
     const key = getInventoryKey();
     const stored = localStorage.getItem(key);
     foodItems = stored ? JSON.parse(stored) : [];
-    // همگام‌سازی با store (برای داشبورد)
     setInventory(foodItems);
     return foodItems;
 }
@@ -69,26 +94,19 @@ function saveFoodItems() {
 }
 
 // ============================================================
-// بارگذاری دسته‌بندی‌ها و تاریخچه از IndexedDB
+// بارگذاری تاریخچه از IndexedDB
 // ============================================================
-async function loadCategoriesAndHistory() {
+async function loadHistory() {
     try {
-        await seedDefaultCategories();
-        const categoriesData = await getAllCategories();
-        categories = categoriesData.map(cat => cat.name);
-        window.categoryMap = {};
-        categoriesData.forEach(cat => {
-            window.categoryMap[cat.name] = cat.id;
-        });
         foodHistory = await getHistory(50);
     } catch (error) {
-        console.error('❌ خطا در بارگذاری دسته‌بندی‌ها:', error);
-        categories = ['غلات', 'حبوبات', 'لبنیات', 'پروتئین', 'سبزیجات', 'میوه‌ها', 'چاشنی‌ها', 'نان', 'نوشیدنی', 'سایر'];
+        console.warn('⚠️ خطا در بارگذاری تاریخچه:', error);
+        foodHistory = [];
     }
 }
 
 // ============================================================
-// تحلیل ارزش غذایی (با استفاده از store.inventory)
+// تحلیل ارزش غذایی
 // ============================================================
 export async function analyzeInventoryNutrition() {
     const inventory = store.inventory || [];
@@ -188,7 +206,7 @@ function renderAll() {
 function renderCategoryList() {
     const container = document.getElementById('categoryList');
     if (!container) return;
-    if (categories.length === 0) {
+    if (!categories || categories.length === 0) {
         container.innerHTML = '<span style="color: gray;">هنوز دسته‌ای اضافه نشده است.</span>';
         return;
     }
@@ -201,12 +219,14 @@ function populateCategoryDropdown() {
     const select = document.getElementById('foodCategory');
     if (!select) return;
     select.innerHTML = '<option value="">-- انتخاب دسته --</option>';
-    categories.forEach(cat => {
-        const option = document.createElement('option');
-        option.value = cat;
-        option.textContent = cat;
-        select.appendChild(option);
-    });
+    if (categories && categories.length > 0) {
+        categories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat;
+            option.textContent = cat;
+            select.appendChild(option);
+        });
+    }
 }
 
 function updateNameSuggestions() {
@@ -225,7 +245,7 @@ function renderTable() {
     const tbody = document.getElementById('foodTableBody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    if (foodItems.length === 0) {
+    if (!foodItems || foodItems.length === 0) {
         const row = tbody.insertRow();
         const cell = row.insertCell(0);
         cell.colSpan = 6;
@@ -317,7 +337,8 @@ async function addToHistory(action, item) {
 // رویدادهای فرم
 // ============================================================
 function setupEventListeners() {
-    document.getElementById('addCategoryBtn')?.addEventListener('click', async () => {
+    // دکمه افزودن دسته
+    document.getElementById('addCategoryBtn')?.addEventListener('click', () => {
         const newCat = document.getElementById('newCategoryName')?.value.trim();
         if (!newCat) {
             alert('لطفاً نام دسته را وارد کنید.');
@@ -327,22 +348,14 @@ function setupEventListeners() {
             alert('این دسته قبلاً وجود دارد.');
             return;
         }
-        try {
-            await addCategory(newCat);
-            categories.push(newCat);
-            const categoriesData = await getAllCategories();
-            window.categoryMap = {};
-            categoriesData.forEach(cat => {
-                window.categoryMap[cat.name] = cat.id;
-            });
-            renderAll();
-            document.getElementById('newCategoryName').value = '';
-            alert(`دسته "${newCat}" اضافه شد.`);
-        } catch (error) {
-            alert('خطا در افزودن دسته: ' + error.message);
-        }
+        categories.push(newCat);
+        saveCategories();
+        renderAll();
+        document.getElementById('newCategoryName').value = '';
+        alert(`دسته "${newCat}" اضافه شد.`);
     });
 
+    // دکمه ذخیره ماده غذایی
     document.getElementById('saveFoodBtn')?.addEventListener('click', () => {
         const category = document.getElementById('foodCategory')?.value;
         const name = document.getElementById('foodName')?.value?.trim();
@@ -391,11 +404,11 @@ function setupEventListeners() {
     document.getElementById('historyBtn')?.addEventListener('click', async () => {
         const historyDiv = document.getElementById('historyList');
         if (historyDiv) {
-            const history = await getHistory(50);
-            if (history.length === 0) {
+            await loadHistory();
+            if (!foodHistory || foodHistory.length === 0) {
                 historyDiv.innerHTML = '<p>هیچ تغییری ثبت نشده است.</p>';
             } else {
-                historyDiv.innerHTML = '<ul>' + history.map(h => 
+                historyDiv.innerHTML = '<ul>' + foodHistory.map(h => 
                     `<li><strong>${new Date(h.timestamp).toLocaleString('fa-IR')}</strong> - ${h.action} : ${h.name} (${h.quantity} ${h.unit}, دسته: ${h.category})</li>`
                 ).join('') + '</ul>';
             }
@@ -422,13 +435,16 @@ async function init() {
     initDrawer();
     updateDrawerItems();
 
-    // بارگذاری مواد غذایی از localStorage
+    // بارگذاری دسته‌بندی‌ها
+    loadCategories();
+    // بارگذاری مواد غذایی
     loadFoodItems();
-    // بارگذاری دسته‌بندی‌ها و تاریخچه
-    await loadCategoriesAndHistory();
+    // بارگذاری تاریخچه
+    await loadHistory();
+    
     renderAll();
     setupEventListeners();
-    console.log('✅ صفحه مدیریت مواد غذایی بارگذاری شد.');
+    console.log('✅ صفحه مدیریت مواد غذایی بارگذاری شد. دسته‌بندی‌ها:', categories.length);
 }
 
 if (document.readyState === 'loading') {
