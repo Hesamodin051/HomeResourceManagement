@@ -40,17 +40,6 @@
 
     <main class="max-w-7xl mx-auto px-4 py-6">
 
-        <!-- ===== دکمه دریافت تغذیه همه مواد ===== -->
-        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <div class="flex flex-wrap gap-2">
-                <button id="fetchAllNutritionBtn" class="btn-gradient !py-2 !px-4 text-sm">
-                    <i class="fas fa-cloud-download-alt ml-2"></i> دریافت تغذیه همه مواد
-                </button>
-                <span class="text-xs text-gray-400 self-center">(از هوش مصنوعی)</span>
-            </div>
-            <span class="text-xs text-gray-400" id="nutritionStatus">وضعیت: در حال بررسی...</span>
-        </div>
-
         <!-- ===== دسته‌بندی‌ها ===== -->
         <div class="card-modern p-4 mb-6">
             <h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-tags text-secondary ml-2"></i> دسته‌بندی‌های مواد غذایی</h3>
@@ -91,7 +80,7 @@
             </div>
             <div class="overflow-x-auto">
                 <table class="table-modern" id="foodTable">
-                    <thead><tr><th>دسته</th><th>نام</th><th>مقدار</th><th>واحد</th><th>انقضا</th><th>تغذیه</th><th>عملیات</th></tr></thead>
+                    <thead><tr><th>دسته</th><th>نام</th><th>مقدار</th><th>واحد</th><th>انقضا</th><th>عملیات</th></tr></thead>
                     <tbody id="foodTableBody"></tbody>
                 </table>
             </div>
