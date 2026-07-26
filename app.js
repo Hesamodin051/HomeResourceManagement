@@ -8,8 +8,9 @@ import { loadConsumptionData, saveTodayConsumption } from './modules/consumption
 import { store, setCrisisMode, addListener, setCurrentUserProfile } from './modules/store.js';
 import { generateSuggestions } from './modules/suggestion.js';
 import { generateConsumptionPlan } from './modules/consumption-planner.js';
+import { generateMealSuggestions, refreshMealSuggestions, initMealPlanner } from './modules/meal-planner.js';
 import { getSmartSuggestions } from './modules/ai.js';
-import { generateMealSuggestions, initMealPlanner } from './modules/meal-planner.js';
+import { analyzeInventoryNutrition } from './modules/food.js';
 
 // ===== غیرفعال کردن پیام Puter.js =====
 if (typeof puter !== 'undefined') {
@@ -82,10 +83,12 @@ function renderInventoryTable() {
                 editItem(item.id, newName.trim(), newQty, newUnit.trim(), newExpiry || '');
                 renderInventoryTable();
                 generateAlerts();
-                document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
+                document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(
+                    parseInt(document.getElementById('planDaysSelect')?.value || 7)
+                );
                 generateSuggestions();
                 updateNutritionAnalysis();
-                generateMealSuggestions();
+                refreshMealSuggestions();
             } else alert('ورودی نامعتبر');
         };
         const delBtn = document.createElement('button');
@@ -96,10 +99,12 @@ function renderInventoryTable() {
                 deleteItem(item.id);
                 renderInventoryTable();
                 generateAlerts();
-                document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
+                document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(
+                    parseInt(document.getElementById('planDaysSelect')?.value || 7)
+                );
                 generateSuggestions();
                 updateNutritionAnalysis();
-                generateMealSuggestions();
+                refreshMealSuggestions();
             }
         };
         actionsCell.appendChild(editBtn);
@@ -173,7 +178,9 @@ function bindDashboardUI() {
             document.getElementById('electricityConsumption').value = '';
             document.getElementById('gasConsumption').value = '';
             generateSuggestions();
-            document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
+            document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(
+                parseInt(document.getElementById('planDaysSelect')?.value || 7)
+            );
         });
     }
     const crisisToggle = document.getElementById('crisisModeToggle');
@@ -183,10 +190,12 @@ function bindDashboardUI() {
             document.body.classList.toggle('crisis', e.target.checked);
             generateAlerts();
             generateSuggestions();
-            document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
+            document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(
+                parseInt(document.getElementById('planDaysSelect')?.value || 7)
+            );
             localStorage.setItem('crisis_mode', e.target.checked);
             updateNutritionAnalysis();
-            generateMealSuggestions();
+            refreshMealSuggestions();
         });
     }
     const logoutBtn = document.getElementById('logoutBtn');
@@ -219,12 +228,14 @@ function populateScenarioDropdown() {
             tipDiv.style.display = 'none';
         }
         generateSuggestions();
-        document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
+        document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(
+            parseInt(document.getElementById('planDaysSelect')?.value || 7)
+        );
     });
 }
 
 // ============================================================
-// 8. تحلیل ارزش غذایی (با import پویا)
+// 8. تحلیل ارزش غذایی
 // ============================================================
 async function updateNutritionAnalysis() {
     const display = document.getElementById('nutritionDisplay');
@@ -242,7 +253,6 @@ async function updateNutritionAnalysis() {
     }
 
     try {
-        // بارگذاری پویا برای جلوگیری از وابستگی دوری
         const { analyzeInventoryNutrition } = await import('./modules/food.js');
         const nutrition = await analyzeInventoryNutrition();
         
@@ -300,6 +310,7 @@ async function updateNutritionAnalysis() {
         `;
     }
 }
+
 // ============================================================
 // 9. مقداردهی اولیه داشبورد
 // ============================================================
@@ -325,9 +336,29 @@ async function initDashboard() {
     bindDashboardUI();
     populateScenarioDropdown();
     generateSuggestions();
-    document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
+    
+    // ===== الگوی مصرف =====
+    const planDisplay = document.getElementById('consumptionPlanDisplay');
+    if (planDisplay) {
+        const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
+        planDisplay.innerHTML = generateConsumptionPlan(days);
+    }
+
+    // ===== پیشنهادات غذایی =====
+    await generateMealSuggestions(1);
+
+    // ===== تحلیل ارزش غذایی =====
     await updateNutritionAnalysis();
-    await generateMealSuggestions();
+    
+    // ===== رویدادها =====
+    document.getElementById('generatePlanBtn')?.addEventListener('click', function() {
+        const days = parseInt(document.getElementById('planDaysSelect').value);
+        document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(days);
+    });
+
+    document.getElementById('refreshMealSuggestionsBtn')?.addEventListener('click', function() {
+        refreshMealSuggestions();
+    });
     
     const aiBtn = document.getElementById('aiSuggestionBtn');
     if (aiBtn) aiBtn.addEventListener('click', handleAISuggestion);
@@ -340,9 +371,11 @@ async function initDashboard() {
         document.body.classList.add('crisis');
         generateAlerts();
         generateSuggestions();
-        document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
+        document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(
+            parseInt(document.getElementById('planDaysSelect')?.value || 7)
+        );
         await updateNutritionAnalysis();
-        await generateMealSuggestions();
+        await generateMealSuggestions(1);
     }
     
     const userDisplay = document.getElementById('userDisplay');
@@ -362,6 +395,7 @@ async function initDashboard() {
         }
     }
 
+    // مقداردهی ماژول پیشنهادات غذایی
     initMealPlanner();
 }
 
@@ -518,7 +552,6 @@ if (currentPath.includes('login.html')) {
         loadChatbotWidget();
     }
 } else {
-    // index.html - کاری انجام نده (چون app.js در آن بارگذاری نمی‌شود)
     console.log('ℹ️ index.html - app.js اجرا نمی‌شود.');
 }
 
@@ -530,9 +563,11 @@ addListener('inventory', () => {
         renderInventoryTable();
         generateAlerts();
         generateSuggestions();
-        document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
+        document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(
+            parseInt(document.getElementById('planDaysSelect')?.value || 7)
+        );
         updateNutritionAnalysis();
-        generateMealSuggestions();
+        refreshMealSuggestions();
     }
 });
 
@@ -540,9 +575,11 @@ addListener('crisisMode', () => {
     if (window.location.pathname.includes('dashboard.html')) {
         generateAlerts();
         generateSuggestions();
-        document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
+        document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(
+            parseInt(document.getElementById('planDaysSelect')?.value || 7)
+        );
         updateNutritionAnalysis();
-        generateMealSuggestions();
+        refreshMealSuggestions();
     }
 });
 
@@ -550,7 +587,9 @@ addListener('consumptionData', () => {
     if (window.location.pathname.includes('dashboard.html')) {
         renderChart();
         generateSuggestions();
-        document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
+        document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(
+            parseInt(document.getElementById('planDaysSelect')?.value || 7)
+        );
     }
 });
 
@@ -558,9 +597,11 @@ addListener('currentUserProfile', () => {
     if (window.location.pathname.includes('dashboard.html')) {
         generateAlerts();
         generateSuggestions();
-        document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan();
+        document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(
+            parseInt(document.getElementById('planDaysSelect')?.value || 7)
+        );
         updateNutritionAnalysis();
-        generateMealSuggestions();
+        refreshMealSuggestions();
     }
 });
 
