@@ -1,5 +1,6 @@
 // modules/consumption-planner.js
 import { store } from './store.js';
+import { generateConsumptionPlanAI, getAlternativeMealAI } from './ai-fallback.js';
 
 function getFamilySize() {
     return store.currentUserProfile?.familySize || 4;
@@ -10,11 +11,11 @@ function getInventory() {
 }
 
 function isOnline() {
-    return navigator.onLine && typeof puter !== 'undefined';
+    return navigator.onLine;
 }
 
 // ============================================================
-// تولید برنامه مصرف با هوش مصنوعی (نسخه اصلی)
+// تولید برنامه مصرف با هوش مصنوعی (با jsllm7)
 // ============================================================
 export async function generateConsumptionPlan(days = 7, startDate = null) {
     const familySize = getFamilySize();
@@ -39,49 +40,11 @@ export async function generateConsumptionPlan(days = 7, startDate = null) {
         `- ${item.name}: ${item.quantity} ${item.unit}${item.expiry ? ' (انقضا: ' + item.expiry + ')' : ''}`
     ).join('\n');
 
-    const prompt = `
-شما یک دستیار هوشمند مدیریت منابع خانگی هستید. 
-بر اساس موجودی زیر، یک برنامه مصرف ${days} روزه برای خانواده ${familySize} نفره تهیه کن.
-
-موجودی انبار:
-${inventoryList}
-
-${crisisMode ? '⚠️ حالت بحران فعال است. مصرف را به حداقل برسان و اولویت با آب و کنسروها باشد.' : ''}
-
-برنامه باید شامل ۳ وعده غذایی در روز (صبحانه، ناهار، شام) باشد.
-
-مهم: فقط از مواد موجود در انبار استفاده کن. اگر ماده‌ای کافی نیست، پیشنهاد جایگزین بده.
-
-فرمت خروجی دقیقاً به این صورت باشد (فقط همین فرمت، بدون توضیح اضافی):
-
-روز ۱ (شنبه):
-صبحانه: [نام غذا]
-ناهار: [نام غذا]
-شام: [نام غذا]
-
-روز ۲ (یکشنبه):
-صبحانه: [نام غذا]
-ناهار: [نام غذا]
-شام: [نام غذا]
-
-... تا روز ${days}
-
-توجه: غذاها باید متناسب با وعده باشند (صبحانه سبک، ناهار سنگین‌تر، شام متوسط). تنوع غذایی رعایت شود.
-`;
-
     try {
-        const response = await puter.ai.chat(prompt, {
-            model: "gpt-4o-mini",
-            temperature: 0.7
-        });
-
-        let result = '';
-        if (typeof response === 'string') {
-            result = response;
-        } else if (response && typeof response === 'object') {
-            result = response.message?.content || response.text || response.response || JSON.stringify(response);
-        } else {
-            result = 'پاسخی دریافت نشد.';
+        const result = await generateConsumptionPlanAI(days, inventoryList, familySize, crisisMode);
+        
+        if (!result) {
+            throw new Error('پاسخی از AI دریافت نشد');
         }
 
         return processAIResponseToCards(result, days, familySize);
@@ -93,7 +56,7 @@ ${crisisMode ? '⚠️ حالت بحران فعال است. مصرف را به �
 }
 
 // ============================================================
-// پردازش پاسخ AI به کارت‌های تعاملی (با دکمه تعویض)
+// پردازش پاسخ AI به کارت‌های تعاملی
 // ============================================================
 function processAIResponseToCards(aiResponse, days, familySize) {
     const lines = aiResponse.split('\n').filter(line => line.trim() !== '');
@@ -193,7 +156,7 @@ function processAIResponseToCards(aiResponse, days, familySize) {
 }
 
 // ============================================================
-// برنامه پیش‌فرض (در صورت عدم دسترسی به AI) - با دکمه تعویض
+// برنامه پیش‌فرض (در صورت عدم دسترسی به AI)
 // ============================================================
 function generateFallbackPlan(days, familySize) {
     const daysOfWeek = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
@@ -277,7 +240,7 @@ function generateFallbackPlan(days, familySize) {
 }
 
 // ============================================================
-// دریافت پیشنهاد جایگزین از AI (برای وعده‌های رد شده)
+// دریافت پیشنهاد جایگزین از AI (با jsllm7)
 // ============================================================
 export async function getAlternativeMeal(mealType, dayIndex) {
     const familySize = getFamilySize();
@@ -298,22 +261,11 @@ export async function getAlternativeMeal(mealType, dayIndex) {
         `- ${item.name}: ${item.quantity} ${item.unit}`
     ).join('\n');
 
-    const prompt = `
-بر اساس موجودی زیر، یک غذای مناسب برای وعده ${mealType} پیشنهاد بده.
-موجودی: ${inventoryList}
-تعداد اعضای خانواده: ${familySize} نفر
-فقط نام غذا را بگو، بدون توضیح.
-`;
-
     try {
-        const response = await puter.ai.chat(prompt, { model: "gpt-4o-mini", temperature: 0.7 });
-        let result = '';
-        if (typeof response === 'string') result = response;
-        else if (response?.message?.content) result = response.message.content;
-        else result = 'غذای ساده';
-        return result.trim();
+        const result = await getAlternativeMealAI(mealType, inventoryList, familySize);
+        return result || 'غذای ساده';
     } catch (error) {
-        console.error('❌ خطا:', error);
+        console.error('❌ خطا در دریافت پیشنهاد جایگزین:', error);
         return 'غذای ساده';
     }
 }
