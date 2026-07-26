@@ -22,19 +22,177 @@ let currentEditIndex = null;
 let nutritionDataCache = [];
 
 // ============================================================
-// بارگذاری داده‌های تغذیه‌ای از food_items.json
+// بارگذاری داده‌های تغذیه‌ای از food_items.json با کش
 // ============================================================
 async function loadNutritionData() {
+    // ابتدا از localStorage (کش) تلاش کن
+    const cached = localStorage.getItem('food_nutrition_cache');
+    if (cached) {
+        try {
+            nutritionDataCache = JSON.parse(cached);
+            if (nutritionDataCache.length > 0) {
+                console.log('✅ داده‌های تغذیه از کش بارگذاری شدند.');
+                return nutritionDataCache;
+            }
+        } catch (e) {
+            console.warn('⚠️ خطا در خواندن کش تغذیه:', e);
+        }
+    }
+
+    // اگر در کش نبود، از فایل بخوان
     if (nutritionDataCache.length > 0) return nutritionDataCache;
     try {
         const response = await fetch('assets/data/food_items.json');
         const data = await response.json();
         nutritionDataCache = data;
+        localStorage.setItem('food_nutrition_cache', JSON.stringify(data));
+        console.log('✅ داده‌های تغذیه از فایل بارگذاری شدند.');
         return data;
     } catch (error) {
         console.warn('⚠️ خطا در بارگذاری food_items.json:', error);
         return [];
     }
+}
+
+// ============================================================
+// دریافت اطلاعات تغذیه‌ای از هوش مصنوعی
+// ============================================================
+export async function fetchNutritionFromAI(foodName) {
+    try {
+        if (typeof puter === 'undefined') {
+            console.warn('⚠️ Puter.js بارگذاری نشده است.');
+            return null;
+        }
+
+        const prompt = `
+به عنوان یک متخصص تغذیه، اطلاعات کامل تغذیه‌ای برای ماده غذایی "${foodName}" را به صورت JSON تولید کن.
+
+فرمت خروجی:
+{
+  "name": "${foodName}",
+  "barcode": "یک کد ۱۳ رقمی ساختگی",
+  "quantity_per_person_per_day": عدد (مقدار مصرف روزانه برای هر نفر بر حسب واحد),
+  "unit": "واحد اندازه‌گیری (کیلوگرم، لیتر، عدد، بسته)",
+  "shelf_life_days": عدد (مدت ماندگاری به روز),
+  "storage_condition": "شرایط نگهداری (dry_cool, refrigerator, freezer, dark_dry, room_temperature, dark_cool)",
+  "category": "دسته‌بندی (غلات، حبوبات، لبنیات، پروتئین، سبزیجات، میوه‌ها، چاشنی‌ها، نان، نوشیدنی، سایر)",
+  "priority_level": 1 یا 2 یا 3,
+  "nutrition": {
+    "calories": عدد (کالری),
+    "protein": عدد (پروتئین به گرم),
+    "carbs": عدد (کربوهیدرات به گرم),
+    "fat": عدد (چربی به گرم),
+    "fiber": عدد (فیبر به گرم),
+    "vitamins": ["لیست ویتامین‌ها و مواد معدنی"]
+  }
+}
+
+اطمینان حاصل کن که خروجی فقط JSON معتبر باشد و توضیح اضافی نداشته باشد.
+`;
+
+        const response = await puter.ai.chat(prompt, {
+            model: "gpt-4o-mini",
+            temperature: 0.1
+        });
+
+        // استخراج JSON از پاسخ
+        let jsonText = response;
+        const jsonMatch = response.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            jsonText = jsonMatch[0];
+        }
+
+        const data = JSON.parse(jsonText);
+        console.log(`✅ اطلاعات تغذیه‌ای برای "${foodName}" دریافت شد.`);
+        return data;
+    } catch (error) {
+        console.error(`❌ خطا در دریافت اطلاعات برای "${foodName}":`, error);
+        return null;
+    }
+}
+
+// ============================================================
+// افزودن یا به‌روزرسانی اطلاعات تغذیه‌ای در کش
+// ============================================================
+export async function updateNutritionData(foodName) {
+    // بارگذاری data فعلی
+    const currentData = await loadNutritionData();
+    
+    // بررسی وجود ماده در data
+    const existing = currentData.find(item => item.name === foodName);
+    if (existing) {
+        console.log(`ℹ️ "${foodName}" قبلاً در data تغذیه وجود دارد.`);
+        return existing;
+    }
+
+    // دریافت از AI
+    const newData = await fetchNutritionFromAI(foodName);
+    if (!newData) {
+        console.warn(`⚠️ اطلاعات "${foodName}" دریافت نشد.`);
+        return null;
+    }
+
+    // افزودن به آرایه و ذخیره در localStorage (کش)
+    currentData.push(newData);
+    nutritionDataCache = currentData;
+    localStorage.setItem('food_nutrition_cache', JSON.stringify(currentData));
+    
+    console.log(`✅ "${foodName}" به لیست تغذیه اضافه شد.`);
+    return newData;
+}
+
+// ============================================================
+// تحلیل ارزش غذایی (نسخه کامل با کش)
+// ============================================================
+export async function analyzeInventoryNutrition() {
+    const inventory = foodItems;
+    if (!inventory || inventory.length === 0) {
+        return {
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            fiber: 0,
+            vitamins: {}
+        };
+    }
+
+    const nutritionData = await loadNutritionData();
+    
+    let totalCalories = 0;
+    let totalProtein = 0;
+    let totalCarbs = 0;
+    let totalFat = 0;
+    let totalFiber = 0;
+    const vitamins = {};
+
+    inventory.forEach(item => {
+        const defaultItem = nutritionData.find(n => n.name === item.name);
+        if (defaultItem && defaultItem.nutrition) {
+            const qty = item.quantity;
+            const n = defaultItem.nutrition;
+            totalCalories += (n.calories || 0) * qty;
+            totalProtein += (n.protein || 0) * qty;
+            totalCarbs += (n.carbs || 0) * qty;
+            totalFat += (n.fat || 0) * qty;
+            totalFiber += (n.fiber || 0) * qty;
+            if (n.vitamins) {
+                n.vitamins.forEach(v => {
+                    if (!vitamins[v]) vitamins[v] = 0;
+                    vitamins[v] += qty;
+                });
+            }
+        }
+    });
+
+    return {
+        calories: Math.round(totalCalories),
+        protein: Math.round(totalProtein * 100) / 100,
+        carbs: Math.round(totalCarbs * 100) / 100,
+        fat: Math.round(totalFat * 100) / 100,
+        fiber: Math.round(totalFiber * 100) / 100,
+        vitamins
+    };
 }
 
 // ============================================================
@@ -107,60 +265,6 @@ async function loadData() {
 }
 
 // ============================================================
-// تحلیل ارزش غذایی (نسخه کامل)
-// ============================================================
-export async function analyzeInventoryNutrition() {
-    const inventory = foodItems;
-    if (!inventory || inventory.length === 0) {
-        return {
-            calories: 0,
-            protein: 0,
-            carbs: 0,
-            fat: 0,
-            fiber: 0,
-            vitamins: {}
-        };
-    }
-
-    const nutritionData = await loadNutritionData();
-    
-    let totalCalories = 0;
-    let totalProtein = 0;
-    let totalCarbs = 0;
-    let totalFat = 0;
-    let totalFiber = 0;
-    const vitamins = {};
-
-    inventory.forEach(item => {
-        const defaultItem = nutritionData.find(n => n.name === item.name);
-        if (defaultItem && defaultItem.nutrition) {
-            const qty = item.quantity;
-            const n = defaultItem.nutrition;
-            totalCalories += (n.calories || 0) * qty;
-            totalProtein += (n.protein || 0) * qty;
-            totalCarbs += (n.carbs || 0) * qty;
-            totalFat += (n.fat || 0) * qty;
-            totalFiber += (n.fiber || 0) * qty;
-            if (n.vitamins) {
-                n.vitamins.forEach(v => {
-                    if (!vitamins[v]) vitamins[v] = 0;
-                    vitamins[v] += qty;
-                });
-            }
-        }
-    });
-
-    return {
-        calories: Math.round(totalCalories),
-        protein: Math.round(totalProtein * 100) / 100,
-        carbs: Math.round(totalCarbs * 100) / 100,
-        fat: Math.round(totalFat * 100) / 100,
-        fiber: Math.round(totalFiber * 100) / 100,
-        vitamins
-    };
-}
-
-// ============================================================
 // رندرها
 // ============================================================
 function renderAll() {
@@ -226,14 +330,58 @@ function renderTable() {
         row.insertCell(3).innerText = item.unit;
         row.insertCell(4).innerText = item.expiry || '—';
         const actions = row.insertCell(5);
+        
+        // دکمه دریافت تغذیه (اگر اطلاعات وجود نداشته باشد)
+        const nutritionExists = nutritionDataCache.some(n => n.name === item.name);
+        const fetchBtn = document.createElement('button');
+        fetchBtn.innerHTML = nutritionExists ? '✅' : '📥';
+        fetchBtn.className = `nutrition-fetch-btn text-xs px-2 py-1 rounded transition ${nutritionExists ? 'text-gray-400 cursor-default' : 'bg-blue-500 text-white hover:bg-blue-600'}`;
+        fetchBtn.dataset.name = item.name;
+        fetchBtn.disabled = nutritionExists;
+        fetchBtn.title = nutritionExists ? 'اطلاعات تغذیه موجود است' : 'دریافت اطلاعات تغذیه‌ای';
+        if (!nutritionExists) {
+            fetchBtn.addEventListener('click', async function(e) {
+                e.stopPropagation();
+                const name = this.dataset.name;
+                const originalText = this.innerHTML;
+                this.innerHTML = '⏳';
+                this.disabled = true;
+                
+                const result = await updateNutritionData(name);
+                
+                if (result) {
+                    this.innerHTML = '✅';
+                    this.className = 'nutrition-fetch-btn text-xs px-2 py-1 rounded text-gray-400 cursor-default';
+                    this.disabled = true;
+                    this.title = 'اطلاعات تغذیه دریافت شد';
+                    // به‌روزرسانی تحلیل در داشبورد
+                    if (window.updateNutritionAnalysis) {
+                        window.updateNutritionAnalysis();
+                    }
+                    alert(`✅ اطلاعات تغذیه‌ای "${name}" دریافت شد.`);
+                } else {
+                    this.innerHTML = '❌';
+                    this.disabled = false;
+                    alert(`❌ دریافت اطلاعات برای "${name}" ناموفق بود.`);
+                    setTimeout(() => {
+                        this.innerHTML = originalText;
+                        this.disabled = false;
+                    }, 2000);
+                }
+            });
+        }
+        
         const editBtn = document.createElement('button');
         editBtn.innerText = '✏️';
-        editBtn.className = 'edit-btn';
+        editBtn.className = 'edit-btn text-xs bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600 transition ml-1';
         editBtn.onclick = () => editItem(index);
+        
         const delBtn = document.createElement('button');
         delBtn.innerText = '🗑️';
-        delBtn.className = 'delete-btn';
+        delBtn.className = 'delete-btn text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 transition ml-1';
         delBtn.onclick = () => deleteItem(index);
+        
+        actions.appendChild(fetchBtn);
         actions.appendChild(editBtn);
         actions.appendChild(delBtn);
     });
@@ -317,6 +465,7 @@ async function addToHistory(action, item) {
 // راه‌اندازی رویدادها
 // ============================================================
 function setupEventListeners() {
+    // دکمه افزودن دسته
     document.getElementById('addCategoryBtn')?.addEventListener('click', async () => {
         const newCat = document.getElementById('newCategoryName')?.value.trim();
         if (!newCat) {
@@ -343,6 +492,7 @@ function setupEventListeners() {
         }
     });
 
+    // دکمه ذخیره ماده غذایی
     document.getElementById('saveFoodBtn')?.addEventListener('click', async () => {
         const category = document.getElementById('foodCategory')?.value;
         const name = document.getElementById('foodName')?.value?.trim();
@@ -383,6 +533,7 @@ function setupEventListeners() {
         }
     });
 
+    // دکمه پاک کردن فرم
     document.getElementById('clearFormBtn')?.addEventListener('click', () => {
         document.getElementById('foodCategory').value = '';
         document.getElementById('foodName').value = '';
@@ -393,8 +544,10 @@ function setupEventListeners() {
         updateNameSuggestions();
     });
 
+    // دکمه ریست
     document.getElementById('resetDataBtn')?.addEventListener('click', resetOnlyFoodItems);
 
+    // دکمه تاریخچه
     const modal = document.getElementById('historyModal');
     document.getElementById('historyBtn')?.addEventListener('click', async () => {
         const historyDiv = document.getElementById('historyList');
@@ -416,125 +569,47 @@ function setupEventListeners() {
     }
 
     document.getElementById('foodCategory')?.addEventListener('change', updateNameSuggestions);
-}
-// modules/food.js (افزودن توابع جدید)
 
-// ============================================================
-// دریافت اطلاعات تغذیه‌ای از هوش مصنوعی
-// ============================================================
-export async function fetchNutritionFromAI(foodName) {
-    try {
-        if (typeof puter === 'undefined') {
-            console.warn('⚠️ Puter.js بارگذاری نشده است.');
-            return null;
-        }
-
-        const prompt = `
-به عنوان یک متخصص تغذیه، اطلاعات کامل تغذیه‌ای برای ماده غذایی "${foodName}" را به صورت JSON تولید کن.
-
-فرمت خروجی:
-{
-  "name": "${foodName}",
-  "barcode": "یک کد ۱۳ رقمی ساختگی",
-  "quantity_per_person_per_day": عدد (مقدار مصرف روزانه برای هر نفر بر حسب واحد),
-  "unit": "واحد اندازه‌گیری (کیلوگرم، لیتر، عدد، بسته)",
-  "shelf_life_days": عدد (مدت ماندگاری به روز),
-  "storage_condition": "شرایط نگهداری (dry_cool, refrigerator, freezer, dark_dry, room_temperature, dark_cool)",
-  "category": "دسته‌بندی (غلات، حبوبات، لبنیات، پروتئین، سبزیجات، میوه‌ها، چاشنی‌ها، نان، نوشیدنی، سایر)",
-  "priority_level": 1 یا 2 یا 3,
-  "nutrition": {
-    "calories": عدد (کالری),
-    "protein": عدد (پروتئین به گرم),
-    "carbs": عدد (کربوهیدرات به گرم),
-    "fat": عدد (چربی به گرم),
-    "fiber": عدد (فیبر به گرم),
-    "vitamins": ["لیست ویتامین‌ها و مواد معدنی"]
-  }
-}
-
-اطمینان حاصل کن که خروجی فقط JSON معتبر باشد و توضیح اضافی نداشته باشد.
-`;
-
-        const response = await puter.ai.chat(prompt, {
-            model: "gpt-4o-mini",
-            temperature: 0.1
+    // دکمه دریافت تغذیه همه مواد (در صورت وجود)
+    document.getElementById('fetchAllNutritionBtn')?.addEventListener('click', async function() {
+        const items = foodItems.filter(item => {
+            const exists = nutritionDataCache.some(n => n.name === item.name);
+            return !exists;
         });
-
-        // استخراج JSON از پاسخ
-        let jsonText = response;
-        const jsonMatch = response.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            jsonText = jsonMatch[0];
+        
+        if (items.length === 0) {
+            alert('✅ همه مواد غذایی قبلاً اطلاعات تغذیه‌ای دارند.');
+            return;
         }
-
-        const data = JSON.parse(jsonText);
-        console.log(`✅ اطلاعات تغذیه‌ای برای "${foodName}" دریافت شد.`);
-        return data;
-    } catch (error) {
-        console.error(`❌ خطا در دریافت اطلاعات برای "${foodName}":`, error);
-        return null;
-    }
+        
+        if (!confirm(`آیا می‌خواهید اطلاعات تغذیه‌ای ${items.length} ماده را دریافت کنید؟\nاین عمل ممکن است چند دقیقه طول بکشد.`)) return;
+        
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> در حال دریافت...';
+        
+        let success = 0;
+        let failed = 0;
+        for (const item of items) {
+            const result = await updateNutritionData(item.name);
+            if (result) success++;
+            else failed++;
+            // تأخیر کوتاه برای جلوگیری از محدودیت
+            await new Promise(r => setTimeout(r, 500));
+        }
+        
+        this.disabled = false;
+        this.innerHTML = '<i class="fas fa-cloud-download-alt ml-2"></i> دریافت تغذیه همه مواد';
+        
+        // به‌روزرسانی جدول
+        renderTable();
+        if (window.updateNutritionAnalysis) {
+            window.updateNutritionAnalysis();
+        }
+        
+        alert(`✅ اطلاعات ${success} ماده دریافت شد.\n${failed > 0 ? `❌ ${failed} ماده ناموفق بود.` : ''}`);
+    });
 }
 
-// ============================================================
-// افزودن یا به‌روزرسانی اطلاعات تغذیه‌ای در food_items.json
-// ============================================================
-export async function updateNutritionData(foodName) {
-    // بارگذاری data فعلی
-    const currentData = await loadNutritionData();
-    
-    // بررسی وجود ماده در data
-    const existing = currentData.find(item => item.name === foodName);
-    if (existing) {
-        console.log(`ℹ️ "${foodName}" قبلاً در food_items.json وجود دارد.`);
-        return existing;
-    }
-
-    // دریافت از AI
-    const newData = await fetchNutritionFromAI(foodName);
-    if (!newData) {
-        console.warn(`⚠️ اطلاعات "${foodName}" دریافت نشد.`);
-        return null;
-    }
-
-    // افزودن به آرایه و ذخیره در localStorage (برای کش)
-    currentData.push(newData);
-    nutritionDataCache = currentData;
-    
-    // ذخیره در localStorage برای دسترسی سریع‌تر
-    localStorage.setItem('food_nutrition_cache', JSON.stringify(currentData));
-    
-    // همچنین می‌توانیم به سرور ارسال کنیم (در صورت وجود بک‌اند)
-    console.log(`✅ "${foodName}" به لیست تغذیه اضافه شد.`);
-    return newData;
-}
-
-// ============================================================
-// بارگذاری داده‌های تغذیه‌ای با کش
-// ============================================================
-async function loadNutritionData() {
-    // ابتدا از کش (localStorage) تلاش کن
-    const cached = localStorage.getItem('food_nutrition_cache');
-    if (cached) {
-        try {
-            nutritionDataCache = JSON.parse(cached);
-            return nutritionDataCache;
-        } catch (e) {}
-    }
-
-    // اگر در کش نبود، از فایل بخوان
-    if (nutritionDataCache.length > 0) return nutritionDataCache;
-    try {
-        const response = await fetch('assets/data/food_items.json');
-        const data = await response.json();
-        nutritionDataCache = data;
-        localStorage.setItem('food_nutrition_cache', JSON.stringify(data));
-        return data;
-    } catch (error) {
-        console.warn('⚠️ خطا در بارگذاری food_items.json:', error);
-        return [];
-    }
-}
 // ============================================================
 // مقداردهی اولیه
 // ============================================================
@@ -547,6 +622,8 @@ async function init() {
     initDrawer();
     updateDrawerItems();
 
+    // بارگذاری داده‌های تغذیه‌ای
+    await loadNutritionData();
     await loadData();
     setupEventListeners();
     console.log('✅ صفحه مدیریت مواد غذایی با IndexedDB بارگذاری شد.');
