@@ -1,5 +1,5 @@
 // ============================================================
-// app.js - فایل ورودی اصلی سامانه تدبیر منزل (نسخه نهایی با تعویض وعده و حذف meal-planner)
+// app.js - فایل ورودی اصلی سامانه تدبیر منزل (نسخه نهایی با رفع خطای ۴۲۹ و حذف meal-planner)
 // ============================================================
 
 import { checkAuth, getLoggedInUser, logout, getUserProfile, getUserAvatar } from './modules/auth.js';
@@ -14,6 +14,9 @@ import { getSmartSuggestions } from './modules/ai.js';
 if (typeof puter !== 'undefined') {
     puter.quiet = true;
 }
+
+// ===== پرچم برای جلوگیری از درخواست‌های همزمان در بارگذاری اولیه =====
+let isInitialLoad = true;
 
 // ============================================================
 // 1. PWA: ثبت Service Worker
@@ -156,7 +159,7 @@ function renderChart() {
 }
 
 // ============================================================
-// 6. به‌روزرسانی الگوی مصرف (با AI و Debounce)
+// 6. به‌روزرسانی الگوی مصرف (با Debounce)
 // ============================================================
 let planUpdateTimeout = null;
 
@@ -185,7 +188,7 @@ function updateConsumptionPlan() {
             .then(html => {
                 display.innerHTML = html;
                 attachMealClickEvents();
-                attachSwapEvents(); // اتصال رویدادهای تعویض
+                attachSwapEvents();
                 console.log('✅ الگوی مصرف به‌روزرسانی شد.');
             })
             .catch(err => {
@@ -201,7 +204,7 @@ function updateConsumptionPlan() {
             .finally(() => {
                 planUpdateTimeout = null;
             });
-    }, 500);
+    }, 800); // افزایش delay به ۸۰۰ms برای اطمینان از تجمیع درخواست‌ها
 }
 
 // ============================================================
@@ -542,7 +545,6 @@ function bindDashboardUI() {
         });
     }
 
-    // باز کردن چت‌بات از زیر بخش الگوی مصرف
     const chatbotOpener = document.getElementById('openChatbotForMeal');
     if (chatbotOpener) {
         chatbotOpener.addEventListener('click', () => {
@@ -604,14 +606,22 @@ function initDashboard() {
         .then(data => { window.crisisScenarios = data; })
         .catch(() => { window.crisisScenarios = []; })
         .finally(() => {
+            // ===== بارگذاری اولیه =====
             loadInventory();
+            
+            // ===== بارگذاری مصرف با پرچم =====
+            isInitialLoad = true;
             loadConsumptionData();
+            isInitialLoad = false;
+            
             renderInventoryTable();
             renderChart();
             generateAlerts();
             bindDashboardUI();
             populateScenarioDropdown();
             generateSuggestions();
+            
+            // ===== فقط یک بار در انتها =====
             updateConsumptionPlan();
             updateNutritionAnalysis();
             
@@ -787,27 +797,27 @@ if (currentPath.includes('login.html')) {
 }
 
 // ============================================================
-// 18. شنونده‌های تغییرات store - با Debounce
+// 18. شنونده‌های تغییرات store - با بررسی پرچم isInitialLoad
 // ============================================================
 addListener('inventory', function() {
-    if (window.location.pathname.includes('dashboard.html')) {
+    if (window.location.pathname.includes('dashboard.html') && !isInitialLoad) {
         refreshAll();
     }
 });
 addListener('crisisMode', function() {
-    if (window.location.pathname.includes('dashboard.html')) {
+    if (window.location.pathname.includes('dashboard.html') && !isInitialLoad) {
         refreshAll();
     }
 });
 addListener('consumptionData', function() {
-    if (window.location.pathname.includes('dashboard.html')) {
+    if (window.location.pathname.includes('dashboard.html') && !isInitialLoad) {
         renderChart();
         generateSuggestions();
         updateConsumptionPlan();
     }
 });
 addListener('currentUserProfile', function() {
-    if (window.location.pathname.includes('dashboard.html')) {
+    if (window.location.pathname.includes('dashboard.html') && !isInitialLoad) {
         refreshAll();
     }
 });
