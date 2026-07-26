@@ -1326,3 +1326,45 @@ body.dark-mode .drawer-modern .close-btn:hover {
     color: #f59e0b;
     letter-spacing: 2px;
 }
+/* ===== پیشنهادات غذایی ===== */
+.recipe-card {
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.recipe-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+}
+
+.category-group {
+    padding: 0.5rem 0;
+}
+
+.category-group .grid {
+    gap: 0.75rem;
+}
+
+.feedback-quick-btn {
+    transition: all 0.2s ease;
+}
+
+.feedback-quick-btn:hover {
+    transform: scale(1.02);
+}
+
+.rule-based-suggestion .ai-suggestion {
+    background: linear-gradient(135deg, #f0f7ff, #f5f0ff);
+}
+
+/* دکمه ثبت نظر */
+#submitFeedbackBtn {
+    min-width: 80px;
+}
+
+/* استایل کارت‌ها در موبایل */
+@media (max-width: 640px) {
+    .category-group .grid {
+        grid-template-columns: 1fr;
+    }
+}
