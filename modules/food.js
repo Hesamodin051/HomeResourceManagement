@@ -25,7 +25,6 @@ let nutritionDataCache = [];
 // بارگذاری داده‌های تغذیه‌ای از food_items.json با کش
 // ============================================================
 async function loadNutritionData() {
-    // ابتدا از localStorage (کش) تلاش کن
     const cached = localStorage.getItem('food_nutrition_cache');
     if (cached) {
         try {
@@ -39,7 +38,6 @@ async function loadNutritionData() {
         }
     }
 
-    // اگر در کش نبود، از فایل بخوان
     if (nutritionDataCache.length > 0) return nutritionDataCache;
     try {
         const response = await fetch('assets/data/food_items.json');
@@ -55,7 +53,7 @@ async function loadNutritionData() {
 }
 
 // ============================================================
-// دریافت اطلاعات تغذیه‌ای از هوش مصنوعی
+// دریافت اطلاعات تغذیه‌ای از هوش مصنوعی (اصلاح‌شده)
 // ============================================================
 export async function fetchNutritionFromAI(foodName) {
     try {
@@ -95,13 +93,32 @@ export async function fetchNutritionFromAI(foodName) {
             temperature: 0.1
         });
 
-        // استخراج JSON از پاسخ
-        let jsonText = response;
-        const jsonMatch = response.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            jsonText = jsonMatch[0];
+        // پردازش پاسخ (رشته یا شیء)
+        let responseText = '';
+        if (typeof response === 'string') {
+            responseText = response;
+        } else if (response && typeof response === 'object') {
+            if (response.message && typeof response.message.content === 'string') {
+                responseText = response.message.content;
+            } else if (typeof response.text === 'string') {
+                responseText = response.text;
+            } else if (typeof response.response === 'string') {
+                responseText = response.response;
+            } else {
+                responseText = JSON.stringify(response);
+            }
+        } else {
+            console.warn('⚠️ پاسخ نامعتبر از AI:', response);
+            return null;
         }
 
+        // استخراج JSON از پاسخ
+        let jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            jsonMatch = [responseText];
+        }
+        
+        const jsonText = jsonMatch[0];
         const data = JSON.parse(jsonText);
         console.log(`✅ اطلاعات تغذیه‌ای برای "${foodName}" دریافت شد.`);
         return data;
@@ -115,28 +132,22 @@ export async function fetchNutritionFromAI(foodName) {
 // افزودن یا به‌روزرسانی اطلاعات تغذیه‌ای در کش
 // ============================================================
 export async function updateNutritionData(foodName) {
-    // بارگذاری data فعلی
     const currentData = await loadNutritionData();
-    
-    // بررسی وجود ماده در data
     const existing = currentData.find(item => item.name === foodName);
     if (existing) {
         console.log(`ℹ️ "${foodName}" قبلاً در data تغذیه وجود دارد.`);
         return existing;
     }
 
-    // دریافت از AI
     const newData = await fetchNutritionFromAI(foodName);
     if (!newData) {
         console.warn(`⚠️ اطلاعات "${foodName}" دریافت نشد.`);
         return null;
     }
 
-    // افزودن به آرایه و ذخیره در localStorage (کش)
     currentData.push(newData);
     nutritionDataCache = currentData;
     localStorage.setItem('food_nutrition_cache', JSON.stringify(currentData));
-    
     console.log(`✅ "${foodName}" به لیست تغذیه اضافه شد.`);
     return newData;
 }
@@ -331,7 +342,6 @@ function renderTable() {
         row.insertCell(4).innerText = item.expiry || '—';
         const actions = row.insertCell(5);
         
-        // دکمه دریافت تغذیه (اگر اطلاعات وجود نداشته باشد)
         const nutritionExists = nutritionDataCache.some(n => n.name === item.name);
         const fetchBtn = document.createElement('button');
         fetchBtn.innerHTML = nutritionExists ? '✅' : '📥';
@@ -347,22 +357,31 @@ function renderTable() {
                 this.innerHTML = '⏳';
                 this.disabled = true;
                 
-                const result = await updateNutritionData(name);
-                
-                if (result) {
-                    this.innerHTML = '✅';
-                    this.className = 'nutrition-fetch-btn text-xs px-2 py-1 rounded text-gray-400 cursor-default';
-                    this.disabled = true;
-                    this.title = 'اطلاعات تغذیه دریافت شد';
-                    // به‌روزرسانی تحلیل در داشبورد
-                    if (window.updateNutritionAnalysis) {
-                        window.updateNutritionAnalysis();
+                try {
+                    const result = await updateNutritionData(name);
+                    if (result) {
+                        this.innerHTML = '✅';
+                        this.className = 'nutrition-fetch-btn text-xs px-2 py-1 rounded text-gray-400 cursor-default';
+                        this.disabled = true;
+                        this.title = 'اطلاعات تغذیه دریافت شد';
+                        if (window.updateNutritionAnalysis) {
+                            window.updateNutritionAnalysis();
+                        }
+                        alert(`✅ اطلاعات تغذیه‌ای "${name}" دریافت شد.`);
+                    } else {
+                        this.innerHTML = '❌';
+                        this.disabled = false;
+                        alert(`❌ دریافت اطلاعات برای "${name}" ناموفق بود. لطفاً دوباره تلاش کنید.`);
+                        setTimeout(() => {
+                            this.innerHTML = originalText;
+                            this.disabled = false;
+                        }, 2000);
                     }
-                    alert(`✅ اطلاعات تغذیه‌ای "${name}" دریافت شد.`);
-                } else {
+                } catch (err) {
                     this.innerHTML = '❌';
                     this.disabled = false;
-                    alert(`❌ دریافت اطلاعات برای "${name}" ناموفق بود.`);
+                    alert(`❌ خطا در دریافت اطلاعات برای "${name}".`);
+                    console.error(err);
                     setTimeout(() => {
                         this.innerHTML = originalText;
                         this.disabled = false;
@@ -465,7 +484,6 @@ async function addToHistory(action, item) {
 // راه‌اندازی رویدادها
 // ============================================================
 function setupEventListeners() {
-    // دکمه افزودن دسته
     document.getElementById('addCategoryBtn')?.addEventListener('click', async () => {
         const newCat = document.getElementById('newCategoryName')?.value.trim();
         if (!newCat) {
@@ -492,7 +510,6 @@ function setupEventListeners() {
         }
     });
 
-    // دکمه ذخیره ماده غذایی
     document.getElementById('saveFoodBtn')?.addEventListener('click', async () => {
         const category = document.getElementById('foodCategory')?.value;
         const name = document.getElementById('foodName')?.value?.trim();
@@ -533,7 +550,6 @@ function setupEventListeners() {
         }
     });
 
-    // دکمه پاک کردن فرم
     document.getElementById('clearFormBtn')?.addEventListener('click', () => {
         document.getElementById('foodCategory').value = '';
         document.getElementById('foodName').value = '';
@@ -544,10 +560,8 @@ function setupEventListeners() {
         updateNameSuggestions();
     });
 
-    // دکمه ریست
     document.getElementById('resetDataBtn')?.addEventListener('click', resetOnlyFoodItems);
 
-    // دکمه تاریخچه
     const modal = document.getElementById('historyModal');
     document.getElementById('historyBtn')?.addEventListener('click', async () => {
         const historyDiv = document.getElementById('historyList');
@@ -570,7 +584,6 @@ function setupEventListeners() {
 
     document.getElementById('foodCategory')?.addEventListener('change', updateNameSuggestions);
 
-    // دکمه دریافت تغذیه همه مواد (در صورت وجود)
     document.getElementById('fetchAllNutritionBtn')?.addEventListener('click', async function() {
         const items = foodItems.filter(item => {
             const exists = nutritionDataCache.some(n => n.name === item.name);
@@ -593,14 +606,11 @@ function setupEventListeners() {
             const result = await updateNutritionData(item.name);
             if (result) success++;
             else failed++;
-            // تأخیر کوتاه برای جلوگیری از محدودیت
-            await new Promise(r => setTimeout(r, 500));
+            await new Promise(r => setTimeout(r, 800));
         }
         
         this.disabled = false;
         this.innerHTML = '<i class="fas fa-cloud-download-alt ml-2"></i> دریافت تغذیه همه مواد';
-        
-        // به‌روزرسانی جدول
         renderTable();
         if (window.updateNutritionAnalysis) {
             window.updateNutritionAnalysis();
@@ -622,7 +632,6 @@ async function init() {
     initDrawer();
     updateDrawerItems();
 
-    // بارگذاری داده‌های تغذیه‌ای
     await loadNutritionData();
     await loadData();
     setupEventListeners();
