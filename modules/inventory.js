@@ -2,9 +2,10 @@
 import { store, setInventory } from './store.js';
 import { getLoggedInUser } from './auth.js';
 
+// ===== کلید یکپارچه برای همه کاربران =====
 function getInventoryKey() {
-    // اولویت با کاربر لاگین‌شده از sessionStorage
-    const user = getLoggedInUser() || store.currentUser || 'default';
+    // اولویت: store.currentUser → getLoggedInUser() → default
+    const user = store.currentUser || getLoggedInUser() || 'default';
     return `home_inventory_${user}`;
 }
 
