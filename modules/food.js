@@ -1,12 +1,9 @@
 // modules/food.js
 import { getLoggedInUser } from './auth.js';
 import { initDrawer, updateDrawerItems } from './drawer.js';
-import { getAverageRating } from './feedback.js';
 import {
     getAllCategories,
     addCategory,
-    deleteCategory,
-    updateCategory,
     getAllFoodItems,
     addFoodItem,
     updateFoodItem,
@@ -15,6 +12,7 @@ import {
     getHistory,
     seedDefaultCategories
 } from './db.js';
+import { store, setInventory } from './store.js';
 
 let foodItems = [];
 let categories = [];
@@ -22,17 +20,44 @@ let foodHistory = [];
 let currentEditIndex = null;
 
 // ============================================================
-// بارگذاری داده‌ها از IndexedDB
+// همگام‌سازی داده‌ها با localStorage (برای داشبورد)
+// ============================================================
+function syncInventoryToLocalStorage() {
+    try {
+        const user = getLoggedInUser() || 'default';
+        const key = `home_inventory_${user}`;
+        
+        // تبدیل داده‌های foodItems به فرمت مورد انتظار inventory
+        const inventoryData = foodItems.map(item => ({
+            id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            unit: item.unit,
+            expiry: item.expiry || '',
+            type: item.type || 'normal',
+            category: item.category
+        }));
+        
+        localStorage.setItem(key, JSON.stringify(inventoryData));
+        
+        // به‌روزرسانی store (برای بارگذاری مجدد در داشبورد)
+        if (typeof setInventory === 'function') {
+            setInventory(inventoryData);
+        }
+        
+        console.log('✅ داده‌ها با localStorage همگام شدند. تعداد:', inventoryData.length);
+    } catch (error) {
+        console.error('❌ خطا در همگام‌سازی با localStorage:', error);
+    }
+}
+
+// ============================================================
+// بارگذاری داده‌ها از IndexedDB و همگام‌سازی اولیه
 // ============================================================
 async function loadData() {
     try {
-        // تأخیر کوچک برای اطمینان از باز شدن پایگاه داده
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        // مقداردهی اولیه دسته‌بندی‌ها
         await seedDefaultCategories();
 
-        // دریافت دسته‌بندی‌ها
         const categoriesData = await getAllCategories();
         categories = categoriesData.map(cat => cat.name);
         window.categoryMap = {};
@@ -40,40 +65,31 @@ async function loadData() {
             window.categoryMap[cat.name] = cat.id;
         });
 
-        // دریافت مواد غذایی
         foodItems = await getAllFoodItems();
-
-        // دریافت تاریخچه
         foodHistory = await getHistory(50);
 
-        renderCategoryList();
-        populateCategoryDropdown();
-        renderTable();
-        updateNameSuggestions();
-        console.log('✅ داده‌ها از IndexedDB بارگذاری شدند.');
+        // همگام‌سازی با localStorage (برای داشبورد)
+        syncInventoryToLocalStorage();
+
+        renderAll();
+        console.log('✅ داده‌ها با موفقیت بارگذاری و همگام شدند.');
     } catch (error) {
         console.error('❌ خطا در بارگذاری داده‌ها:', error);
-        // در صورت خطا، از داده‌های خالی استفاده کن
         categories = ['غلات', 'حبوبات', 'لبنیات', 'پروتئین', 'سبزیجات', 'میوه‌ها', 'چاشنی‌ها', 'نان', 'نوشیدنی', 'سایر'];
         foodItems = [];
         foodHistory = [];
-        renderCategoryList();
-        populateCategoryDropdown();
-        renderTable();
-        updateNameSuggestions();
+        renderAll();
     }
 }
 
 // ============================================================
-// تاریخچه تغییرات
+// رندر همه بخش‌ها
 // ============================================================
-async function addToHistory(action, item) {
-    try {
-        await addHistory(action, item);
-        foodHistory = await getHistory(50);
-    } catch (error) {
-        console.error('خطا در ثبت تاریخچه:', error);
-    }
+function renderAll() {
+    renderCategoryList();
+    populateCategoryDropdown();
+    renderTable();
+    updateNameSuggestions();
 }
 
 // ============================================================
@@ -126,7 +142,7 @@ function renderTable() {
         const row = tbody.insertRow();
         const cell = row.insertCell(0);
         cell.colSpan = 6;
-        cell.textContent = 'هیچ ماده غذایی ثبت نشده است. لطفاً ماده غذایی جدید اضافه کنید.';
+        cell.textContent = 'هیچ ماده غذایی ثبت نشده است.';
         cell.style.textAlign = 'center';
         return;
     }
@@ -170,21 +186,16 @@ function updateShoppingSuggestions() {
 }
 
 // ============================================================
-// ویرایش و حذف
+// ویرایش، حذف، افزودن (با همگام‌سازی)
 // ============================================================
 function editItem(index) {
     const item = foodItems[index];
     if (!item) return;
-    const catSelect = document.getElementById('foodCategory');
-    const nameInput = document.getElementById('foodName');
-    const qtyInput = document.getElementById('foodQty');
-    const unitSelect = document.getElementById('foodUnit');
-    const expiryInput = document.getElementById('foodExpiry');
-    if (catSelect) catSelect.value = item.category;
-    if (nameInput) nameInput.value = item.name;
-    if (qtyInput) qtyInput.value = item.quantity;
-    if (unitSelect) unitSelect.value = item.unit;
-    if (expiryInput) expiryInput.value = item.expiry || '';
+    document.getElementById('foodCategory').value = item.category;
+    document.getElementById('foodName').value = item.name;
+    document.getElementById('foodQty').value = item.quantity;
+    document.getElementById('foodUnit').value = item.unit;
+    document.getElementById('foodExpiry').value = item.expiry || '';
     currentEditIndex = index;
     updateNameSuggestions();
 }
@@ -198,8 +209,11 @@ async function deleteItem(index, silent = false) {
         foodItems.splice(index, 1);
         if (!silent) await addToHistory('حذف', deleted);
         if (currentEditIndex === index) currentEditIndex = null;
-        renderTable();
-        updateNameSuggestions();
+        
+        // همگام‌سازی با localStorage
+        syncInventoryToLocalStorage();
+        
+        renderAll();
     } catch (error) {
         console.error('خطا در حذف:', error);
         alert('خطا در حذف ماده غذایی.');
@@ -207,7 +221,7 @@ async function deleteItem(index, silent = false) {
 }
 
 async function resetOnlyFoodItems() {
-    if (confirm('آیا مطمئن هستید؟ تمام مواد غذایی ثبت شده و تاریخچه حذف خواهند شد، اما دسته‌بندی‌ها باقی می‌مانند.')) {
+    if (confirm('آیا مطمئن هستید؟ تمام مواد غذایی ثبت شده و تاریخچه حذف خواهند شد.')) {
         try {
             for (const item of foodItems) {
                 await deleteFoodItem(item.id);
@@ -215,8 +229,11 @@ async function resetOnlyFoodItems() {
             foodItems = [];
             await clearHistory();
             foodHistory = [];
-            renderTable();
-            updateNameSuggestions();
+            
+            // همگام‌سازی با localStorage
+            syncInventoryToLocalStorage();
+            
+            renderAll();
             alert('تمام مواد غذایی و تاریخچه پاک شدند.');
         } catch (error) {
             console.error('خطا در ریست:', error);
@@ -226,21 +243,7 @@ async function resetOnlyFoodItems() {
 }
 
 // ============================================================
-// تحلیل ارزش غذایی
-// ============================================================
-export function analyzeInventoryNutrition() {
-    return {
-        calories: 0,
-        protein: 0,
-        carbs: 0,
-        fat: 0,
-        fiber: 0,
-        vitamins: {}
-    };
-}
-
-// ============================================================
-// راه‌اندازی اولیه
+// راه‌اندازی رویدادها
 // ============================================================
 function setupEventListeners() {
     // دکمه افزودن دسته
@@ -257,12 +260,16 @@ function setupEventListeners() {
         try {
             await addCategory(newCat);
             categories.push(newCat);
-            renderCategoryList();
-            populateCategoryDropdown();
+            const categoriesData = await getAllCategories();
+            window.categoryMap = {};
+            categoriesData.forEach(cat => {
+                window.categoryMap[cat.name] = cat.id;
+            });
+            renderAll();
             document.getElementById('newCategoryName').value = '';
             alert(`دسته "${newCat}" اضافه شد.`);
         } catch (error) {
-            alert(error.message);
+            alert('خطا در افزودن دسته: ' + error.message);
         }
     });
 
@@ -294,9 +301,13 @@ function setupEventListeners() {
                 await addToHistory('افزودن', newItem);
             }
             
-            renderTable();
-            updateNameSuggestions();
+            // همگام‌سازی با localStorage
+            syncInventoryToLocalStorage();
+            
+            renderAll();
             document.getElementById('clearFormBtn')?.click();
+            
+            // به‌روزرسانی داشبورد (اگر باز باشد)
             if (window.updateNutritionAnalysis) {
                 window.updateNutritionAnalysis();
             }
@@ -345,6 +356,34 @@ function setupEventListeners() {
 }
 
 // ============================================================
+// تاریخچه تغییرات
+// ============================================================
+async function addToHistory(action, item) {
+    try {
+        await addHistory(action, item);
+        foodHistory = await getHistory(50);
+    } catch (error) {
+        console.error('خطا در ثبت تاریخچه:', error);
+    }
+}
+
+// ============================================================
+// تحلیل ارزش غذایی
+// ============================================================
+export function analyzeInventoryNutrition() {
+    // این تابع برای داشبورد است و داده‌ها را از localStorage می‌خواند
+    // فعلاً یک خروجی ساده برمی‌گردانیم
+    return {
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        fiber: 0,
+        vitamins: {}
+    };
+}
+
+// ============================================================
 // مقداردهی اولیه
 // ============================================================
 async function init() {
@@ -358,7 +397,6 @@ async function init() {
 
     await loadData();
     setupEventListeners();
-
     console.log('✅ صفحه مدیریت مواد غذایی با IndexedDB بارگذاری شد.');
 }
 
