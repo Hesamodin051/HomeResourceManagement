@@ -1,9 +1,17 @@
+// energy.js
 import { getLoggedInUser } from './modules/auth.js';
-import { initDrawer, updateDrawerItems } from './drawer.js';
+import { initDrawer, updateDrawerItems } from './modules/drawer.js';
 
-const STORAGE_METER = 'meter_readings';
-const STORAGE_SETTINGS = 'energy_settings';
+// ===== کلیدهای ذخیره‌سازی وابسته به کاربر =====
+function getUserKey(baseKey) {
+    const user = getLoggedInUser() || 'default';
+    return `${baseKey}_${user}`;
+}
 
+function getMeterKey() { return getUserKey('meter_readings'); }
+function getSettingsKey() { return getUserKey('energy_settings'); }
+
+// ===== متغیرها و تنظیمات =====
 let meterReadings = [];
 let dailyConsumption = [];
 let chartInstance = null;
@@ -22,8 +30,9 @@ let settings = {
     waterUnit: 'liter'
 };
 
+// ===== بارگذاری تنظیمات =====
 function loadSettings() {
-    const stored = localStorage.getItem(STORAGE_SETTINGS);
+    const stored = localStorage.getItem(getSettingsKey());
     if (stored) {
         const saved = JSON.parse(stored);
         settings.waterPrice = (saved.waterPrice && saved.waterPrice !== 0) ? saved.waterPrice : DEFAULT_WATER_PRICE;
@@ -38,7 +47,7 @@ function loadSettings() {
         settings.electricityPrice = DEFAULT_ELECTRICITY_PRICE;
         settings.gasPrice = DEFAULT_GAS_PRICE;
     }
-    // اعمال مقادیر به المان‌ها (با بررسی وجود آن‌ها)
+    // اعمال مقادیر به المان‌ها
     const waterThresholdEl = document.getElementById('waterThreshold');
     if (waterThresholdEl) waterThresholdEl.value = settings.waterThreshold;
     const elecThresholdEl = document.getElementById('electricityThreshold');
@@ -73,7 +82,7 @@ function saveManualSettings() {
     settings.gasPrice = gasPrice;
     settings.waterUnit = document.getElementById('waterUnit').value;
     
-    localStorage.setItem(STORAGE_SETTINGS, JSON.stringify(settings));
+    localStorage.setItem(getSettingsKey(), JSON.stringify(settings));
     document.getElementById('waterPrice').disabled = true;
     document.getElementById('electricityPrice').disabled = true;
     document.getElementById('gasPrice').disabled = true;
@@ -93,8 +102,9 @@ function enableManualEdit() {
     document.getElementById('enableManualPriceBtn').style.display = 'none';
 }
 
+// ===== بارگذاری داده‌های کنتور =====
 function loadMeterData() {
-    const stored = localStorage.getItem(STORAGE_METER);
+    const stored = localStorage.getItem(getMeterKey());
     meterReadings = stored ? JSON.parse(stored) : [];
     calculateDailyConsumption();
     renderHistory();
@@ -103,7 +113,7 @@ function loadMeterData() {
 }
 
 function saveMeterData() {
-    localStorage.setItem(STORAGE_METER, JSON.stringify(meterReadings));
+    localStorage.setItem(getMeterKey(), JSON.stringify(meterReadings));
 }
 
 function calculateDailyConsumption() {
@@ -136,6 +146,7 @@ function validateIncreasing(current, previous, type) {
     return true;
 }
 
+// ===== رندر تاریخچه =====
 function renderHistory() {
     const container = document.getElementById('meterHistoryList');
     if (!container) return;
@@ -180,6 +191,7 @@ function deleteReading(date, silent = false) {
     if (document.getElementById('consumptionTableContainer').style.display === 'block') showConsumptionTable();
 }
 
+// ===== ذخیره کنتور =====
 function saveMeterReading() {
     try {
         const date = document.getElementById('meterDate').value;
@@ -241,6 +253,7 @@ function resetAllData() {
     }
 }
 
+// ===== نمودار =====
 function getWeekNumber(date) {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
@@ -332,6 +345,7 @@ function updateChartByPeriod() {
     renderChartByPeriod(period, chartType);
 }
 
+// ===== پیش‌بینی قبض =====
 function calculateBillPrediction() {
     const display = document.getElementById('billPredictionDisplay');
     if (!display) return;
@@ -367,6 +381,7 @@ function calculateBillPrediction() {
     `;
 }
 
+// ===== جدول مصرف =====
 function showConsumptionTable() {
     const start = document.getElementById('startDate').value;
     const end = document.getElementById('endDate').value;
@@ -434,6 +449,7 @@ function exportToCSV() {
     document.body.removeChild(link);
 }
 
+// ===== اتصال رویدادها =====
 function bindEvents() {
     const saveBtn = document.getElementById('saveMeterBtn');
     if (saveBtn) saveBtn.addEventListener('click', saveMeterReading);
@@ -459,7 +475,7 @@ function bindEvents() {
         const el = document.getElementById(id);
         if (el) el.addEventListener('change', () => {
             settings[id] = parseFloat(el.value) || 0;
-            localStorage.setItem(STORAGE_SETTINGS, JSON.stringify(settings));
+            localStorage.setItem(getSettingsKey(), JSON.stringify(settings));
         });
     });
 }
@@ -476,7 +492,7 @@ function setDefaultRangeDates() {
     }
 }
 
-// راه‌اندازی با اطمینان از آماده بودن DOM
+// ===== راه‌اندازی =====
 function init() {
     if (!getLoggedInUser()) {
         window.location.href = 'index.html';
