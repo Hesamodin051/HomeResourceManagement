@@ -21,7 +21,6 @@ export async function generateConsumptionPlan(days = 7, startDate = null) {
     const inventory = getInventory();
     const crisisMode = store.crisisMode;
 
-    // اگر موجودی خالی است
     if (inventory.length === 0) {
         return `
             <div class="text-center text-gray-400 py-8">
@@ -32,17 +31,14 @@ export async function generateConsumptionPlan(days = 7, startDate = null) {
         `;
     }
 
-    // اگر AI در دسترس نباشد، از برنامه‌ی پیش‌فرض استفاده کن
     if (!isOnline()) {
         return generateFallbackPlan(days, familySize);
     }
 
-    // ساخت لیست موجودی برای AI
     const inventoryList = inventory.map(item => 
         `- ${item.name}: ${item.quantity} ${item.unit}${item.expiry ? ' (انقضا: ' + item.expiry + ')' : ''}`
     ).join('\n');
 
-    // ===== پرامپت دقیق برای AI =====
     const prompt = `
 شما یک دستیار هوشمند مدیریت منابع خانگی هستید. 
 بر اساس موجودی زیر، یک برنامه مصرف ${days} روزه برای خانواده ${familySize} نفره تهیه کن.
@@ -88,7 +84,6 @@ ${crisisMode ? '⚠️ حالت بحران فعال است. مصرف را به �
             result = 'پاسخی دریافت نشد.';
         }
 
-        // ===== پردازش پاسخ AI و تبدیل به کارت‌های تعاملی =====
         return processAIResponseToCards(result, days, familySize);
 
     } catch (error) {
@@ -98,7 +93,7 @@ ${crisisMode ? '⚠️ حالت بحران فعال است. مصرف را به �
 }
 
 // ============================================================
-// پردازش پاسخ AI به کارت‌های تعاملی
+// پردازش پاسخ AI به کارت‌های تعاملی (با دکمه تعویض)
 // ============================================================
 function processAIResponseToCards(aiResponse, days, familySize) {
     const lines = aiResponse.split('\n').filter(line => line.trim() !== '');
@@ -111,7 +106,6 @@ function processAIResponseToCards(aiResponse, days, familySize) {
     let currentMeals = {};
 
     for (let line of lines) {
-        // تشخیص روز (مثلاً "روز ۱ (شنبه):")
         const dayMatch = line.match(/روز\s*(\d+)\s*\(([^)]+)\)/);
         if (dayMatch) {
             if (currentDay !== null) {
@@ -121,7 +115,6 @@ function processAIResponseToCards(aiResponse, days, familySize) {
             currentMeals = {};
             continue;
         }
-        // تشخیص وعده (مثلاً "صبحانه: [نام غذا]")
         const mealMatch = line.match(/(صبحانه|ناهار|شام)\s*:\s*(.+)/);
         if (mealMatch && currentDay !== null) {
             const type = mealMatch[1];
@@ -133,15 +126,12 @@ function processAIResponseToCards(aiResponse, days, familySize) {
         plan.push({ day: currentDay, meals: { ...currentMeals } });
     }
 
-    // اگر برنامه‌ای ساخته نشد، از داده‌های پیش‌فرض استفاده کن
     if (plan.length === 0) {
         return generateFallbackPlan(days, familySize);
     }
 
-    // ذخیره برنامه برای استفاده در رویدادها
     window.currentPlanData = { plan, maxDays: plan.length };
 
-    // ===== ساخت HTML کارت‌ها =====
     let html = `
         <div class="consumption-plan">
             <div class="flex justify-between items-center mb-4">
@@ -167,10 +157,16 @@ function processAIResponseToCards(aiResponse, days, familySize) {
             const meal = day.meals[type];
             if (meal) {
                 html += `
-                    <div class="meal-item cursor-pointer hover:bg-blue-50 p-1 rounded transition-colors flex justify-between items-center" 
+                    <div class="meal-item flex justify-between items-center p-1 rounded hover:bg-blue-50 transition-colors" 
                          data-day-index="${idx}" data-meal-type="${type}" data-meal-name="${meal.name}">
                         <span><span class="font-medium">${mealIcons[type]} ${type}:</span> ${meal.name}</span>
-                        <span class="text-xs text-gray-400">⏱️ ${meal.cook_time || '?'} دقیقه</span>
+                        <div class="flex items-center gap-1">
+                            <span class="text-xs text-gray-400">⏱️ ${meal.cook_time || '?'} دقیقه</span>
+                            <button class="swap-meal-btn text-xs text-blue-500 hover:text-blue-700 ml-1" 
+                                    data-day="${idx}" data-meal="${type}" data-current="${meal.name}">
+                                <i class="fas fa-exchange-alt"></i>
+                            </button>
+                        </div>
                     </div>
                 `;
             } else {
@@ -197,7 +193,7 @@ function processAIResponseToCards(aiResponse, days, familySize) {
 }
 
 // ============================================================
-// برنامه پیش‌فرض (در صورت عدم دسترسی به AI)
+// برنامه پیش‌فرض (در صورت عدم دسترسی به AI) - با دکمه تعویض
 // ============================================================
 function generateFallbackPlan(days, familySize) {
     const daysOfWeek = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
@@ -250,10 +246,16 @@ function generateFallbackPlan(days, familySize) {
         ['صبحانه', 'ناهار', 'شام'].forEach(type => {
             const meal = day.meals[type];
             html += `
-                <div class="meal-item cursor-pointer hover:bg-blue-50 p-1 rounded transition-colors flex justify-between items-center" 
+                <div class="meal-item flex justify-between items-center p-1 rounded hover:bg-blue-50 transition-colors" 
                      data-day-index="${idx}" data-meal-type="${type}" data-meal-name="${meal.name}">
                     <span><span class="font-medium">${mealIcons[type]} ${type}:</span> ${meal.name}</span>
-                    <span class="text-xs text-gray-400">⏱️ ${meal.cook_time} دقیقه</span>
+                    <div class="flex items-center gap-1">
+                        <span class="text-xs text-gray-400">⏱️ ${meal.cook_time} دقیقه</span>
+                        <button class="swap-meal-btn text-xs text-blue-500 hover:text-blue-700 ml-1" 
+                                data-day="${idx}" data-meal="${type}" data-current="${meal.name}">
+                            <i class="fas fa-exchange-alt"></i>
+                        </button>
+                    </div>
                 </div>
             `;
         });
