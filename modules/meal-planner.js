@@ -8,7 +8,7 @@ const CACHE_DURATION = 60000;
 let currentSuggestionResult = null;
 
 // ============================================================
-// تولید پیشنهادات (نسخه مقاوم)
+// تولید پیشنهادات (نسخه نهایی - بدون وابستگی به plan)
 // ============================================================
 export async function generateMealSuggestions(forceRefresh = false) {
     const display = document.getElementById('mealSuggestionsDisplay');
@@ -34,7 +34,7 @@ export async function generateMealSuggestions(forceRefresh = false) {
     try {
         const result = await getMealSuggestions();
         
-        // ===== بررسی وجود نتیجه =====
+        // بررسی وجود نتیجه
         if (!result) {
             display.innerHTML = `
                 <div class="text-center text-gray-400 py-8">
@@ -45,18 +45,18 @@ export async function generateMealSuggestions(forceRefresh = false) {
             return;
         }
 
-        // ===== اطمینان از وجود ساختارهای مورد نیاز =====
+        // ساخت یک شیء امن با مقادیر پیش‌فرض
         const safeResult = {
             type: result.type || 'rule-based',
-            available: result.available || [],
-            unavailable: result.unavailable || [],
-            crisisMode: result.crisisMode || false,
-            plan: result.plan || [],
+            available: Array.isArray(result.available) ? result.available : [],
+            unavailable: Array.isArray(result.unavailable) ? result.unavailable : [],
+            crisisMode: !!result.crisisMode,
             content: result.content || '',
             message: result.message || '',
             totalRecipes: result.totalRecipes || 0
         };
 
+        // حذف هر گونه وابستگی به plan
         currentSuggestionResult = safeResult;
         cachedSuggestions = safeResult;
         lastFetchTime = now;
@@ -105,17 +105,9 @@ export async function rewriteSuggestionsWithFeedback(userFeedback) {
 // ============================================================
 function getCategoryIcon(category) {
     const icons = {
-        'خورش': '🍲',
-        'پلو': '🍚',
-        'آش': '🥣',
-        'کباب': '🥩',
-        'شیرینی': '🍰',
-        'پاستا': '🍝',
-        'صبحانه': '🍳',
-        'سالاد': '🥗',
-        'نوشیدنی': '🥤',
-        'نان': '🍞',
-        'سایر': '📌'
+        'خورش': '🍲', 'پلو': '🍚', 'آش': '🥣', 'کباب': '🥩',
+        'شیرینی': '🍰', 'پاستا': '🍝', 'صبحانه': '🍳', 'سالاد': '🥗',
+        'نوشیدنی': '🥤', 'نان': '🍞', 'سایر': '📌'
     };
     return icons[category] || '🍽️';
 }
@@ -125,28 +117,23 @@ function getCategoryIcon(category) {
 // ============================================================
 function getCategoryColor(category) {
     const colors = {
-        'خورش': 'border-red-400',
-        'پلو': 'border-yellow-400',
-        'آش': 'border-orange-400',
-        'کباب': 'border-pink-400',
-        'شیرینی': 'border-purple-400',
-        'پاستا': 'border-blue-400',
-        'صبحانه': 'border-green-400',
-        'سالاد': 'border-emerald-400',
-        'نوشیدنی': 'border-cyan-400',
-        'نان': 'border-amber-400'
+        'خورش': 'border-red-400', 'پلو': 'border-yellow-400',
+        'آش': 'border-orange-400', 'کباب': 'border-pink-400',
+        'شیرینی': 'border-purple-400', 'پاستا': 'border-blue-400',
+        'صبحانه': 'border-green-400', 'سالاد': 'border-emerald-400',
+        'نوشیدنی': 'border-cyan-400', 'نان': 'border-amber-400'
     };
     return colors[category] || 'border-gray-400';
 }
 
 // ============================================================
-// رندر اصلی (با مدیریت کامل خطا)
+// رندر اصلی (بدون دسترسی به plan)
 // ============================================================
 function renderMealSuggestions(result) {
     const display = document.getElementById('mealSuggestionsDisplay');
     if (!display) return;
 
-    // ===== بررسی وجود نتیجه =====
+    // بررسی وجود نتیجه
     if (!result) {
         display.innerHTML = `
             <div class="text-center text-gray-400 py-8">
@@ -200,7 +187,7 @@ function renderMealSuggestions(result) {
         const unavailable = result.unavailable || [];
         const crisisMode = result.crisisMode || false;
         
-        // ===== گروه‌بندی بر اساس دسته =====
+        // گروه‌بندی بر اساس دسته
         const grouped = {};
         available.forEach(recipe => {
             const cat = recipe.category || 'سایر';
@@ -230,7 +217,7 @@ function renderMealSuggestions(result) {
             return;
         }
 
-        // ===== نمایش غذاها به‌صورت دسته‌بندی‌شده =====
+        // نمایش غذاها به‌صورت دسته‌بندی‌شده
         html += `<div class="space-y-5">`;
         Object.keys(grouped).forEach(category => {
             const recipes = grouped[category];
@@ -285,7 +272,7 @@ function renderMealSuggestions(result) {
         });
         html += `</div>`;
 
-        // ===== پیشنهاد خرید =====
+        // پیشنهاد خرید
         if (unavailable.length > 0) {
             const missingIngredients = {};
             unavailable.slice(0, 5).forEach(r => {
@@ -314,7 +301,7 @@ function renderMealSuggestions(result) {
             }
         }
 
-        // ===== بخش بازخورد =====
+        // بخش بازخورد
         html += `
             <div class="mt-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
                 <div class="flex items-center gap-2 mb-2">
@@ -322,10 +309,10 @@ function renderMealSuggestions(result) {
                     <span class="text-sm font-medium text-gray-700">نظر شما</span>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <button class="feedback-quick-btn text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full hover:bg-green-200 transition-colors" data-feedback="عالی بود">عالی بود</button>
-                    <button class="feedback-quick-btn text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full hover:bg-blue-200 transition-colors" data-feedback="خوب است">خوب است</button>
-                    <button class="feedback-quick-btn text-xs bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full hover:bg-yellow-200 transition-colors" data-feedback="متوسط">متوسط</button>
-                    <button class="feedback-quick-btn text-xs bg-red-100 text-red-700 px-3 py-1 rounded-full hover:bg-red-200 transition-colors" data-feedback="نیاز به بهبود">نیاز به بهبود</button>
+                    <button class="feedback-quick-btn text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full hover:bg-green-200" data-feedback="عالی بود">عالی بود</button>
+                    <button class="feedback-quick-btn text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full hover:bg-blue-200" data-feedback="خوب است">خوب است</button>
+                    <button class="feedback-quick-btn text-xs bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full hover:bg-yellow-200" data-feedback="متوسط">متوسط</button>
+                    <button class="feedback-quick-btn text-xs bg-red-100 text-red-700 px-3 py-1 rounded-full hover:bg-red-200" data-feedback="نیاز به بهبود">نیاز به بهبود</button>
                 </div>
                 <div class="mt-2 flex gap-2">
                     <input type="text" id="customFeedbackInput" class="input-modern text-sm flex-1" placeholder="نظر خود را بنویسید..." />
@@ -353,7 +340,7 @@ function renderMealSuggestions(result) {
         html += `</div>`;
         display.innerHTML = html;
 
-        // ===== رویدادهای تعاملی =====
+        // رویدادهای تعاملی
         setupInteractiveEvents();
     }
 }
@@ -362,7 +349,6 @@ function renderMealSuggestions(result) {
 // رویدادهای تعاملی
 // ============================================================
 function setupInteractiveEvents() {
-    // بازخورد سریع
     document.querySelectorAll('.feedback-quick-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const feedback = this.dataset.feedback;
@@ -374,7 +360,6 @@ function setupInteractiveEvents() {
         });
     });
 
-    // ثبت نظر
     document.getElementById('submitFeedbackBtn')?.addEventListener('click', async function() {
         const input = document.getElementById('customFeedbackInput');
         const feedback = input.value.trim();
@@ -392,7 +377,6 @@ function setupInteractiveEvents() {
         input.value = '';
     });
 
-    // دکمه بازخورد روی کارت
     document.querySelectorAll('.feedback-btn').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -405,7 +389,6 @@ function setupInteractiveEvents() {
         });
     });
 
-    // کلیک روی کارت
     document.querySelectorAll('.recipe-card').forEach(card => {
         card.addEventListener('click', function() {
             try {
