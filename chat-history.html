@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تاریخچه چت | سامانه تدبیر منزل</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://js.puter.com/v2/"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 'vazir': ['Vazirmatn', 'sans-serif'] },
+                    colors: { 'primary': '#0f172a', 'secondary': '#3b82f6', 'accent': '#f59e0b' }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="font-vazir bg-gray-50 min-h-screen">
+
+    <!-- ===== هدر ===== -->
+    <header class="glass-header sticky top-0 z-50 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-clock-rotate-left text-2xl text-secondary"></i>
+                <h1 class="text-xl font-bold text-primary">تاریخچه مکالمات</h1>
+            </div>
+            <div class="hamburger-menu cursor-pointer" id="hamburgerMenu">
+                <i class="fas fa-bars text-2xl text-gray-700"></i>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-6">
+
+        <div class="flex justify-between items-center mb-6">
+            <p class="text-sm text-gray-500">تعداد پیام‌ها: <span id="messageCount">۰</span></p>
+            <button id="clearHistoryBtn" class="btn-danger !py-1 !px-4 text-sm"><i class="fas fa-trash-can ml-2"></i> پاک کردن تاریخچه</button>
+        </div>
+
+        <div id="historyList" class="space-y-3">
+            <div class="card-modern p-8 text-center text-gray-400">
+                <i class="fas fa-comments text-5xl mb-3 block"></i>
+                <p>هنوز هیچ مکالمه‌ای ثبت نشده است.</p>
+                <p class="text-sm mt-2">با چت‌بات گفتگو کنید تا تاریخچه در اینجا نمایش داده شود.</p>
+            </div>
+        </div>
+
+        <div class="mt-6 text-center"><a href="dashboard.html" class="btn-gradient"><i class="fas fa-arrow-right ml-2"></i> بازگشت به داشبورد</a></div>
+
+    </main>
+
+    <!-- ===== منوی کشو ===== -->
+    <div id="drawer" class="drawer-modern">
+        <div class="flex justify-between items-center mb-6">
+            <span class="text-lg font-bold text-primary">منو</span>
+            <button id="closeDrawerBtn" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        <div id="drawerItems" class="space-y-2"></div>
+    </div>
+    <div id="drawerBackdrop"></div>
+
+    <!-- ===== ویجت چت‌بات ===== -->
+    <div id="chatbotWidget">
+        <button class="chatbot-fab" id="chatbotFab" aria-label="دستیار هوشمند">
+            <i class="fas fa-robot"></i>
+            <span class="badge" id="chatbotBadge" style="display:none;">1</span>
+        </button>
+        <div class="chatbot-window" id="chatbotWindow">
+            <div class="chatbot-header">
+                <div class="title"><span class="icon">🤖</span> دستیار هوشمند تدبیر</div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div class="status"><span class="dot"></span><span>آنلاین</span></div>
+                    <button class="close-btn" id="chatbotCloseBtn"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <div class="chatbot-messages" id="chatbotMessages">
+                <div class="message assistant">سلام! 👋 من دستیار هوشمند سامانه‌ی تدبیر منزل هستم. سوال خود را بپرسید! 😊<span class="time">اکنون</span></div>
+                <div class="typing-indicator" id="typingIndicator"><span></span><span></span><span></span></div>
+            </div>
+            <div class="chatbot-quick-suggestions" id="quickSuggestions">
+                <button data-question="وضعیت ذخایر من چگونه است؟">📊 وضعیت ذخایر</button>
+                <button data-question="چطور مصرف آب را کاهش دهم؟">💧 کاهش مصرف آب</button>
+                <button data-question="برای بحران چه کنم؟">⚠️ راهنمای بحران</button>
+                <button data-question="یک برنامه غذایی پیشنهاد بده">🍲 برنامه غذایی</button>
+            </div>
+            <div class="chatbot-input">
+                <textarea id="chatbotInput" rows="1" placeholder="پیام خود را بنویسید..."></textarea>
+                <button class="send-btn" id="chatbotSendBtn"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== اسکریپت‌ها ===== -->
+    <script src="chatbot-widget.js"></script>
+    <script src="menu.js"></script>
+    <script>
+        function loadChatHistory() {
+            const container = document.getElementById('historyList');
+            const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
+            const countSpan = document.getElementById('messageCount');
+            if (history.length === 0) {
+                container.innerHTML = `<div class="card-modern p-8 text-center text-gray-400"><i class="fas fa-comments text-5xl mb-3 block"></i><p>هنوز هیچ مکالمه‌ای ثبت نشده است.</p><p class="text-sm mt-2">با چت‌بات گفتگو کنید تا تاریخچه در اینجا نمایش داده شود.</p></div>`;
+                countSpan.textContent = '۰';
+                return;
+            }
+            countSpan.textContent = history.length;
+            const grouped = {};
+            history.forEach(msg => {
+                const date = new Date(msg.timestamp).toLocaleDateString('fa-IR');
+                if (!grouped[date]) grouped[date] = [];
+                grouped[date].push(msg);
+            });
+            let html = '';
+            Object.keys(grouped).forEach(date => {
+                html += `<div class="mb-4"><h3 class="text-sm font-bold text-gray-500 mb-2">${date}</h3>`;
+                grouped[date].forEach(msg => {
+                    const time = new Date(msg.timestamp).toLocaleTimeString('fa-IR');
+                    const role = msg.role === 'user' ? 'شما' : 'دستیار';
+                    const roleClass = msg.role === 'user' ? 'text-blue-600' : 'text-purple-600';
+                    html += `<div class="card-modern p-3 mb-2 border-r-4 ${msg.role === 'user' ? 'border-blue-500' : 'border-purple-500'}">
+                        <div class="flex justify-between items-start"><span class="font-bold ${roleClass}">${role}</span><span class="text-xs text-gray-400">${time}</span></div>
+                        <p class="text-sm text-gray-700 mt-1">${msg.content.replace(/\n/g, '<br>')}</p>
+                    </div>`;
+                });
+                html += `</div>`;
+            });
+            container.innerHTML = html;
+        }
+        document.getElementById('clearHistoryBtn').addEventListener('click', function() {
+            if (!confirm('آیا از پاک کردن تمام تاریخچه مکالمات اطمینان دارید؟')) return;
+            localStorage.removeItem('chat_history');
+            if (window.Chatbot && window.Chatbot.clearHistory) window.Chatbot.clearHistory();
+            loadChatHistory();
+            alert('✅ تاریخچه با موفقیت پاک شد.');
+        });
+        document.addEventListener('DOMContentLoaded', loadChatHistory);
+    </script>
+</body>
+</html>
