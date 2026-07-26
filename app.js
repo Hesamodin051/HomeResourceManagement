@@ -326,17 +326,26 @@ async function swapMeal(dayIndex, mealType, currentName) {
         const select = document.getElementById('mealSwapSelect');
         const selected = select.value;
         let newMealName = '';
-        if (selected === '__chatbot__') {
-            const chatbotMsg = `یک غذای مناسب برای وعده ${mealType} با توجه به مواد موجود در انبار (${foodNames.join('، ')}) پیشنهاد بده. فقط نام غذا را بگو.`;
-            try {
-                const { sendMessage } = await import('./modules/chatbot.js');
-                const reply = await sendMessage(chatbotMsg);
-                newMealName = reply.replace(/^[^\n]*\n/, '').trim();
-                if (!newMealName || newMealName.length < 2) newMealName = 'غذای ساده';
-            } catch (e) {
-                alert('خطا در دریافت پیشنهاد از چت‌بات. لطفاً دستی وارد کنید.');
-                return;
-            }
+    // در app.js - درون تابع swapMeal
+// بخش مربوط به '__chatbot__'
+
+if (selected === '__chatbot__') {
+    const inventory = store.inventory || [];
+    const inventoryList = inventory.map(item => 
+        `- ${item.name}: ${item.quantity} ${item.unit}`
+    ).join('\n');
+    const familySize = getFamilySize();
+    
+    try {
+        const { getAlternativeMealAI } = await import('./modules/ai-fallback.js');
+        newMealName = await getAlternativeMealAI(mealType, inventoryList, familySize);
+        if (!newMealName || newMealName.length < 2) newMealName = 'غذای ساده';
+    } catch (e) {
+        console.error('❌ خطا در دریافت پیشنهاد از jsllm7:', e);
+        alert('خطا در دریافت پیشنهاد. لطفاً دستی وارد کنید.');
+        return;
+    }
+}
         } else if (selected === '__custom__') {
             newMealName = prompt('نام غذای جدید را وارد کنید:');
             if (!newMealName) return;
