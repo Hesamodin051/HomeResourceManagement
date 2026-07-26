@@ -155,7 +155,7 @@ function renderChart() {
 }
 
 // ============================================================
-// 6. به‌روزرسانی الگوی مصرف (با AI)
+// 6. به‌روزرسانی الگوی مصرف (با AI) - اصلاح شده
 // ============================================================
 function updateConsumptionPlan() {
     const display = document.getElementById('consumptionPlanDisplay');
@@ -173,26 +173,28 @@ function updateConsumptionPlan() {
         </div>
     `;
     
-    generateConsumptionPlan(days)
-        .then(html => {
-            display.innerHTML = html;
-            attachMealClickEvents();
-            console.log('✅ الگوی مصرف با AI به‌روزرسانی شد.');
-        })
-        .catch(err => {
-            console.error('❌ خطا در به‌روزرسانی الگوی مصرف:', err);
-            display.innerHTML = `
-                <div class="text-center text-red-400 py-4">
-                    <i class="fas fa-exclamation-triangle text-3xl block mb-2"></i>
-                    خطا در دریافت برنامه هوشمند.
-                    <br><span class="text-xs text-gray-400">${err.message || ''}</span>
-                </div>
-            `;
-        });
+    // بارگذاری مجدد موجودی از localStorage برای اطمینان
+    import('./modules/inventory.js').then(({ loadInventory }) => {
+        loadInventory();
+        return generateConsumptionPlan(days);
+    }).then(html => {
+        display.innerHTML = html;
+        attachMealClickEvents();
+        console.log('✅ الگوی مصرف با AI به‌روزرسانی شد.');
+    }).catch(err => {
+        console.error('❌ خطا در به‌روزرسانی الگوی مصرف:', err);
+        display.innerHTML = `
+            <div class="text-center text-red-400 py-4">
+                <i class="fas fa-exclamation-triangle text-3xl block mb-2"></i>
+                خطا در دریافت برنامه هوشمند.
+                <br><span class="text-xs text-gray-400">${err.message || ''}</span>
+            </div>
+        `;
+    });
 }
 
 // ============================================================
-// 7. تحلیل ارزش غذایی هوشمند
+// 7. تحلیل ارزش غذایی هوشمند - اصلاح شده
 // ============================================================
 async function updateNutritionAnalysis() {
     const display = document.getElementById('nutritionDisplay');
@@ -201,6 +203,10 @@ async function updateNutritionAnalysis() {
     display.innerHTML = `<div class="text-center text-gray-400 py-4"><i class="fas fa-spinner fa-spin text-2xl"></i> در حال تحلیل...</div>`;
     
     try {
+        // بارگذاری مجدد موجودی
+        const { loadInventory } = await import('./modules/inventory.js');
+        loadInventory();
+        
         const { analyzeInventoryNutrition } = await import('./modules/food.js');
         const result = await analyzeInventoryNutrition();
         
@@ -256,7 +262,6 @@ async function updateNutritionAnalysis() {
         display.innerHTML = `<div class="text-center text-red-400 py-4">خطا در تحلیل ارزش غذایی.</div>`;
     }
 }
-
 // ============================================================
 // 8. اتصال رویدادهای داشبورد
 // ============================================================
