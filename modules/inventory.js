@@ -47,19 +47,6 @@ export function deleteItem(id) {
     return newInventory;
 }
 
-export function getNormalItems() {
-    return store.inventory.filter(item => item.type === 'normal' || !item.type);
-}
-
-export function getCrisisItems() {
-    return store.inventory.filter(item => item.type === 'crisis');
-}
-
-export function getCrisisWater() {
-    const items = getCrisisItems();
-    return items.find(item => item.name.toLowerCase().includes('آب'));
-}
-
 export function consumeIngredients(ingredients, familySize) {
     const inventory = store.inventory;
     let consumedItems = [];
