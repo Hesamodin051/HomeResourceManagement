@@ -67,6 +67,8 @@
         <div class="card-modern p-4 mb-6" id="nutritionAnalysis"><h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-apple-alt text-secondary ml-2"></i> تحلیل ارزش غذایی موجودی <span class="text-xs bg-secondary text-white px-2 py-0.5 rounded-full ml-2">تغذیه</span></h3><div id="nutritionDisplay" class="text-center text-gray-400 py-4">در حال تحلیل موجودی...</div></div>
         <div class="mb-6" id="alertPanel"></div>
         <div class="card-modern p-4 mb-6"><h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-lightbulb text-accent ml-2"></i> پیشنهادات هوشمند مصرف</h3><div id="suggestionsList" class="space-y-2"></div></div>
+        
+        <!-- بخش الگوی مصرف هوشمند (با قابلیت تعویض وعده) -->
         <div class="card-modern p-4 mb-6">
             <h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-calendar-alt text-secondary ml-2"></i> الگوی مصرف هوشمند <span class="text-xs bg-secondary text-white px-2 py-0.5 rounded-full ml-2">برنامه هفتگی</span></h3>
             <div class="flex flex-wrap items-center gap-3 mb-4">
@@ -75,18 +77,23 @@
                 <button id="generatePlanBtn" class="btn-gradient !py-1 !px-4 text-sm"><i class="fas fa-sync-alt ml-1"></i> بروزرسانی</button>
             </div>
             <div id="consumptionPlanDisplay">در حال تحلیل موجودی...</div>
+            <!-- پیام راهنما برای چت‌بات -->
             <div class="mt-4 text-center text-sm text-gray-500 border-t border-gray-200 pt-3">
-    <i class="fas fa-robot text-secondary ml-1"></i>
-    برای دریافت غذاهای بیشتر یا تعویض وعده‌ها، از 
-    <button id="openChatbotForMeal" class="text-secondary font-medium hover:underline">دستیار هوشمند (چت‌بات)</button>
-    کمک بگیرید.
-</div>
+                <i class="fas fa-robot text-secondary ml-1"></i>
+                برای دریافت غذاهای بیشتر یا تعویض وعده‌ها، از 
+                <button id="openChatbotForMeal" class="text-secondary font-medium hover:underline">دستیار هوشمند (چت‌بات)</button>
+                کمک بگیرید.
+            </div>
+        </div>
+
+        <!-- بخش پیشنهادات هوش مصنوعی -->
         <div class="ai-section-modern p-4 mb-6">
             <h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-robot text-secondary ml-2"></i> دستیار هوشمند (AI) <span class="text-xs bg-secondary text-white px-2 py-0.5 rounded-full ml-2">مکالمه‌ای</span></h3>
             <div id="aiSuggestionDisplay" class="text-gray-600 text-sm mb-3">برای دریافت پیشنهادات، روی دکمه کلیک کنید.</div>
             <button id="aiSuggestionBtn" class="btn-gradient justify-center"><i class="fas fa-wand-magic-sparkles ml-2"></i> دریافت پیشنهادات هوشمند</button>
             <button id="aiLoadingBtn" class="btn-gradient justify-center bg-gray-400 cursor-not-allowed hidden"><i class="fas fa-spinner fa-spin ml-2"></i> در حال دریافت...</button>
         </div>
+        
         <div class="card-modern p-4">
             <h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-boxes-stacked text-secondary ml-2"></i> فهرست ذخایر منزل</h3>
             <div class="overflow-x-auto"><table class="table-modern" id="inventoryTable"><thead><tr><th>نام</th><th>مقدار</th><th>واحد</th><th>تاریخ انقضا</th><th>عملیات</th></tr></thead><tbody id="inventoryBody"></tbody></table></div>
@@ -94,6 +101,8 @@
     </main>
     <div id="drawer" class="drawer-modern"><div class="flex justify-between items-center mb-6"><span class="text-lg font-bold text-primary">منو</span><button id="closeDrawerBtn" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-2xl"></i></button></div><div id="drawerItems" class="space-y-2"></div></div>
     <div id="drawerBackdrop"></div>
+    
+    <!-- ویجت چت‌بات -->
     <div id="chatbotWidget">
         <button class="chatbot-fab" id="chatbotFab"><i class="fas fa-robot"></i><span class="badge" id="chatbotBadge" style="display:none;">1</span></button>
         <div class="chatbot-window" id="chatbotWindow">
@@ -103,13 +112,15 @@
             <div class="chatbot-input"><textarea id="chatbotInput" rows="1" placeholder="پیام خود را بنویسید..."></textarea><button class="send-btn" id="chatbotSendBtn"><i class="fas fa-paper-plane"></i></button></div>
         </div>
     </div>
-    <!-- ===== مدال تأیید مصرف ===== -->
+
+    <!-- مدال تأیید مصرف / تعویض وعده -->
     <div id="consumeModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
         <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
             <div class="flex justify-between items-center mb-4"><h3 class="text-xl font-bold text-primary" id="consumeModalTitle">🍽️ تأیید مصرف</h3><button id="closeConsumeModal" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-2xl"></i></button></div>
             <div id="consumeModalBody"></div>
         </div>
     </div>
+
     <script>
         (function() {
             const loggedInUser = sessionStorage.getItem('loggedInUser');
