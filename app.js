@@ -1,5 +1,5 @@
 // ============================================================
-// app.js - فایل ورودی اصلی سامانه تدبیر منزل (نسخه نهایی)
+// app.js - فایل ورودی اصلی سامانه تدبیر منزل (نسخه نهایی با Debounce)
 // ============================================================
 
 import { checkAuth, getLoggedInUser, logout, getUserProfile, getUserAvatar } from './modules/auth.js';
@@ -94,7 +94,6 @@ function renderInventoryTable() {
             const newExpiry = prompt('تاریخ انقضا (YYYY-MM-DD):', item.expiry);
             if (newName && !isNaN(newQty) && newQty > 0 && newUnit) {
                 editItem(item.id, newName.trim(), newQty, newUnit.trim(), newExpiry || '');
-                // پس از ویرایش، فقط UI را به‌روز کن (بدون بارگذاری مجدد)
                 refreshAll();
             } else alert('ورودی نامعتبر');
         };
@@ -158,45 +157,55 @@ function renderChart() {
 }
 
 // ============================================================
-// 6. به‌روزرسانی الگوی مصرف (با AI) - ✅ بدون بارگذاری مجدد
+// 6. به‌روزرسانی الگوی مصرف (با AI) - با Debounce
 // ============================================================
+let planUpdateTimeout = null;
+
 function updateConsumptionPlan() {
-    const display = document.getElementById('consumptionPlanDisplay');
-    if (!display) {
-        console.warn('⚠️ المان consumptionPlanDisplay پیدا نشد.');
-        return;
+    if (planUpdateTimeout) {
+        clearTimeout(planUpdateTimeout);
     }
-    const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
-    console.log(`🔄 بروزرسانی الگوی مصرف برای ${days} روز...`);
-    
-    display.innerHTML = `
-        <div class="text-center text-gray-400 py-4">
-            <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
-            <p>🤖 در حال دریافت برنامه هوشمند...</p>
-        </div>
-    `;
-    
-    // ===== فقط از store.inventory استفاده کن، بارگذاری مجدد ممنوع =====
-    generateConsumptionPlan(days)
-        .then(html => {
-            display.innerHTML = html;
-            attachMealClickEvents();
-            console.log('✅ الگوی مصرف به‌روزرسانی شد.');
-        })
-        .catch(err => {
-            console.error('❌ خطا در به‌روزرسانی الگوی مصرف:', err);
-            display.innerHTML = `
-                <div class="text-center text-red-400 py-4">
-                    <i class="fas fa-exclamation-triangle text-3xl block mb-2"></i>
-                    خطا در دریافت برنامه.
-                    <br><span class="text-xs text-gray-400">${err.message || ''}</span>
-                </div>
-            `;
-        });
+    planUpdateTimeout = setTimeout(() => {
+        const display = document.getElementById('consumptionPlanDisplay');
+        if (!display) {
+            console.warn('⚠️ المان consumptionPlanDisplay پیدا نشد.');
+            planUpdateTimeout = null;
+            return;
+        }
+        const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
+        console.log(`🔄 بروزرسانی الگوی مصرف برای ${days} روز...`);
+        
+        display.innerHTML = `
+            <div class="text-center text-gray-400 py-4">
+                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                <p>🤖 در حال دریافت برنامه هوشمند...</p>
+            </div>
+        `;
+        
+        generateConsumptionPlan(days)
+            .then(html => {
+                display.innerHTML = html;
+                attachMealClickEvents();
+                console.log('✅ الگوی مصرف به‌روزرسانی شد.');
+            })
+            .catch(err => {
+                console.error('❌ خطا در به‌روزرسانی الگوی مصرف:', err);
+                display.innerHTML = `
+                    <div class="text-center text-red-400 py-4">
+                        <i class="fas fa-exclamation-triangle text-3xl block mb-2"></i>
+                        خطا در دریافت برنامه.
+                        <br><span class="text-xs text-gray-400">${err.message || ''}</span>
+                    </div>
+                `;
+            })
+            .finally(() => {
+                planUpdateTimeout = null;
+            });
+    }, 500); // 500ms delay
 }
 
 // ============================================================
-// 7. تحلیل ارزش غذایی هوشمند - ✅ بدون بارگذاری مجدد
+// 7. تحلیل ارزش غذایی هوشمند - بدون بارگذاری مجدد
 // ============================================================
 async function updateNutritionAnalysis() {
     const display = document.getElementById('nutritionDisplay');
@@ -205,7 +214,6 @@ async function updateNutritionAnalysis() {
     display.innerHTML = `<div class="text-center text-gray-400 py-4"><i class="fas fa-spinner fa-spin text-2xl"></i> در حال تحلیل...</div>`;
     
     try {
-        // فقط از store.inventory استفاده کن
         const { analyzeInventoryNutrition } = await import('./modules/food.js');
         const result = await analyzeInventoryNutrition();
         
@@ -269,7 +277,7 @@ function refreshAll() {
     renderInventoryTable();
     generateAlerts();
     generateSuggestions();
-    updateConsumptionPlan();
+    updateConsumptionPlan(); // با debounce
     updateNutritionAnalysis();
     refreshMealSuggestions();
 }
@@ -499,20 +507,21 @@ function initDashboard() {
         .then(data => { window.crisisScenarios = data; })
         .catch(() => { window.crisisScenarios = []; })
         .finally(() => {
-            // ===== بارگذاری اولیه موجودی (فقط یک بار) =====
+            // ===== بارگذاری اولیه موجودی و مصرف =====
             loadInventory();
-            console.log('📦 موجودی پس از بارگذاری:', store.inventory.length);
+            loadConsumptionData(); // این تابع setConsumptionData را صدا می‌زند
             
-            loadConsumptionData();
             renderInventoryTable();
             renderChart();
             generateAlerts();
             bindDashboardUI();
             populateScenarioDropdown();
             generateSuggestions();
-            updateConsumptionPlan();   // بدون بارگذاری مجدد
+            
+            // ===== فقط یک بار در انتها =====
+            updateConsumptionPlan();
             generateMealSuggestions(1);
-            updateNutritionAnalysis(); // بدون بارگذاری مجدد
+            updateNutritionAnalysis();
             initMealPlanner();
             
             const aiBtn = document.getElementById('aiSuggestionBtn');
@@ -687,7 +696,7 @@ if (currentPath.includes('login.html')) {
 }
 
 // ============================================================
-// 16. شنونده‌های تغییرات store - ✅ بدون بارگذاری مجدد
+// 16. شنونده‌های تغییرات store - با Debounce
 // ============================================================
 addListener('inventory', function() {
     if (window.location.pathname.includes('dashboard.html')) {
@@ -703,7 +712,7 @@ addListener('consumptionData', function() {
     if (window.location.pathname.includes('dashboard.html')) {
         renderChart();
         generateSuggestions();
-        updateConsumptionPlan();
+        updateConsumptionPlan(); // با debounce
     }
 });
 addListener('currentUserProfile', function() {
