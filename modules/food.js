@@ -1,7 +1,6 @@
 // modules/food.js
 import { getLoggedInUser } from './auth.js';
 import { initDrawer, updateDrawerItems } from './drawer.js';
-import { getAverageRating } from './feedback.js';
 import { store, setInventory } from './store.js';
 
 // ===== کلیدهای ذخیره‌سازی در localStorage =====
@@ -34,7 +33,7 @@ let currentEditIndex = null;
 let nutritionDataCache = [];
 
 // ============================================================
-// مدیریت دسته‌بندی‌ها
+// مدیریت دسته‌بندی‌ها در localStorage
 // ============================================================
 function loadCategories() {
     const key = getCategoriesKey();
@@ -54,7 +53,7 @@ function saveCategories() {
 }
 
 // ============================================================
-// مدیریت تاریخچه
+// مدیریت تاریخچه در localStorage
 // ============================================================
 function loadHistory() {
     const key = getHistoryKey();
@@ -79,12 +78,12 @@ function addToHistory(action, item) {
         expiry: item.expiry || 'بدون تاریخ'
     };
     foodHistory.unshift(entry);
-    if (foodHistory.length > 100) foodHistory.pop(); // محدودیت ۱۰۰ رکورد
+    if (foodHistory.length > 100) foodHistory.pop();
     saveHistory();
 }
 
 // ============================================================
-// مدیریت مواد غذایی
+// مدیریت مواد غذایی در localStorage
 // ============================================================
 function loadFoodItems() {
     const key = getInventoryKey();
