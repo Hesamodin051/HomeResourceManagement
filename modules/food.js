@@ -3,9 +3,8 @@ import { getLoggedInUser } from './auth.js';
 import { initDrawer, updateDrawerItems } from './drawer.js';
 import { getAverageRating } from './feedback.js';
 import { store, setInventory } from './store.js';
-import { addHistory, getHistory } from './db.js';
 
-// ===== کلید ذخیره‌سازی در localStorage =====
+// ===== کلیدهای ذخیره‌سازی در localStorage =====
 function getInventoryKey() {
     const user = getLoggedInUser() || 'default';
     return `home_inventory_${user}`;
@@ -14,6 +13,11 @@ function getInventoryKey() {
 function getCategoriesKey() {
     const user = getLoggedInUser() || 'default';
     return `food_categories_${user}`;
+}
+
+function getHistoryKey() {
+    const user = getLoggedInUser() || 'default';
+    return `food_history_${user}`;
 }
 
 // ===== دسته‌بندی‌های پیش‌فرض =====
@@ -30,7 +34,7 @@ let currentEditIndex = null;
 let nutritionDataCache = [];
 
 // ============================================================
-// مدیریت دسته‌بندی‌ها در localStorage
+// مدیریت دسته‌بندی‌ها
 // ============================================================
 function loadCategories() {
     const key = getCategoriesKey();
@@ -50,7 +54,55 @@ function saveCategories() {
 }
 
 // ============================================================
-// بارگذاری داده‌های تغذیه‌ای
+// مدیریت تاریخچه
+// ============================================================
+function loadHistory() {
+    const key = getHistoryKey();
+    const stored = localStorage.getItem(key);
+    foodHistory = stored ? JSON.parse(stored) : [];
+    return foodHistory;
+}
+
+function saveHistory() {
+    const key = getHistoryKey();
+    localStorage.setItem(key, JSON.stringify(foodHistory));
+}
+
+function addToHistory(action, item) {
+    const entry = {
+        timestamp: new Date().toLocaleString('fa-IR'),
+        action,
+        category: item.category || 'سایر',
+        name: item.name,
+        quantity: item.quantity,
+        unit: item.unit,
+        expiry: item.expiry || 'بدون تاریخ'
+    };
+    foodHistory.unshift(entry);
+    if (foodHistory.length > 100) foodHistory.pop(); // محدودیت ۱۰۰ رکورد
+    saveHistory();
+}
+
+// ============================================================
+// مدیریت مواد غذایی
+// ============================================================
+function loadFoodItems() {
+    const key = getInventoryKey();
+    const stored = localStorage.getItem(key);
+    foodItems = stored ? JSON.parse(stored) : [];
+    setInventory(foodItems);
+    return foodItems;
+}
+
+function saveFoodItems() {
+    const key = getInventoryKey();
+    localStorage.setItem(key, JSON.stringify(foodItems));
+    setInventory(foodItems);
+    console.log('✅ مواد غذایی ذخیره شدند. تعداد:', foodItems.length);
+}
+
+// ============================================================
+// بارگذاری داده‌های تغذیه‌ای از food_items.json
 // ============================================================
 async function loadNutritionData() {
     const cached = localStorage.getItem('food_nutrition_cache');
@@ -73,40 +125,7 @@ async function loadNutritionData() {
 }
 
 // ============================================================
-// بارگذاری مواد غذایی از localStorage
-// ============================================================
-function loadFoodItems() {
-    const key = getInventoryKey();
-    const stored = localStorage.getItem(key);
-    foodItems = stored ? JSON.parse(stored) : [];
-    setInventory(foodItems);
-    return foodItems;
-}
-
-// ============================================================
-// ذخیره مواد غذایی در localStorage
-// ============================================================
-function saveFoodItems() {
-    const key = getInventoryKey();
-    localStorage.setItem(key, JSON.stringify(foodItems));
-    setInventory(foodItems);
-    console.log('✅ مواد غذایی ذخیره شدند. تعداد:', foodItems.length);
-}
-
-// ============================================================
-// بارگذاری تاریخچه از IndexedDB
-// ============================================================
-async function loadHistory() {
-    try {
-        foodHistory = await getHistory(50);
-    } catch (error) {
-        console.warn('⚠️ خطا در بارگذاری تاریخچه:', error);
-        foodHistory = [];
-    }
-}
-
-// ============================================================
-// تحلیل ارزش غذایی
+// تحلیل ارزش غذایی (با استفاده از store.inventory)
 // ============================================================
 export async function analyzeInventoryNutrition() {
     const inventory = store.inventory || [];
@@ -304,32 +323,24 @@ function editItem(index) {
     updateNameSuggestions();
 }
 
-async function deleteItem(index, silent = false) {
+function deleteItem(index, silent = false) {
     const deleted = foodItems[index];
     if (!deleted) return;
     foodItems.splice(index, 1);
-    if (!silent) await addToHistory('حذف', deleted);
+    if (!silent) addToHistory('حذف', deleted);
     if (currentEditIndex === index) currentEditIndex = null;
     saveFoodItems();
     renderAll();
 }
 
-async function resetOnlyFoodItems() {
+function resetOnlyFoodItems() {
     if (confirm('آیا مطمئن هستید؟ تمام مواد غذایی و تاریخچه حذف می‌شوند.')) {
         foodItems = [];
         foodHistory = [];
         saveFoodItems();
+        saveHistory();
         renderAll();
         alert('تمام مواد غذایی پاک شدند.');
-    }
-}
-
-async function addToHistory(action, item) {
-    try {
-        await addHistory(action, item);
-        foodHistory = await getHistory(50);
-    } catch (error) {
-        console.error('خطا در تاریخچه:', error);
     }
 }
 
@@ -401,15 +412,15 @@ function setupEventListeners() {
     document.getElementById('resetDataBtn')?.addEventListener('click', resetOnlyFoodItems);
 
     const modal = document.getElementById('historyModal');
-    document.getElementById('historyBtn')?.addEventListener('click', async () => {
+    document.getElementById('historyBtn')?.addEventListener('click', () => {
         const historyDiv = document.getElementById('historyList');
         if (historyDiv) {
-            await loadHistory();
+            loadHistory();
             if (!foodHistory || foodHistory.length === 0) {
                 historyDiv.innerHTML = '<p>هیچ تغییری ثبت نشده است.</p>';
             } else {
                 historyDiv.innerHTML = '<ul>' + foodHistory.map(h => 
-                    `<li><strong>${new Date(h.timestamp).toLocaleString('fa-IR')}</strong> - ${h.action} : ${h.name} (${h.quantity} ${h.unit}, دسته: ${h.category})</li>`
+                    `<li><strong>${h.timestamp}</strong> - ${h.action} : ${h.name} (${h.quantity} ${h.unit}, دسته: ${h.category})</li>`
                 ).join('') + '</ul>';
             }
         }
@@ -435,16 +446,14 @@ async function init() {
     initDrawer();
     updateDrawerItems();
 
-    // بارگذاری دسته‌بندی‌ها
+    // بارگذاری همه داده‌ها از localStorage
     loadCategories();
-    // بارگذاری مواد غذایی
     loadFoodItems();
-    // بارگذاری تاریخچه
-    await loadHistory();
+    loadHistory();
     
     renderAll();
     setupEventListeners();
-    console.log('✅ صفحه مدیریت مواد غذایی بارگذاری شد. دسته‌بندی‌ها:', categories.length);
+    console.log('✅ صفحه مدیریت مواد غذایی بارگذاری شد. دسته‌بندی‌ها:', categories.length, 'مواد:', foodItems.length);
 }
 
 if (document.readyState === 'loading') {
