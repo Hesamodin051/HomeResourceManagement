@@ -15,343 +15,123 @@
             theme: {
                 extend: {
                     fontFamily: { 'vazir': ['Vazirmatn', 'sans-serif'] },
-                    colors: {
-                        'primary': '#0f172a',
-                        'secondary': '#3b82f6',
-                        'accent': '#f59e0b',
-                    }
+                    colors: { 'primary': '#0f172a', 'secondary': '#3b82f6', 'accent': '#f59e0b' }
                 }
             }
         }
     </script>
 </head>
 <body class="font-vazir bg-gray-50 min-h-screen">
-
-    <!-- ===== هدر ===== -->
     <header class="glass-header sticky top-0 z-50 px-4 py-3">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <i class="fas fa-home text-2xl text-secondary"></i>
-                <h1 class="text-xl font-bold text-primary">سامانه تدبیر منزل</h1>
-            </div>
+            <div class="flex items-center gap-3"><i class="fas fa-home text-2xl text-secondary"></i><h1 class="text-xl font-bold text-primary">سامانه تدبیر منزل</h1></div>
             <div class="flex items-center gap-4">
                 <div id="profileClickable" class="flex items-center gap-2 cursor-pointer" onclick="window.location.href='profile.html'">
                     <img id="userAvatar" src="" alt="avatar" class="w-8 h-8 rounded-full border-2 border-secondary object-cover">
                     <span id="userDisplay" class="text-sm font-medium text-gray-700 hidden sm:inline">کاربر</span>
                 </div>
                 <div class="notification-bell-wrapper" onclick="window.location.href='notifications.html'">
-                    <button id="notificationBell" class="notification-bell relative" aria-label="اعلان‌ها">
-                        <i class="fas fa-bell text-xl text-gray-700 hover:text-secondary transition-colors"></i>
-                        <span id="notificationBadge" class="notification-badge hidden">0</span>
-                    </button>
+                    <button id="notificationBell" class="notification-bell relative"><i class="fas fa-bell text-xl text-gray-700 hover:text-secondary transition-colors"></i><span id="notificationBadge" class="notification-badge hidden">0</span></button>
                 </div>
-                <button id="logoutBtn" class="text-gray-500 hover:text-red-500 transition-colors">
-                    <i class="fas fa-sign-out-alt text-lg"></i>
-                </button>
-                <div class="hamburger-menu cursor-pointer" id="hamburgerMenu">
-                    <i class="fas fa-bars text-2xl text-gray-700"></i>
-                </div>
+                <button id="logoutBtn" class="text-gray-500 hover:text-red-500 transition-colors"><i class="fas fa-sign-out-alt text-lg"></i></button>
+                <div class="hamburger-menu cursor-pointer" id="hamburgerMenu"><i class="fas fa-bars text-2xl text-gray-700"></i></div>
             </div>
         </div>
     </header>
-
     <main class="max-w-7xl mx-auto px-4 py-6">
-
-        <!-- ===== وضعیت بحران ===== -->
         <div class="flex flex-wrap items-center justify-between gap-4 card-modern p-4 mb-6">
-            <div class="flex items-center gap-4">
-                <span class="text-sm font-medium text-gray-600">🌿 حالت عادی</span>
-                <label class="switch-modern">
-                    <input type="checkbox" id="crisisModeToggle">
-                    <span class="slider"></span>
-                </label>
-                <span class="text-sm font-medium text-gray-600">⚠️ حالت بحران</span>
-            </div>
-            <div class="flex items-center gap-2">
-                <i class="fas fa-circle text-green-500 text-xs"></i>
-                <span class="text-sm text-gray-500" id="statusText">سیستم فعال</span>
-            </div>
+            <div class="flex items-center gap-4"><span class="text-sm font-medium text-gray-600">🌿 حالت عادی</span><label class="switch-modern"><input type="checkbox" id="crisisModeToggle"><span class="slider"></span></label><span class="text-sm font-medium text-gray-600">⚠️ حالت بحران</span></div>
+            <div class="flex items-center gap-2"><i class="fas fa-circle text-green-500 text-xs"></i><span class="text-sm text-gray-500" id="statusText">سیستم فعال</span></div>
         </div>
-
-        <!-- ===== انتخاب سناریو ===== -->
         <div class="card-modern p-4 mb-6">
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-                <i class="fas fa-triangle-exclamation text-accent ml-2"></i>
-                انتخاب سناریوی بحران
-            </label>
-            <select id="scenarioSelect" class="input-modern">
-                <option value="">-- انتخاب کنید --</option>
-            </select>
+            <label class="block text-sm font-medium text-gray-700 mb-2"><i class="fas fa-triangle-exclamation text-accent ml-2"></i> انتخاب سناریوی بحران</label>
+            <select id="scenarioSelect" class="input-modern"><option value="">-- انتخاب کنید --</option></select>
             <div id="scenarioTip" class="mt-3 text-sm text-gray-600 bg-gray-50 rounded-xl p-3 hidden"></div>
         </div>
-
-        <!-- ===== کارت‌های آمار ===== -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div class="card-modern p-4 text-center">
-                <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 mx-auto mb-2">
-                    <i class="fas fa-water"></i>
-                </div>
-                <p class="text-2xl font-bold text-primary" id="todayWater">--</p>
-                <p class="text-xs text-gray-400">آب امروز (لیتر)</p>
-            </div>
-            <div class="card-modern p-4 text-center">
-                <div class="w-10 h-10 rounded-full bg-yellow-50 flex items-center justify-center text-yellow-500 mx-auto mb-2">
-                    <i class="fas fa-bolt"></i>
-                </div>
-                <p class="text-2xl font-bold text-primary" id="todayElectricity">--</p>
-                <p class="text-xs text-gray-400">برق امروز (کیلووات)</p>
-            </div>
-            <div class="card-modern p-4 text-center">
-                <div class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-500 mx-auto mb-2">
-                    <i class="fas fa-fire"></i>
-                </div>
-                <p class="text-2xl font-bold text-primary" id="todayGas">--</p>
-                <p class="text-xs text-gray-400">گاز امروز (مترمکعب)</p>
-            </div>
-            <div class="card-modern p-4 text-center">
-                <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-500 mx-auto mb-2">
-                    <i class="fas fa-utensils"></i>
-                </div>
-                <p class="text-2xl font-bold text-primary" id="foodCount">--</p>
-                <p class="text-xs text-gray-400">اقلام غذایی</p>
-            </div>
+            <div class="card-modern p-4 text-center"><div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 mx-auto mb-2"><i class="fas fa-water"></i></div><p class="text-2xl font-bold text-primary" id="todayWater">--</p><p class="text-xs text-gray-400">آب امروز (لیتر)</p></div>
+            <div class="card-modern p-4 text-center"><div class="w-10 h-10 rounded-full bg-yellow-50 flex items-center justify-center text-yellow-500 mx-auto mb-2"><i class="fas fa-bolt"></i></div><p class="text-2xl font-bold text-primary" id="todayElectricity">--</p><p class="text-xs text-gray-400">برق امروز (کیلووات)</p></div>
+            <div class="card-modern p-4 text-center"><div class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-500 mx-auto mb-2"><i class="fas fa-fire"></i></div><p class="text-2xl font-bold text-primary" id="todayGas">--</p><p class="text-xs text-gray-400">گاز امروز (مترمکعب)</p></div>
+            <div class="card-modern p-4 text-center"><div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-500 mx-auto mb-2"><i class="fas fa-utensils"></i></div><p class="text-2xl font-bold text-primary" id="foodCount">--</p><p class="text-xs text-gray-400">اقلام غذایی</p></div>
         </div>
-
-        <!-- ===== ثبت مصرف روزانه ===== -->
         <div class="card-modern p-4 mb-6">
-            <h3 class="text-lg font-bold text-primary mb-4">
-                <i class="fas fa-pen-to-square text-secondary ml-2"></i>
-                ثبت مصرف روزانه
-            </h3>
+            <h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-pen-to-square text-secondary ml-2"></i> ثبت مصرف روزانه</h3>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                    <label class="block text-sm text-gray-600 mb-1">💧 آب (لیتر)</label>
-                    <input type="number" id="waterConsumption" class="input-modern" placeholder="مصرف امروز">
-                </div>
-                <div>
-                    <label class="block text-sm text-gray-600 mb-1">⚡ برق (کیلووات)</label>
-                    <input type="number" id="electricityConsumption" class="input-modern" placeholder="مصرف امروز">
-                </div>
-                <div>
-                    <label class="block text-sm text-gray-600 mb-1">🔥 گاز (مترمکعب)</label>
-                    <input type="number" id="gasConsumption" class="input-modern" placeholder="مصرف امروز">
-                </div>
+                <div><label class="block text-sm text-gray-600 mb-1">💧 آب (لیتر)</label><input type="number" id="waterConsumption" class="input-modern" placeholder="مصرف امروز"></div>
+                <div><label class="block text-sm text-gray-600 mb-1">⚡ برق (کیلووات)</label><input type="number" id="electricityConsumption" class="input-modern" placeholder="مصرف امروز"></div>
+                <div><label class="block text-sm text-gray-600 mb-1">🔥 گاز (مترمکعب)</label><input type="number" id="gasConsumption" class="input-modern" placeholder="مصرف امروز"></div>
             </div>
-            <button id="saveConsumptionBtn" class="btn-gradient w-full mt-4 justify-center">
-                <i class="fas fa-save ml-2"></i> ذخیره مصرف
-            </button>
+            <button id="saveConsumptionBtn" class="btn-gradient w-full mt-4 justify-center"><i class="fas fa-save ml-2"></i> ذخیره مصرف</button>
         </div>
-
-        <!-- ===== نمودار ===== -->
-        <div class="card-modern p-4 mb-6">
-            <h3 class="text-lg font-bold text-primary mb-4">
-                <i class="fas fa-chart-line text-secondary ml-2"></i>
-                روند مصرف
-            </h3>
-            <canvas id="myChart" height="200"></canvas>
-        </div>
-
-        <!-- ===== تحلیل ارزش غذایی ===== -->
-        <div class="card-modern p-4 mb-6" id="nutritionAnalysis">
-            <h3 class="text-lg font-bold text-primary mb-4">
-                <i class="fas fa-apple-alt text-secondary ml-2"></i>
-                تحلیل ارزش غذایی موجودی
-                <span class="text-xs bg-secondary text-white px-2 py-0.5 rounded-full ml-2">تغذیه</span>
-            </h3>
-            <div id="nutritionDisplay" class="text-center text-gray-400 py-4">در حال تحلیل موجودی...</div>
-        </div>
-
-        <!-- ===== هشدارها ===== -->
+        <div class="card-modern p-4 mb-6"><h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-chart-line text-secondary ml-2"></i> روند مصرف</h3><canvas id="myChart" height="200"></canvas></div>
+        <div class="card-modern p-4 mb-6" id="nutritionAnalysis"><h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-apple-alt text-secondary ml-2"></i> تحلیل ارزش غذایی موجودی <span class="text-xs bg-secondary text-white px-2 py-0.5 rounded-full ml-2">تغذیه</span></h3><div id="nutritionDisplay" class="text-center text-gray-400 py-4">در حال تحلیل موجودی...</div></div>
         <div class="mb-6" id="alertPanel"></div>
-
-        <!-- ===== پیشنهادات هوشمند مصرف ===== -->
+        <div class="card-modern p-4 mb-6"><h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-lightbulb text-accent ml-2"></i> پیشنهادات هوشمند مصرف</h3><div id="suggestionsList" class="space-y-2"></div></div>
         <div class="card-modern p-4 mb-6">
-            <h3 class="text-lg font-bold text-primary mb-4">
-                <i class="fas fa-lightbulb text-accent ml-2"></i>
-                پیشنهادات هوشمند مصرف
-            </h3>
-            <div id="suggestionsList" class="space-y-2"></div>
-        </div>
-
-        <!-- ===== الگوی مصرف هوشمند ===== -->
-        <div class="card-modern p-4 mb-6">
-            <h3 class="text-lg font-bold text-primary mb-4">
-                <i class="fas fa-calendar-alt text-secondary ml-2"></i>
-                الگوی مصرف هوشمند
-                <span class="text-xs bg-secondary text-white px-2 py-0.5 rounded-full ml-2">برنامه هفتگی</span>
-            </h3>
+            <h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-calendar-alt text-secondary ml-2"></i> الگوی مصرف هوشمند <span class="text-xs bg-secondary text-white px-2 py-0.5 rounded-full ml-2">برنامه هفتگی</span></h3>
             <div class="flex flex-wrap items-center gap-3 mb-4">
                 <label class="text-sm text-gray-600">تعداد روز:</label>
-                <select id="planDaysSelect" class="input-modern !py-1 !px-3 w-24">
-                    <option value="3">۳ روز</option>
-                    <option value="7" selected>۷ روز</option>
-                    <option value="14">۱۴ روز</option>
-                    <option value="30">۳۰ روز</option>
-                </select>
-                <button id="generatePlanBtn" class="btn-gradient !py-1 !px-4 text-sm">
-                    <i class="fas fa-sync-alt ml-1"></i> بروزرسانی
-                </button>
+                <select id="planDaysSelect" class="input-modern !py-1 !px-3 w-24"><option value="3">۳ روز</option><option value="7" selected>۷ روز</option><option value="14">۱۴ روز</option><option value="30">۳۰ روز</option></select>
+                <button id="generatePlanBtn" class="btn-gradient !py-1 !px-4 text-sm"><i class="fas fa-sync-alt ml-1"></i> بروزرسانی</button>
             </div>
             <div id="consumptionPlanDisplay">در حال تحلیل موجودی...</div>
         </div>
-
-        <!-- ===== پیشنهادات غذایی امروز ===== -->
         <div class="card-modern p-4 mb-6">
-            <h3 class="text-lg font-bold text-primary mb-4">
-                <i class="fas fa-utensils text-accent ml-2"></i>
-                پیشنهادات غذایی امروز
-                <span class="text-xs bg-secondary text-white px-2 py-0.5 rounded-full ml-2">بر اساس الگوی مصرف</span>
-                <button id="refreshMealSuggestionsBtn" class="text-xs text-gray-400 hover:text-gray-600 ml-2">
-                    <i class="fas fa-rotate"></i> بازنشانی
-                </button>
-            </h3>
+            <h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-utensils text-accent ml-2"></i> پیشنهادات غذایی امروز <span class="text-xs bg-secondary text-white px-2 py-0.5 rounded-full ml-2">بر اساس الگوی مصرف</span>
+            <button id="refreshMealSuggestionsBtn" class="text-xs text-gray-400 hover:text-gray-600 ml-2"><i class="fas fa-rotate"></i> بازنشانی</button></h3>
             <div id="mealSuggestionsDisplay">در حال تحلیل...</div>
         </div>
-
-        <!-- ===== دستیار هوشمند ===== -->
         <div class="ai-section-modern p-4 mb-6">
-            <h3 class="text-lg font-bold text-primary mb-4">
-                <i class="fas fa-robot text-secondary ml-2"></i>
-                دستیار هوشمند (AI)
-                <span class="text-xs bg-secondary text-white px-2 py-0.5 rounded-full ml-2">مکالمه‌ای</span>
-            </h3>
+            <h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-robot text-secondary ml-2"></i> دستیار هوشمند (AI) <span class="text-xs bg-secondary text-white px-2 py-0.5 rounded-full ml-2">مکالمه‌ای</span></h3>
             <div id="aiSuggestionDisplay" class="text-gray-600 text-sm mb-3">برای دریافت پیشنهادات، روی دکمه کلیک کنید.</div>
-            <button id="aiSuggestionBtn" class="btn-gradient justify-center">
-                <i class="fas fa-wand-magic-sparkles ml-2"></i> دریافت پیشنهادات هوشمند
-            </button>
-            <button id="aiLoadingBtn" class="btn-gradient justify-center bg-gray-400 cursor-not-allowed hidden">
-                <i class="fas fa-spinner fa-spin ml-2"></i> در حال دریافت...
-            </button>
+            <button id="aiSuggestionBtn" class="btn-gradient justify-center"><i class="fas fa-wand-magic-sparkles ml-2"></i> دریافت پیشنهادات هوشمند</button>
+            <button id="aiLoadingBtn" class="btn-gradient justify-center bg-gray-400 cursor-not-allowed hidden"><i class="fas fa-spinner fa-spin ml-2"></i> در حال دریافت...</button>
         </div>
-
-        <!-- ===== لیست ذخایر ===== -->
         <div class="card-modern p-4">
-            <h3 class="text-lg font-bold text-primary mb-4">
-                <i class="fas fa-boxes-stacked text-secondary ml-2"></i>
-                فهرست ذخایر منزل
-            </h3>
-            <div class="overflow-x-auto">
-                <table class="table-modern" id="inventoryTable">
-                    <thead>
-                        <tr>
-                            <th>نام</th>
-                            <th>مقدار</th>
-                            <th>واحد</th>
-                            <th>تاریخ انقضا</th>
-                            <th>عملیات</th>
-                        </tr>
-                    </thead>
-                    <tbody id="inventoryBody"></tbody>
-                </table>
-            </div>
+            <h3 class="text-lg font-bold text-primary mb-4"><i class="fas fa-boxes-stacked text-secondary ml-2"></i> فهرست ذخایر منزل</h3>
+            <div class="overflow-x-auto"><table class="table-modern" id="inventoryTable"><thead><tr><th>نام</th><th>مقدار</th><th>واحد</th><th>تاریخ انقضا</th><th>عملیات</th></tr></thead><tbody id="inventoryBody"></tbody></table></div>
         </div>
-
     </main>
-
-    <!-- ===== منوی کشو ===== -->
-    <div id="drawer" class="drawer-modern">
-        <div class="flex justify-between items-center mb-6">
-            <span class="text-lg font-bold text-primary">منو</span>
-            <button id="closeDrawerBtn" class="text-gray-400 hover:text-gray-600 transition-colors">
-                <i class="fas fa-times text-2xl"></i>
-            </button>
-        </div>
-        <div id="drawerItems" class="space-y-2"></div>
-    </div>
+    <div id="drawer" class="drawer-modern"><div class="flex justify-between items-center mb-6"><span class="text-lg font-bold text-primary">منو</span><button id="closeDrawerBtn" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-2xl"></i></button></div><div id="drawerItems" class="space-y-2"></div></div>
     <div id="drawerBackdrop"></div>
-
-    <!-- ===== ویجت چت‌بات ===== -->
     <div id="chatbotWidget">
-        <button class="chatbot-fab" id="chatbotFab" aria-label="دستیار هوشمند">
-            <i class="fas fa-robot"></i>
-            <span class="badge" id="chatbotBadge" style="display:none;">1</span>
-        </button>
+        <button class="chatbot-fab" id="chatbotFab"><i class="fas fa-robot"></i><span class="badge" id="chatbotBadge" style="display:none;">1</span></button>
         <div class="chatbot-window" id="chatbotWindow">
-            <div class="chatbot-header">
-                <div class="title"><span class="icon">🤖</span> دستیار هوشمند تدبیر</div>
-                <div style="display:flex;align-items:center;gap:12px;">
-                    <div class="status"><span class="dot"></span><span>آنلاین</span></div>
-                    <button class="close-btn" id="chatbotCloseBtn"><i class="fas fa-times"></i></button>
-                </div>
-            </div>
-            <div class="chatbot-messages" id="chatbotMessages">
-                <div class="message assistant">سلام! 👋 من دستیار هوشمند سامانه‌ی تدبیر منزل هستم. سوال خود را بپرسید! 😊<span class="time">اکنون</span></div>
-                <div class="typing-indicator" id="typingIndicator"><span></span><span></span><span></span></div>
-            </div>
-            <div class="chatbot-quick-suggestions" id="quickSuggestions">
-                <button data-question="وضعیت ذخایر من چگونه است؟">📊 وضعیت ذخایر</button>
-                <button data-question="چطور مصرف آب را کاهش دهم؟">💧 کاهش مصرف آب</button>
-                <button data-question="برای بحران چه کنم؟">⚠️ راهنمای بحران</button>
-                <button data-question="یک برنامه غذایی پیشنهاد بده">🍲 برنامه غذایی</button>
-            </div>
-            <div class="chatbot-input">
-                <textarea id="chatbotInput" rows="1" placeholder="پیام خود را بنویسید..."></textarea>
-                <button class="send-btn" id="chatbotSendBtn"><i class="fas fa-paper-plane"></i></button>
-            </div>
+            <div class="chatbot-header"><div class="title"><span class="icon">🤖</span> دستیار هوشمند تدبیر</div><div style="display:flex;align-items:center;gap:12px;"><div class="status"><span class="dot"></span><span>آنلاین</span></div><button class="close-btn" id="chatbotCloseBtn"><i class="fas fa-times"></i></button></div></div>
+            <div class="chatbot-messages" id="chatbotMessages"><div class="message assistant">سلام! 👋 من دستیار هوشمند سامانه‌ی تدبیر منزل هستم. سوال خود را بپرسید! 😊<span class="time">اکنون</span></div><div class="typing-indicator" id="typingIndicator"><span></span><span></span><span></span></div></div>
+            <div class="chatbot-quick-suggestions" id="quickSuggestions"><button data-question="وضعیت ذخایر من چگونه است؟">📊 وضعیت ذخایر</button><button data-question="چطور مصرف آب را کاهش دهم؟">💧 کاهش مصرف آب</button><button data-question="برای بحران چه کنم؟">⚠️ راهنمای بحران</button><button data-question="یک برنامه غذایی پیشنهاد بده">🍲 برنامه غذایی</button></div>
+            <div class="chatbot-input"><textarea id="chatbotInput" rows="1" placeholder="پیام خود را بنویسید..."></textarea><button class="send-btn" id="chatbotSendBtn"><i class="fas fa-paper-plane"></i></button></div>
         </div>
     </div>
-
-    <!-- ===== مدال تأیید مصرف مواد ===== -->
+    <!-- ===== مدال تأیید مصرف ===== -->
     <div id="consumeModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
         <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-primary" id="consumeModalTitle">🍽️ تأیید مصرف</h3>
-                <button id="closeConsumeModal" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times text-2xl"></i>
-                </button>
-            </div>
-            <div id="consumeModalBody">
-                <!-- محتوای داینامیک -->
-            </div>
+            <div class="flex justify-between items-center mb-4"><h3 class="text-xl font-bold text-primary" id="consumeModalTitle">🍽️ تأیید مصرف</h3><button id="closeConsumeModal" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-2xl"></i></button></div>
+            <div id="consumeModalBody"></div>
         </div>
     </div>
-
-    <!-- ===== اسکریپت‌ها ===== -->
     <script>
         (function() {
             const loggedInUser = sessionStorage.getItem('loggedInUser');
-            if (!loggedInUser) {
-                console.warn('⚠️ کاربر لاگین نیست، رفتن به صفحه اصلی...');
-                sessionStorage.removeItem('redirect_in_progress');
-                window.location.href = 'index.html';
-            } else {
-                console.log('✅ کاربر لاگین است، ادامه می‌دهیم...');
-                sessionStorage.removeItem('redirect_in_progress');
-            }
+            if (!loggedInUser) { sessionStorage.removeItem('redirect_in_progress'); window.location.href = 'index.html'; }
+            else { sessionStorage.removeItem('redirect_in_progress'); }
         })();
     </script>
-
     <script src="menu.js"></script>
     <script src="chatbot-widget.js"></script>
     <script type="module" src="app.js"></script>
-
     <script>
         function updateNotificationBadge() {
             const badge = document.getElementById('notificationBadge');
             if (!badge) return;
             const notifications = JSON.parse(localStorage.getItem('app_notifications') || '[]');
             const unreadCount = notifications.filter(n => !n.read).length;
-            if (unreadCount > 0) {
-                badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
-                badge.classList.remove('hidden');
-                const bell = document.getElementById('notificationBell');
-                if (bell) {
-                    bell.classList.add('bell-shake');
-                    setTimeout(() => bell.classList.remove('bell-shake'), 600);
-                }
-            } else {
-                badge.classList.add('hidden');
-            }
+            if (unreadCount > 0) { badge.textContent = unreadCount > 99 ? '99+' : unreadCount; badge.classList.remove('hidden'); }
+            else { badge.classList.add('hidden'); }
         }
-        window.addEventListener('storage', function(e) {
-            if (e.key === 'app_notifications') updateNotificationBadge();
-        });
-        document.addEventListener('DOMContentLoaded', function() {
-            updateNotificationBadge();
-            setInterval(updateNotificationBadge, 30000);
-        });
+        window.addEventListener('storage', function(e) { if (e.key === 'app_notifications') updateNotificationBadge(); });
+        document.addEventListener('DOMContentLoaded', function() { updateNotificationBadge(); setInterval(updateNotificationBadge, 30000); });
         window.updateNotificationBadge = updateNotificationBadge;
     </script>
-
 </body>
 </html>
