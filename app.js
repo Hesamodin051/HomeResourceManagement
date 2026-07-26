@@ -1,5 +1,5 @@
 // ============================================================
-// app.js - فایل ورودی اصلی سامانه تدبیر منزل
+// app.js - فایل ورودی اصلی سامانه تدبیر منزل (نسخه نهایی با Hugging Face)
 // ============================================================
 
 import { checkAuth, getLoggedInUser, logout, getUserProfile, getUserAvatar } from './modules/auth.js';
@@ -285,7 +285,7 @@ function refreshAll() {
 }
 
 // ============================================================
-// 9. تعویض وعده غذایی
+// 9. تعویض وعده غذایی (با Hugging Face)
 // ============================================================
 async function swapMeal(dayIndex, mealType, currentName) {
     const inventory = store.inventory || [];
@@ -297,7 +297,7 @@ async function swapMeal(dayIndex, mealType, currentName) {
     
     let options = foodNames.map(name => `<option value="${name}">${name}</option>`).join('');
     const additionalOptions = `
-        <option value="__chatbot__">🤖 دریافت پیشنهاد از jsllm7</option>
+        <option value="__chatbot__">🤖 دریافت پیشنهاد از Hugging Face</option>
         <option value="__custom__">✏️ وارد کردن دستی</option>
     `;
     const selectHTML = `
@@ -334,12 +334,16 @@ async function swapMeal(dayIndex, mealType, currentName) {
             const familySize = getFamilySize();
             
             try {
-                const { getAlternativeMealAI } = await import('./modules/ai-fallback.js');
+                // ===== استفاده از Hugging Face برای پیشنهاد =====
+                const { getAlternativeMealAI } = await import('./modules/huggingface.js');
                 newMealName = await getAlternativeMealAI(mealType, inventoryList, familySize);
-                if (!newMealName || newMealName.length < 2) newMealName = 'غذای ساده';
+                if (!newMealName || newMealName.length < 2) {
+                    newMealName = 'غذای ساده';
+                }
+                console.log('✅ پیشنهاد از Hugging Face دریافت شد:', newMealName);
             } catch (e) {
-                console.error('❌ خطا در دریافت پیشنهاد از jsllm7:', e);
-                alert('خطا در دریافت پیشنهاد. لطفاً دستی وارد کنید.');
+                console.error('❌ خطا در دریافت پیشنهاد از Hugging Face:', e);
+                alert('خطا در دریافت پیشنهاد از هوش مصنوعی. لطفاً دستی وارد کنید.');
                 return;
             }
         } else if (selected === '__custom__') {
