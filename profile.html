@@ -8,16 +8,13 @@
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://js.puter.com/v2/"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     fontFamily: { 'vazir': ['Vazirmatn', 'sans-serif'] },
-                    colors: {
-                        'primary': '#0f172a',
-                        'secondary': '#3b82f6',
-                        'accent': '#f59e0b',
-                    }
+                    colors: { 'primary': '#0f172a', 'secondary': '#3b82f6', 'accent': '#f59e0b' }
                 }
             }
         }
@@ -80,12 +77,8 @@
 
             <!-- ===== دکمه‌ها ===== -->
             <div class="mt-6 space-y-3">
-                <button id="saveProfileBtn" class="btn-gradient w-full justify-center">
-                    <i class="fas fa-save ml-2"></i> ذخیره تغییرات
-                </button>
-                <button id="backToDashboardBtn" class="btn-outline w-full justify-center">
-                    <i class="fas fa-arrow-right ml-2"></i> بازگشت به داشبورد
-                </button>
+                <button id="saveProfileBtn" class="btn-gradient w-full justify-center"><i class="fas fa-save ml-2"></i> ذخیره تغییرات</button>
+                <button id="backToDashboardBtn" class="btn-outline w-full justify-center"><i class="fas fa-arrow-right ml-2"></i> بازگشت به داشبورد</button>
             </div>
 
             <div id="messageDiv" class="mt-4 text-center text-sm"></div>
@@ -95,7 +88,7 @@
     </main>
 
     <!-- ===== منوی کشو ===== -->
-    <div id="drawer" class="drawer-modern fixed top-0 right-0 w-72 h-full z-50 transform translate-x-full transition-transform duration-300 shadow-2xl p-4 overflow-y-auto">
+    <div id="drawer" class="drawer-modern">
         <div class="flex justify-between items-center mb-6">
             <span class="text-lg font-bold text-primary">منو</span>
             <button id="closeDrawerBtn" class="text-gray-400 hover:text-gray-600 transition-colors">
@@ -104,8 +97,241 @@
         </div>
         <div id="drawerItems" class="space-y-2"></div>
     </div>
-    <div id="drawerBackdrop" class="fixed inset-0 bg-black/30 z-40 hidden"></div>
+    <div id="drawerBackdrop"></div>
 
+    <!-- ===== ویجت چت‌بات ===== -->
+    <div id="chatbotWidget">
+        <button class="chatbot-fab" id="chatbotFab" aria-label="دستیار هوشمند">
+            <i class="fas fa-robot"></i>
+            <span class="badge" id="chatbotBadge" style="display:none;">1</span>
+        </button>
+        <div class="chatbot-window" id="chatbotWindow">
+            <div class="chatbot-header">
+                <div class="title"><span class="icon">🤖</span> دستیار هوشمند تدبیر</div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div class="status"><span class="dot"></span><span>آنلاین</span></div>
+                    <button class="close-btn" id="chatbotCloseBtn"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <div class="chatbot-messages" id="chatbotMessages">
+                <div class="message assistant">سلام! 👋 من دستیار هوشمند سامانه‌ی تدبیر منزل هستم. سوال خود را بپرسید! 😊<span class="time">اکنون</span></div>
+                <div class="typing-indicator" id="typingIndicator"><span></span><span></span><span></span></div>
+            </div>
+            <div class="chatbot-quick-suggestions" id="quickSuggestions">
+                <button data-question="وضعیت ذخایر من چگونه است؟">📊 وضعیت ذخایر</button>
+                <button data-question="چطور مصرف آب را کاهش دهم؟">💧 کاهش مصرف آب</button>
+                <button data-question="برای بحران چه کنم؟">⚠️ راهنمای بحران</button>
+                <button data-question="یک برنامه غذایی پیشنهاد بده">🍲 برنامه غذایی</button>
+            </div>
+            <div class="chatbot-input">
+                <textarea id="chatbotInput" rows="1" placeholder="پیام خود را بنویسید..."></textarea>
+                <button class="send-btn" id="chatbotSendBtn"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== اسکریپت‌ها ===== -->
+    <script src="chatbot-widget.js"></script>
+
+    <!-- ===== اسکریپت منوی کشو (داخلی) ===== -->
+    <!-- ===== اسکریپت منوی کشو (داخلی) ===== -->
+    <script>
+        (function() {
+            'use strict';
+            console.log('🔄 راه‌اندازی منوی کشو در profile.html');
+
+            function initDrawer() {
+                const hamburger = document.getElementById('hamburgerMenu');
+                const drawer = document.getElementById('drawer');
+                const backdrop = document.getElementById('drawerBackdrop');
+                const closeBtn = document.getElementById('closeDrawerBtn');
+
+                if (!hamburger || !drawer || !backdrop) {
+                    console.warn('⚠️ منوی کشو: المان‌ها پیدا نشدند!');
+                    return false;
+                }
+
+                console.log('✅ منوی کشو: همه المان‌ها پیدا شدند.');
+
+                function openDrawer() {
+                    drawer.classList.add('open');
+                    backdrop.classList.add('show');
+                    document.body.style.overflow = 'hidden';
+                }
+
+                function closeDrawer() {
+                    drawer.classList.remove('open');
+                    backdrop.classList.remove('show');
+                    document.body.style.overflow = '';
+                }
+
+                if (hamburger._listenerAdded) {
+                    console.log('ℹ️ رویداد منو قبلاً متصل شده است.');
+                    return true;
+                }
+                hamburger._listenerAdded = true;
+
+                hamburger.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openDrawer();
+                });
+
+                if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+                backdrop.addEventListener('click', closeDrawer);
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') closeDrawer();
+                });
+
+                console.log('✅ منوی کشو با موفقیت راه‌اندازی شد.');
+                return true;
+            }
+
+            function updateDrawerItems() {
+                const container = document.getElementById('drawerItems');
+                if (!container) {
+                    console.error('❌ المان drawerItems پیدا نشد!');
+                    return false;
+                }
+
+                const loggedInUser = sessionStorage.getItem('loggedInUser');
+                const isLoggedIn = !!loggedInUser;
+                console.log('🔍 وضعیت لاگین:', { loggedInUser, isLoggedIn });
+
+                let items = [];
+                if (isLoggedIn) {
+                    items = [
+                        { type: 'header', text: 'منوی اصلی' },
+                        { icon: 'fa-house', text: 'صفحه اصلی', link: 'index.html' },
+                        { icon: 'fa-chart-pie', text: 'داشبورد', link: 'dashboard.html' },
+                        { type: 'divider' },
+                        { type: 'header', text: 'مدیریت منابع' },
+                        { icon: 'fa-utensils', text: 'مواد غذایی', link: 'food.html' },
+                        { icon: 'fa-bolt', text: 'مصرف انرژی', link: 'energy.html' },
+                        { type: 'divider' },
+                        { type: 'header', text: 'مدیریت بحران' },
+                        { icon: 'fa-triangle-exclamation', text: 'سناریوهای بحران', link: 'dashboard.html' },
+                        { icon: 'fa-boxes-stacked', text: 'ذخایر اضطراری', link: 'food.html' },
+                        { type: 'divider' },
+                        { type: 'header', text: 'گزارش‌ها' },
+                        { icon: 'fa-calendar-week', text: 'گزارش هفتگی', link: 'reports.html' },
+                        { icon: 'fa-calendar-alt', text: 'گزارش ماهانه', link: 'reports.html' },
+                        { type: 'divider' },
+                        // ===== بخش سلامت (جدید) =====
+                        { type: 'header', text: 'سلامت' },
+                        { icon: 'fa-pills', text: 'مدیریت داروها', link: 'medications.html' },
+                        { type: 'divider' },
+                        { type: 'header', text: 'تنظیمات' },
+                        { icon: 'fa-user', text: 'پروفایل', link: 'profile.html' },
+                        { icon: 'fa-bell', text: 'اعلان‌ها', link: 'notifications.html' },
+                        { icon: 'fa-moon', text: 'تم تاریک', action: 'toggleTheme' },
+                        { type: 'divider' },
+                        { icon: 'fa-clock-rotate-left', text: 'تاریخچه چت', link: 'chat-history.html' },
+                        { type: 'divider' },
+                        { icon: 'fa-circle-question', text: 'راهنما', link: 'help.html' },
+                        { icon: 'fa-envelope', text: 'تماس با ما', link: 'contact.html' },
+                        { type: 'divider' },
+                        { icon: 'fa-right-from-bracket', text: 'خروج', action: 'logout' }
+                    ];
+                } else {
+                    items = [
+                        { icon: 'fa-house', text: 'صفحه اصلی', link: 'index.html' },
+                        { icon: 'fa-right-to-bracket', text: 'ورود', link: 'login.html' },
+                        { icon: 'fa-user-plus', text: 'ثبت‌نام', link: 'login.html' },
+                        { type: 'divider' },
+                        { icon: 'fa-circle-question', text: 'راهنما', link: 'help.html' },
+                        { icon: 'fa-envelope', text: 'تماس با ما', link: 'contact.html' }
+                    ];
+                }
+
+                container.innerHTML = '';
+                items.forEach(item => {
+                    if (item.type === 'divider') {
+                        const hr = document.createElement('hr');
+                        hr.style.margin = '0.5rem 0';
+                        hr.style.border = 'none';
+                        hr.style.borderTop = '1px solid #e2e8f0';
+                        container.appendChild(hr);
+                        return;
+                    }
+                    if (item.type === 'header') {
+                        const header = document.createElement('div');
+                        header.textContent = item.text;
+                        header.style.cssText = 'font-size:0.7rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;padding:0.5rem 0.25rem;margin-top:0.25rem;';
+                        container.appendChild(header);
+                        return;
+                    }
+                    const div = document.createElement('div');
+                    div.className = 'drawer-item';
+                    const iconSpan = document.createElement('span');
+                    iconSpan.className = `fas ${item.icon}`;
+                    iconSpan.style.cssText = 'width:20px;display:inline-block;text-align:center;margin-left:12px;color:#64748b;font-size:1rem;';
+                    const textSpan = document.createElement('span');
+                    textSpan.textContent = item.text;
+                    textSpan.style.cssText = 'color:#334155;font-size:0.95rem;';
+                    const wrapper = document.createElement('span');
+                    wrapper.style.cssText = 'display:flex;align-items:center;width:100%;';
+                    wrapper.appendChild(iconSpan);
+                    wrapper.appendChild(textSpan);
+
+                    if (item.link) {
+                        const a = document.createElement('a');
+                        a.href = item.link;
+                        a.appendChild(wrapper);
+                        a.style.cssText = 'text-decoration:none;color:inherit;display:block;width:100%;padding:0.25rem 0;';
+                        div.appendChild(a);
+                    } else {
+                        const btn = document.createElement('button');
+                        btn.appendChild(wrapper);
+                        btn.style.cssText = 'background:none;border:none;cursor:pointer;width:100%;text-align:right;font-family:inherit;font-size:1rem;padding:0.25rem 0;color:#334155;';
+                        btn.onclick = function() {
+                            switch(item.action) {
+                                case 'logout':
+                                    sessionStorage.removeItem('loggedInUser');
+                                    window.location.href = 'index.html';
+                                    break;
+                                case 'toggleTheme':
+                                    document.body.classList.toggle('dark-mode');
+                                    localStorage.setItem('dark_mode', document.body.classList.contains('dark-mode') ? 'true' : 'false');
+                                    break;
+                                default:
+                                    console.log('اقدام ناشناخته:', item.action);
+                            }
+                        };
+                        div.appendChild(btn);
+                    }
+                    div.addEventListener('mouseenter', function() {
+                        const icon = this.querySelector('.fas');
+                        if (icon) icon.style.color = '#3b82f6';
+                        const text = this.querySelector('span:not(.fas)');
+                        if (text) text.style.color = '#3b82f6';
+                    });
+                    div.addEventListener('mouseleave', function() {
+                        const icon = this.querySelector('.fas');
+                        if (icon) icon.style.color = '#64748b';
+                        const text = this.querySelector('span:not(.fas)');
+                        if (text) text.style.color = '#334155';
+                    });
+                    container.appendChild(div);
+                });
+
+                console.log('✅ آیتم‌های منو به‌روزرسانی شدند.');
+                return true;
+            }
+
+            setTimeout(function() {
+                const drawerInit = initDrawer();
+                const itemsUpdate = updateDrawerItems();
+                if (!drawerInit || !itemsUpdate) {
+                    console.warn('⚠️ منو کامل راه‌اندازی نشد. تلاش مجدد...');
+                    setTimeout(function() {
+                        initDrawer();
+                        updateDrawerItems();
+                    }, 300);
+                }
+            }, 100);
+        })();
+    </script>
     <script type="module" src="profile.js"></script>
 </body>
 </html>
