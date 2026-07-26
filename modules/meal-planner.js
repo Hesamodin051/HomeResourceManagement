@@ -6,7 +6,7 @@ let recipesCache = [];
 let currentSuggestionResult = null;
 
 // ============================================================
-// بارگذاری دستورهای غذایی
+// بارگذاری دستورهای غذایی از recipes.json
 // ============================================================
 async function loadRecipes() {
     if (recipesCache.length > 0) return recipesCache;
