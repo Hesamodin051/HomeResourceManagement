@@ -224,7 +224,7 @@ function populateScenarioDropdown() {
 }
 
 // ============================================================
-// 8. تحلیل ارزش غذایی
+// 8. تحلیل ارزش غذایی (با import پویا)
 // ============================================================
 async function updateNutritionAnalysis() {
     const display = document.getElementById('nutritionDisplay');
@@ -242,6 +242,7 @@ async function updateNutritionAnalysis() {
     }
 
     try {
+        // بارگذاری پویا برای جلوگیری از وابستگی دوری
         const { analyzeInventoryNutrition } = await import('./modules/food.js');
         const nutrition = await analyzeInventoryNutrition();
         
@@ -250,7 +251,7 @@ async function updateNutritionAnalysis() {
                 <div class="text-center text-gray-400 py-4">
                     <i class="fas fa-info-circle text-secondary ml-2"></i>
                     اطلاعات ارزش غذایی برای مواد ثبت‌شده موجود نیست.
-                    <br><span class="text-xs">لطفاً مطمئن شوید که فایل food_items.json در مسیر صحیح قرار دارد.</span>
+                    <br><span class="text-xs">برای دریافت اطلاعات، به صفحه مدیریت مواد غذایی بروید و روی دکمه 📥 کلیک کنید.</span>
                 </div>
             `;
             return;
@@ -299,7 +300,6 @@ async function updateNutritionAnalysis() {
         `;
     }
 }
-
 // ============================================================
 // 9. مقداردهی اولیه داشبورد
 // ============================================================
