@@ -10,7 +10,8 @@ export const store = {
         electricity: [],
         gas: []
     },
-    listeners: []
+    listeners: [],
+    _isUpdating: false  // پرچم جلوگیری از حلقه
 };
 
 export function setCrisisMode(active) {
@@ -19,8 +20,14 @@ export function setCrisisMode(active) {
 }
 
 export function setInventory(newInventory) {
+    if (store._isUpdating) {
+        console.warn('⚠️ جلوگیری از به‌روزرسانی همزمان inventory');
+        return;
+    }
+    store._isUpdating = true;
     store.inventory = newInventory;
     notifyListeners('inventory', newInventory);
+    store._isUpdating = false;
 }
 
 export function setConsumptionData(data) {
