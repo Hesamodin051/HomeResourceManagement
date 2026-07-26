@@ -4,7 +4,7 @@ import { store } from './store.js';
 let recipesCache = [];
 
 // ============================================================
-// بارگذاری دستورهای غذایی از recipes.json
+// بارگذاری دستورهای غذایی
 // ============================================================
 async function loadRecipes() {
     if (recipesCache.length > 0) return recipesCache;
@@ -15,14 +15,11 @@ async function loadRecipes() {
         recipesCache = data;
         return data;
     } catch (error) {
-        console.warn('⚠️ خطا در بارگذاری recipes.json، استفاده از داده‌های پیش‌فرض:', error);
+        console.warn('⚠️ خطا در بارگذاری recipes.json:', error);
         return getFallbackRecipes();
     }
 }
 
-// ============================================================
-// غذاهای پیش‌فرض (با mealType)
-// ============================================================
 function getFallbackRecipes() {
     return [
         {
@@ -99,13 +96,27 @@ function getFallbackRecipes() {
             cook_time: 30,
             difficulty: 'آسان',
             tags: ['سبک', 'سریع']
+        },
+        {
+            id: 6,
+            name: 'قورمه سبزی',
+            category: 'خورش',
+            mealType: 'ناهار',
+            ingredients: [
+                { name: 'سبزی قورمه', quantity: 0.5, unit: 'کیلوگرم' },
+                { name: 'گوشت', quantity: 0.3, unit: 'کیلوگرم' },
+                { name: 'لوبیا قرمز', quantity: 0.1, unit: 'کیلوگرم' },
+                { name: 'پیاز', quantity: 0.05, unit: 'کیلوگرم' },
+                { name: 'روغن', quantity: 0.03, unit: 'لیتر' }
+            ],
+            servings: 4,
+            cook_time: 120,
+            difficulty: 'متوسط',
+            tags: ['سنتی', 'خورش']
         }
     ];
 }
 
-// ============================================================
-// توابع پایه
-// ============================================================
 function getFamilySize() {
     return store.currentUserProfile?.familySize || 4;
 }
@@ -114,9 +125,6 @@ function getInventory() {
     return store.inventory || [];
 }
 
-// ============================================================
-// محاسبه تعداد دفعات قابل پخت
-// ============================================================
 function calculateServings(recipe, inventory, familySize) {
     let maxServings = Infinity;
     for (let ingredient of recipe.ingredients) {
@@ -150,67 +158,7 @@ function calculateServings(recipe, inventory, familySize) {
 }
 
 // ============================================================
-// دریافت پیشنهاد جایگزین از هوش مصنوعی (برای وعده‌های رد شده)
-// ============================================================
-export async function getAlternativeMeal(mealType, dayIndex) {
-    const familySize = getFamilySize();
-    const inventory = getInventory();
-    const crisisMode = store.crisisMode;
-
-    if (inventory.length === 0) {
-        return 'هیچ ماده غذایی ثبت نشده است.';
-    }
-
-    if (typeof puter === 'undefined' || !navigator.onLine) {
-        // حالت آفلاین: یک غذای ساده پیشنهاد بده
-        const fallbackMeals = {
-            'صبحانه': ['نان و پنیر', 'تخم‌مرغ', 'حلیم'],
-            'ناهار': ['عدسی', 'ماکارونی', 'کتلت'],
-            'شام': ['سوپ', 'املت', 'نان و کره']
-        };
-        const options = fallbackMeals[mealType] || ['غذای ساده'];
-        return options[dayIndex % options.length];
-    }
-
-    const inventoryList = inventory.map(item => 
-        `- ${item.name}: ${item.quantity} ${item.unit}`
-    ).join('\n');
-
-    const prompt = `
-شما یک دستیار آشپزخانه هوشمند هستید.
-بر اساس موجودی زیر، یک غذای مناسب برای وعده ${mealType} پیشنهاد بده.
-
-موجودی انبار:
-${inventoryList}
-
-تعداد اعضای خانواده: ${familySize} نفر
-${crisisMode ? '⚠️ حالت بحران فعال است. اولویت با غذاهای ساده و کم‌مصرف.' : ''}
-
-فقط نام غذا را بدون توضیح اضافی بگو.
-`;
-
-    try {
-        const response = await puter.ai.chat(prompt, {
-            model: "gpt-4o-mini",
-            temperature: 0.7
-        });
-        let result = '';
-        if (typeof response === 'string') {
-            result = response;
-        } else if (response && typeof response === 'object') {
-            result = response.message?.content || response.text || response.response || JSON.stringify(response);
-        } else {
-            result = 'غذای ساده';
-        }
-        return result.trim();
-    } catch (error) {
-        console.error('❌ خطا در دریافت پیشنهاد جایگزین:', error);
-        return 'غذای ساده';
-    }
-}
-
-// ============================================================
-// تولید برنامه هفتگی (Rule-Based)
+// تولید برنامه هفتگی با کارت‌های تعاملی
 // ============================================================
 export async function generateWeeklyPlan(days = 7, startDate = null) {
     const familySize = getFamilySize();
@@ -218,7 +166,6 @@ export async function generateWeeklyPlan(days = 7, startDate = null) {
     const crisisMode = store.crisisMode;
     const recipes = await loadRecipes();
 
-    // محاسبه دفعات قابل پخت برای هر غذا
     const recipeAvailability = recipes.map(recipe => ({
         ...recipe,
         servings: calculateServings(recipe, inventory, familySize),
@@ -226,7 +173,6 @@ export async function generateWeeklyPlan(days = 7, startDate = null) {
     }));
 
     let availableRecipes = recipeAvailability.filter(r => r.isAvailable);
-
     if (availableRecipes.length === 0) {
         availableRecipes = recipeAvailability.slice(0, 5).map(r => ({ ...r, servings: 1, isAvailable: true }));
     }
@@ -268,14 +214,12 @@ export async function generateWeeklyPlan(days = 7, startDate = null) {
             day: i + 1,
             date: date.toISOString().slice(0, 10),
             dayName: dayName,
-            meals: {
-                صبحانه: selectMeal('صبحانه', i, usedMeals),
-                ناهار: selectMeal('ناهار', i, usedMeals),
-                شام: selectMeal('شام', i, usedMeals)
-            }
+            meals: {}
         };
         ['صبحانه', 'ناهار', 'شام'].forEach(type => {
-            usedMeals.push(dayPlan.meals[type].id);
+            const meal = selectMeal(type, i, usedMeals);
+            dayPlan.meals[type] = meal;
+            usedMeals.push(meal.id);
         });
         plan.push(dayPlan);
     }
@@ -288,15 +232,15 @@ export async function generateWeeklyPlan(days = 7, startDate = null) {
         return daysLeft >= 0 && daysLeft <= 3;
     });
     if (expiringItems.length > 0) {
-        tips.push(`⏰ مواد زیر در حال انقضا هستند: ${expiringItems.map(i => i.name).join('، ')}. در برنامه گنجانده شده‌اند.`);
+        tips.push(`⏰ مواد در حال انقضا: ${expiringItems.map(i => i.name).join('، ')}`);
     }
     const waterItem = inventory.find(i => i.name.includes('آب'));
     if (waterItem) {
         const daysLeft = waterItem.quantity / (familySize * 2);
-        if (daysLeft < 7) tips.push(`💧 آب تنها برای ${Math.floor(daysLeft)} روز کافی است. مصرف را مدیریت کنید.`);
+        if (daysLeft < 7) tips.push(`💧 آب برای ${Math.floor(daysLeft)} روز کافی است.`);
     }
-    if (crisisMode) tips.push('⚠️ حالت بحران فعال است. مصرف را به حداقل برسانید و اولویت با آب و کنسروها باشد.');
-    if (tips.length === 0) tips.push('✅ وضعیت ذخایر مناسب است. برنامه بر اساس موجودی و تاریخ انقضا تنظیم شده است.');
+    if (crisisMode) tips.push('⚠️ حالت بحران فعال است.');
+    if (tips.length === 0) tips.push('✅ وضعیت ذخایر مناسب است.');
 
     const keyItems = {
         water: waterItem ? { quantity: waterItem.quantity, unit: waterItem.unit } : null,
@@ -309,14 +253,58 @@ export async function generateWeeklyPlan(days = 7, startDate = null) {
 }
 
 // ============================================================
-// تولید HTML کارت‌های روزانه
+// دریافت پیشنهاد جایگزین از AI (برای وعده‌های رد شده)
+// ============================================================
+export async function getAlternativeMeal(mealType, dayIndex) {
+    const familySize = getFamilySize();
+    const inventory = getInventory();
+
+    if (inventory.length === 0) return 'غذای ساده';
+
+    if (typeof puter === 'undefined' || !navigator.onLine) {
+        const fallback = {
+            'صبحانه': ['نان و پنیر', 'تخم‌مرغ', 'حلیم'],
+            'ناهار': ['عدسی', 'ماکارونی', 'کتلت'],
+            'شام': ['سوپ', 'املت', 'نان و کره']
+        };
+        const options = fallback[mealType] || ['غذای ساده'];
+        return options[dayIndex % options.length];
+    }
+
+    const inventoryList = inventory.map(item => 
+        `- ${item.name}: ${item.quantity} ${item.unit}`
+    ).join('\n');
+
+    const prompt = `
+بر اساس موجودی زیر، یک غذای مناسب برای وعده ${mealType} پیشنهاد بده.
+موجودی: ${inventoryList}
+تعداد اعضای خانواده: ${familySize} نفر
+فقط نام غذا را بگو، بدون توضیح.
+`;
+
+    try {
+        const response = await puter.ai.chat(prompt, { model: "gpt-4o-mini", temperature: 0.7 });
+        let result = '';
+        if (typeof response === 'string') result = response;
+        else if (response?.message?.content) result = response.message.content;
+        else result = 'غذای ساده';
+        return result.trim();
+    } catch (error) {
+        console.error('❌ خطا:', error);
+        return 'غذای ساده';
+    }
+}
+
+// ============================================================
+// تولید HTML کارت‌های تعاملی (نسخه نهایی)
 // ============================================================
 export async function generateConsumptionPlan(days = 7, startDate = null) {
     try {
         const result = await generateWeeklyPlan(days, startDate);
         const { plan, maxDays, tips, keyItems, crisisMode } = result;
-
         window.currentPlanData = result;
+
+        const mealIcons = { صبحانه: '🌅', ناهار: '🌞', شام: '🌙' };
 
         let html = `
             <div class="consumption-plan">
@@ -327,11 +315,9 @@ export async function generateConsumptionPlan(days = 7, startDate = null) {
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         `;
 
-        const mealIcons = { صبحانه: '🌅', ناهار: '🌞', شام: '🌙' };
-
         plan.forEach((day, idx) => {
             html += `
-                <div class="day-card bg-white rounded-xl p-3 border border-gray-200 shadow-sm">
+                <div class="day-card bg-white rounded-xl p-3 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                     <div class="flex justify-between items-center mb-2">
                         <span class="font-bold text-sm text-primary">${day.dayName}</span>
                         <span class="text-xs text-gray-400">${day.date}</span>
@@ -359,6 +345,7 @@ export async function generateConsumptionPlan(days = 7, startDate = null) {
                 </div>
             `;
         });
+
         html += `</div>`;
 
         // خلاصه ذخایر
@@ -374,10 +361,11 @@ export async function generateConsumptionPlan(days = 7, startDate = null) {
             </div>
         `;
 
+        // نکات
         if (tips && tips.length > 0) {
             html += `
                 <div class="mt-3 p-3 bg-blue-50 rounded-xl border border-blue-200">
-                    <h5 class="text-sm font-bold text-blue-700 mb-1">💡 نکات هوشمند</h5>
+                    <h5 class="text-sm font-bold text-blue-700 mb-1">💡 نکات</h5>
                     <ul class="text-xs text-blue-600 space-y-1">
                         ${tips.map(t => `<li>${t}</li>`).join('')}
                     </ul>
@@ -388,7 +376,7 @@ export async function generateConsumptionPlan(days = 7, startDate = null) {
         if (crisisMode) {
             html += `
                 <div class="mt-3 p-3 bg-red-50 rounded-xl border border-red-200">
-                    <p class="text-sm text-red-700">⚠️ حالت بحران: اولویت با آب، کنسرو و مواد خشک است.</p>
+                    <p class="text-sm text-red-700">⚠️ حالت بحران فعال است.</p>
                 </div>
             `;
         }
