@@ -61,9 +61,23 @@ async function handleAISuggestion() {
 // ============================================================
 function renderInventoryTable() {
     const tbody = document.getElementById('inventoryBody');
-    if (!tbody) return;
+    if (!tbody) {
+        console.warn('⚠️ المان inventoryBody پیدا نشد.');
+        return;
+    }
     tbody.innerHTML = '';
-    store.inventory.forEach(item => {
+    const inventory = store.inventory || [];
+    if (inventory.length === 0) {
+        const row = tbody.insertRow();
+        const cell = row.insertCell(0);
+        cell.colSpan = 5;
+        cell.textContent = 'هیچ ماده غذایی ثبت نشده است.';
+        cell.style.textAlign = 'center';
+        cell.style.color = '#94a3b8';
+        cell.style.padding = '1rem 0';
+        return;
+    }
+    inventory.forEach(item => {
         const row = tbody.insertRow();
         row.insertCell(0).innerText = item.name;
         row.insertCell(1).innerText = item.quantity;
@@ -155,7 +169,7 @@ function renderChart() {
 }
 
 // ============================================================
-// 6. به‌روزرسانی الگوی مصرف (با AI) - اصلاح شده
+// 6. به‌روزرسانی الگوی مصرف (با AI)
 // ============================================================
 function updateConsumptionPlan() {
     const display = document.getElementById('consumptionPlanDisplay');
@@ -164,37 +178,38 @@ function updateConsumptionPlan() {
         return;
     }
     const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
-    console.log(`🔄 بروزرسانی الگوی مصرف برای ${days} روز با هوش مصنوعی...`);
+    console.log(`🔄 بروزرسانی الگوی مصرف برای ${days} روز...`);
     
     display.innerHTML = `
         <div class="text-center text-gray-400 py-4">
             <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
-            <p>🤖 در حال دریافت برنامه هوشمند از AI...</p>
+            <p>🤖 در حال دریافت برنامه هوشمند...</p>
         </div>
     `;
     
-    // بارگذاری مجدد موجودی از localStorage برای اطمینان
-    import('./modules/inventory.js').then(({ loadInventory }) => {
-        loadInventory();
-        return generateConsumptionPlan(days);
-    }).then(html => {
-        display.innerHTML = html;
-        attachMealClickEvents();
-        console.log('✅ الگوی مصرف با AI به‌روزرسانی شد.');
-    }).catch(err => {
-        console.error('❌ خطا در به‌روزرسانی الگوی مصرف:', err);
-        display.innerHTML = `
-            <div class="text-center text-red-400 py-4">
-                <i class="fas fa-exclamation-triangle text-3xl block mb-2"></i>
-                خطا در دریافت برنامه هوشمند.
-                <br><span class="text-xs text-gray-400">${err.message || ''}</span>
-            </div>
-        `;
-    });
+    // بارگذاری مجدد موجودی برای اطمینان
+    loadInventory();
+    
+    generateConsumptionPlan(days)
+        .then(html => {
+            display.innerHTML = html;
+            attachMealClickEvents();
+            console.log('✅ الگوی مصرف به‌روزرسانی شد.');
+        })
+        .catch(err => {
+            console.error('❌ خطا در به‌روزرسانی الگوی مصرف:', err);
+            display.innerHTML = `
+                <div class="text-center text-red-400 py-4">
+                    <i class="fas fa-exclamation-triangle text-3xl block mb-2"></i>
+                    خطا در دریافت برنامه.
+                    <br><span class="text-xs text-gray-400">${err.message || ''}</span>
+                </div>
+            `;
+        });
 }
 
 // ============================================================
-// 7. تحلیل ارزش غذایی هوشمند - اصلاح شده
+// 7. تحلیل ارزش غذایی هوشمند
 // ============================================================
 async function updateNutritionAnalysis() {
     const display = document.getElementById('nutritionDisplay');
@@ -203,10 +218,7 @@ async function updateNutritionAnalysis() {
     display.innerHTML = `<div class="text-center text-gray-400 py-4"><i class="fas fa-spinner fa-spin text-2xl"></i> در حال تحلیل...</div>`;
     
     try {
-        // بارگذاری مجدد موجودی
-        const { loadInventory } = await import('./modules/inventory.js');
         loadInventory();
-        
         const { analyzeInventoryNutrition } = await import('./modules/food.js');
         const result = await analyzeInventoryNutrition();
         
@@ -262,11 +274,11 @@ async function updateNutritionAnalysis() {
         display.innerHTML = `<div class="text-center text-red-400 py-4">خطا در تحلیل ارزش غذایی.</div>`;
     }
 }
+
 // ============================================================
 // 8. اتصال رویدادهای داشبورد
 // ============================================================
 function bindDashboardUI() {
-    // دکمه ذخیره مصرف
     const saveBtn = document.getElementById('saveConsumptionBtn');
     if (saveBtn) {
         saveBtn.addEventListener('click', function() {
@@ -288,7 +300,6 @@ function bindDashboardUI() {
         });
     }
 
-    // سوئیچ بحران
     const crisisToggle = document.getElementById('crisisModeToggle');
     if (crisisToggle) {
         crisisToggle.addEventListener('change', function(e) {
@@ -303,11 +314,9 @@ function bindDashboardUI() {
         });
     }
 
-    // دکمه خروج
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) logoutBtn.addEventListener('click', () => logout());
 
-    // دکمه بروزرسانی الگوی مصرف
     const generatePlanBtn = document.getElementById('generatePlanBtn');
     if (generatePlanBtn) {
         generatePlanBtn.addEventListener('click', function() {
@@ -315,7 +324,6 @@ function bindDashboardUI() {
         });
     }
 
-    // دکمه بازنشانی پیشنهادات غذایی
     const refreshBtn = document.getElementById('refreshMealSuggestionsBtn');
     if (refreshBtn) {
         refreshBtn.addEventListener('click', function() {
@@ -488,16 +496,27 @@ function mealClickHandler(e) {
 function initDashboard() {
     if (!checkAuth()) return;
     const loggedInUser = getLoggedInUser();
+    console.log('👤 کاربر فعلی:', loggedInUser);
+    
+    // تنظیم store.currentUser برای هماهنگی
+    if (loggedInUser) {
+        store.currentUser = loggedInUser;
+    }
+    
     if (loggedInUser && !store.currentUserProfile) {
         const profile = getUserProfile(loggedInUser);
         if (profile) setCurrentUserProfile(profile);
     }
+    
     fetch('assets/data/crisis_scenarios.json')
         .then(res => res.json())
         .then(data => { window.crisisScenarios = data; })
         .catch(() => { window.crisisScenarios = []; })
         .finally(() => {
+            // ===== بارگذاری موجودی با کلید صحیح =====
             loadInventory();
+            console.log('📦 موجودی پس از بارگذاری:', store.inventory.length);
+            
             loadConsumptionData();
             renderInventoryTable();
             renderChart();
@@ -509,8 +528,10 @@ function initDashboard() {
             generateMealSuggestions(1);
             updateNutritionAnalysis();
             initMealPlanner();
+            
             const aiBtn = document.getElementById('aiSuggestionBtn');
             if (aiBtn) aiBtn.addEventListener('click', handleAISuggestion);
+            
             const savedCrisis = localStorage.getItem('crisis_mode');
             const crisisToggle = document.getElementById('crisisModeToggle');
             if (savedCrisis === 'true' && crisisToggle) {
@@ -523,6 +544,7 @@ function initDashboard() {
                 updateNutritionAnalysis();
                 generateMealSuggestions(1);
             }
+            
             const userDisplay = document.getElementById('userDisplay');
             const userAvatar = document.getElementById('userAvatar');
             if (userDisplay && loggedInUser) userDisplay.innerText = loggedInUser;
