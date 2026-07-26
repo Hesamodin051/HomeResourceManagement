@@ -169,7 +169,7 @@ function renderChart() {
 }
 
 // ============================================================
-// 6. به‌روزرسانی الگوی مصرف (با AI)
+// 6. به‌روزرسانی الگوی مصرف (با AI) - ✅ اصلاح شده
 // ============================================================
 function updateConsumptionPlan() {
     const display = document.getElementById('consumptionPlanDisplay');
@@ -187,9 +187,7 @@ function updateConsumptionPlan() {
         </div>
     `;
     
-    // بارگذاری مجدد موجودی برای اطمینان
-    loadInventory();
-    
+    // ===== حذف loadInventory() – فقط از store.inventory استفاده می‌شود =====
     generateConsumptionPlan(days)
         .then(html => {
             display.innerHTML = html;
@@ -218,7 +216,7 @@ async function updateNutritionAnalysis() {
     display.innerHTML = `<div class="text-center text-gray-400 py-4"><i class="fas fa-spinner fa-spin text-2xl"></i> در حال تحلیل...</div>`;
     
     try {
-        loadInventory();
+        // فقط از store.inventory استفاده کن، بارگذاری مجدد نکن
         const { analyzeInventoryNutrition } = await import('./modules/food.js');
         const result = await analyzeInventoryNutrition();
         
@@ -524,7 +522,7 @@ function initDashboard() {
             bindDashboardUI();
             populateScenarioDropdown();
             generateSuggestions();
-            updateConsumptionPlan();
+            updateConsumptionPlan(); // ✅ بدون بارگذاری مجدد
             generateMealSuggestions(1);
             updateNutritionAnalysis();
             initMealPlanner();
@@ -705,14 +703,14 @@ if (currentPath.includes('login.html')) {
 }
 
 // ============================================================
-// 15. شنونده‌های تغییرات store
+// 15. شنونده‌های تغییرات store - ✅ اصلاح شده (بدون بارگذاری مجدد)
 // ============================================================
 addListener('inventory', function() {
     if (window.location.pathname.includes('dashboard.html')) {
         renderInventoryTable();
         generateAlerts();
         generateSuggestions();
-        updateConsumptionPlan();
+        updateConsumptionPlan();   // ✅ این تابع دیگر loadInventory را صدا نمی‌زند
         updateNutritionAnalysis();
         refreshMealSuggestions();
     }
