@@ -8,7 +8,7 @@ const CACHE_DURATION = 60000;
 let currentSuggestionResult = null;
 
 // ============================================================
-// تولید پیشنهادات
+// تولید پیشنهادات (نسخه مقاوم)
 // ============================================================
 export async function generateMealSuggestions(forceRefresh = false) {
     const display = document.getElementById('mealSuggestionsDisplay');
@@ -45,10 +45,22 @@ export async function generateMealSuggestions(forceRefresh = false) {
             return;
         }
 
-        currentSuggestionResult = result;
-        cachedSuggestions = result;
+        // ===== اطمینان از وجود ساختارهای مورد نیاز =====
+        const safeResult = {
+            type: result.type || 'rule-based',
+            available: result.available || [],
+            unavailable: result.unavailable || [],
+            crisisMode: result.crisisMode || false,
+            plan: result.plan || [],
+            content: result.content || '',
+            message: result.message || '',
+            totalRecipes: result.totalRecipes || 0
+        };
+
+        currentSuggestionResult = safeResult;
+        cachedSuggestions = safeResult;
         lastFetchTime = now;
-        renderMealSuggestions(result);
+        renderMealSuggestions(safeResult);
     } catch (error) {
         console.error('❌ خطا در تولید پیشنهادات:', error);
         display.innerHTML = `
@@ -128,7 +140,7 @@ function getCategoryColor(category) {
 }
 
 // ============================================================
-// رندر اصلی (با مدیریت خطا)
+// رندر اصلی (با مدیریت کامل خطا)
 // ============================================================
 function renderMealSuggestions(result) {
     const display = document.getElementById('mealSuggestionsDisplay');
