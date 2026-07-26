@@ -3,11 +3,11 @@
 // ============================================================
 
 import { checkAuth, getLoggedInUser, logout, getUserProfile, getUserAvatar } from './modules/auth.js';
-import { loadInventory, addItem, editItem, deleteItem } from './modules/inventory.js';
+import { loadInventory, addItem, editItem, deleteItem, consumeIngredients } from './modules/inventory.js';
 import { loadConsumptionData, saveTodayConsumption } from './modules/consumption.js';
 import { store, setCrisisMode, addListener, setCurrentUserProfile } from './modules/store.js';
 import { generateSuggestions } from './modules/suggestion.js';
-import { generateConsumptionPlan } from './modules/consumption-planner.js';
+import { generateConsumptionPlan, getMealDetails } from './modules/consumption-planner.js';
 import { generateMealSuggestions, refreshMealSuggestions, initMealPlanner } from './modules/meal-planner.js';
 import { getSmartSuggestions } from './modules/ai.js';
 import { analyzeInventoryNutrition } from './modules/food.js';
@@ -83,7 +83,7 @@ function renderInventoryTable() {
                 editItem(item.id, newName.trim(), newQty, newUnit.trim(), newExpiry || '');
                 renderInventoryTable();
                 generateAlerts();
-                document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(
+                document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
                     parseInt(document.getElementById('planDaysSelect')?.value || 7)
                 );
                 generateSuggestions();
@@ -99,7 +99,7 @@ function renderInventoryTable() {
                 deleteItem(item.id);
                 renderInventoryTable();
                 generateAlerts();
-                document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(
+                document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
                     parseInt(document.getElementById('planDaysSelect')?.value || 7)
                 );
                 generateSuggestions();
@@ -178,7 +178,7 @@ function bindDashboardUI() {
             document.getElementById('electricityConsumption').value = '';
             document.getElementById('gasConsumption').value = '';
             generateSuggestions();
-            document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(
+            document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
                 parseInt(document.getElementById('planDaysSelect')?.value || 7)
             );
         });
@@ -190,7 +190,7 @@ function bindDashboardUI() {
             document.body.classList.toggle('crisis', e.target.checked);
             generateAlerts();
             generateSuggestions();
-            document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(
+            document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
                 parseInt(document.getElementById('planDaysSelect')?.value || 7)
             );
             localStorage.setItem('crisis_mode', e.target.checked);
@@ -228,7 +228,7 @@ function populateScenarioDropdown() {
             tipDiv.style.display = 'none';
         }
         generateSuggestions();
-        document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(
+        document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
             parseInt(document.getElementById('planDaysSelect')?.value || 7)
         );
     });
@@ -312,7 +312,127 @@ async function updateNutritionAnalysis() {
 }
 
 // ============================================================
-// 9. مقداردهی اولیه داشبورد
+// 9. مدیریت مدال تأیید مصرف
+// ============================================================
+function getFamilySize() {
+    return store.currentUserProfile?.familySize || 4;
+}
+
+function showConsumeModal(mealData) {
+    const modal = document.getElementById('consumeModal');
+    const body = document.getElementById('consumeModalBody');
+    const title = document.getElementById('consumeModalTitle');
+    
+    if (!modal || !body) return;
+    
+    const familySize = getFamilySize();
+    title.textContent = `🍽️ ${mealData.mealName} - ${mealData.mealType} (${mealData.dayName})`;
+    
+    let html = `
+        <p class="text-sm text-gray-600 mb-4">مواد اولیه مورد نیاز برای ${familySize} نفر:</p>
+        <div class="space-y-3">
+    `;
+    
+    mealData.ingredients.forEach((ing, index) => {
+        const needed = (ing.quantity * familySize).toFixed(2);
+        html += `
+            <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                <span class="w-1/3 text-sm font-medium text-gray-700">${ing.name}</span>
+                <input type="number" id="ing_${index}" value="${needed}" step="0.01" min="0" 
+                       class="input-modern w-24 text-center" data-ingredient="${ing.name}" />
+                <span class="text-sm text-gray-500">${ing.unit}</span>
+                <span class="text-xs text-gray-400">(نیاز: ${needed} ${ing.unit})</span>
+            </div>
+        `;
+    });
+    
+    html += `
+        </div>
+        <div class="flex gap-3 mt-6">
+            <button id="confirmConsumeBtn" class="btn-gradient flex-1 justify-center">
+                <i class="fas fa-check ml-2"></i> تأیید و مصرف
+            </button>
+            <button id="cancelConsumeBtn" class="btn-outline flex-1 justify-center">
+                <i class="fas fa-times ml-2"></i> لغو
+            </button>
+        </div>
+        <div id="consumeMessage" class="mt-3 text-center text-sm hidden"></div>
+    `;
+    
+    body.innerHTML = html;
+    modal.classList.remove('hidden');
+    
+    document.getElementById('closeConsumeModal').addEventListener('click', closeConsumeModal);
+    document.getElementById('cancelConsumeBtn').addEventListener('click', closeConsumeModal);
+    document.getElementById('confirmConsumeBtn').addEventListener('click', handleConsumeConfirm);
+}
+
+function closeConsumeModal() {
+    document.getElementById('consumeModal').classList.add('hidden');
+}
+
+async function handleConsumeConfirm() {
+    const mealData = window._currentMealData;
+    if (!mealData) return;
+    
+    const messageDiv = document.getElementById('consumeMessage');
+    const ingredients = mealData.ingredients.map((ing, index) => {
+        const input = document.getElementById(`ing_${index}`);
+        const newQty = parseFloat(input.value) || 0;
+        return {
+            ...ing,
+            quantity: newQty / getFamilySize()
+        };
+    });
+    
+    if (!confirm(`آیا از مصرف ${mealData.mealName} برای ${getFamilySize()} نفر اطمینان دارید؟`)) return;
+    
+    const result = consumeIngredients(ingredients, getFamilySize());
+    
+    if (result.success) {
+        messageDiv.className = 'mt-3 text-center text-sm text-green-600 p-2 bg-green-50 rounded-lg';
+        messageDiv.textContent = `✅ ${result.message}`;
+        setTimeout(() => {
+            closeConsumeModal();
+            regeneratePlan();
+        }, 1500);
+    } else {
+        messageDiv.className = 'mt-3 text-center text-sm text-red-600 p-2 bg-red-50 rounded-lg';
+        messageDiv.textContent = `❌ ${result.message}`;
+    }
+}
+
+async function regeneratePlan() {
+    const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
+    const display = document.getElementById('consumptionPlanDisplay');
+    if (display) {
+        display.innerHTML = await generateConsumptionPlan(days);
+        attachMealClickEvents();
+    }
+    renderInventoryTable();
+    generateAlerts();
+    updateNutritionAnalysis();
+    refreshMealSuggestions();
+}
+
+function attachMealClickEvents() {
+    document.querySelectorAll('.day-card .meal-item').forEach(el => {
+        el.addEventListener('click', function() {
+            const dayIndex = parseInt(this.dataset.dayIndex);
+            const mealType = this.dataset.mealType;
+            const planData = window.currentPlanData;
+            if (!planData || !planData.plan) return;
+            const mealDetails = getMealDetails(dayIndex, mealType, planData.plan);
+            if (mealDetails) {
+                window._currentMealData = mealDetails;
+                showConsumeModal(mealDetails);
+            }
+        });
+    });
+}
+
+// ============================================================
+// 10. مقداردهی اولیه داشبورد
 // ============================================================
 async function initDashboard() {
     if (!checkAuth()) return;
@@ -341,7 +461,8 @@ async function initDashboard() {
     const planDisplay = document.getElementById('consumptionPlanDisplay');
     if (planDisplay) {
         const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
-        planDisplay.innerHTML = generateConsumptionPlan(days);
+        planDisplay.innerHTML = await generateConsumptionPlan(days);
+        attachMealClickEvents();
     }
 
     // ===== پیشنهادات غذایی =====
@@ -351,9 +472,10 @@ async function initDashboard() {
     await updateNutritionAnalysis();
     
     // ===== رویدادها =====
-    document.getElementById('generatePlanBtn')?.addEventListener('click', function() {
+    document.getElementById('generatePlanBtn')?.addEventListener('click', async function() {
         const days = parseInt(document.getElementById('planDaysSelect').value);
-        document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(days);
+        document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(days);
+        attachMealClickEvents();
     });
 
     document.getElementById('refreshMealSuggestionsBtn')?.addEventListener('click', function() {
@@ -371,9 +493,10 @@ async function initDashboard() {
         document.body.classList.add('crisis');
         generateAlerts();
         generateSuggestions();
-        document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(
+        document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
             parseInt(document.getElementById('planDaysSelect')?.value || 7)
         );
+        attachMealClickEvents();
         await updateNutritionAnalysis();
         await generateMealSuggestions(1);
     }
@@ -395,12 +518,11 @@ async function initDashboard() {
         }
     }
 
-    // مقداردهی ماژول پیشنهادات غذایی
     initMealPlanner();
 }
 
 // ============================================================
-// 10. مقداردهی اولیه صفحه اصلی (index.html)
+// 11. مقداردهی اولیه صفحه اصلی (index.html)
 // ============================================================
 function initIndex() {
     checkAuth();
@@ -408,7 +530,7 @@ function initIndex() {
 }
 
 // ============================================================
-// 11. چت‌بات هوشمند
+// 12. چت‌بات هوشمند
 // ============================================================
 async function loadChatbotWidget() {
     try {
@@ -524,7 +646,7 @@ async function loadChatbotWidget() {
 }
 
 // ============================================================
-// 12. مدیریت مسیرها و بارگذاری اولیه
+// 13. مدیریت مسیرها
 // ============================================================
 const currentPath = window.location.pathname;
 
@@ -556,50 +678,54 @@ if (currentPath.includes('login.html')) {
 }
 
 // ============================================================
-// 13. شنونده‌های تغییرات store
+// 14. شنونده‌های تغییرات store
 // ============================================================
-addListener('inventory', () => {
+addListener('inventory', async () => {
     if (window.location.pathname.includes('dashboard.html')) {
         renderInventoryTable();
         generateAlerts();
         generateSuggestions();
-        document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(
+        document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
             parseInt(document.getElementById('planDaysSelect')?.value || 7)
         );
+        attachMealClickEvents();
         updateNutritionAnalysis();
         refreshMealSuggestions();
     }
 });
 
-addListener('crisisMode', () => {
+addListener('crisisMode', async () => {
     if (window.location.pathname.includes('dashboard.html')) {
         generateAlerts();
         generateSuggestions();
-        document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(
+        document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
             parseInt(document.getElementById('planDaysSelect')?.value || 7)
         );
+        attachMealClickEvents();
         updateNutritionAnalysis();
         refreshMealSuggestions();
     }
 });
 
-addListener('consumptionData', () => {
+addListener('consumptionData', async () => {
     if (window.location.pathname.includes('dashboard.html')) {
         renderChart();
         generateSuggestions();
-        document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(
+        document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
             parseInt(document.getElementById('planDaysSelect')?.value || 7)
         );
+        attachMealClickEvents();
     }
 });
 
-addListener('currentUserProfile', () => {
+addListener('currentUserProfile', async () => {
     if (window.location.pathname.includes('dashboard.html')) {
         generateAlerts();
         generateSuggestions();
-        document.getElementById('consumptionPlanDisplay').innerHTML = generateConsumptionPlan(
+        document.getElementById('consumptionPlanDisplay').innerHTML = await generateConsumptionPlan(
             parseInt(document.getElementById('planDaysSelect')?.value || 7)
         );
+        attachMealClickEvents();
         updateNutritionAnalysis();
         refreshMealSuggestions();
     }
