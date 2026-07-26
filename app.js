@@ -1,5 +1,5 @@
 // ============================================================
-// app.js - فایل ورودی اصلی سامانه تدبیر منزل
+// app.js - فایل ورودی اصلی سامانه تدبیر منزل (نسخه نهایی)
 // ============================================================
 
 import { checkAuth, getLoggedInUser, logout, getUserProfile, getUserAvatar } from './modules/auth.js';
@@ -94,13 +94,8 @@ function renderInventoryTable() {
             const newExpiry = prompt('تاریخ انقضا (YYYY-MM-DD):', item.expiry);
             if (newName && !isNaN(newQty) && newQty > 0 && newUnit) {
                 editItem(item.id, newName.trim(), newQty, newUnit.trim(), newExpiry || '');
-                Promise.all([
-                    renderInventoryTable(),
-                    updateConsumptionPlan(),
-                    generateSuggestions(),
-                    updateNutritionAnalysis(),
-                    refreshMealSuggestions()
-                ]).catch(err => console.error(err));
+                // پس از ویرایش، فقط UI را به‌روز کن (بدون بارگذاری مجدد)
+                refreshAll();
             } else alert('ورودی نامعتبر');
         };
         const delBtn = document.createElement('button');
@@ -109,13 +104,7 @@ function renderInventoryTable() {
         delBtn.onclick = function() {
             if (confirm('آیا از حذف این قلم اطمینان دارید؟')) {
                 deleteItem(item.id);
-                Promise.all([
-                    renderInventoryTable(),
-                    updateConsumptionPlan(),
-                    generateSuggestions(),
-                    updateNutritionAnalysis(),
-                    refreshMealSuggestions()
-                ]).catch(err => console.error(err));
+                refreshAll();
             }
         };
         actionsCell.appendChild(editBtn);
@@ -169,7 +158,7 @@ function renderChart() {
 }
 
 // ============================================================
-// 6. به‌روزرسانی الگوی مصرف (با AI) - ✅ اصلاح شده
+// 6. به‌روزرسانی الگوی مصرف (با AI) - ✅ بدون بارگذاری مجدد
 // ============================================================
 function updateConsumptionPlan() {
     const display = document.getElementById('consumptionPlanDisplay');
@@ -187,7 +176,7 @@ function updateConsumptionPlan() {
         </div>
     `;
     
-    // ===== حذف loadInventory() – فقط از store.inventory استفاده می‌شود =====
+    // ===== فقط از store.inventory استفاده کن، بارگذاری مجدد ممنوع =====
     generateConsumptionPlan(days)
         .then(html => {
             display.innerHTML = html;
@@ -207,7 +196,7 @@ function updateConsumptionPlan() {
 }
 
 // ============================================================
-// 7. تحلیل ارزش غذایی هوشمند
+// 7. تحلیل ارزش غذایی هوشمند - ✅ بدون بارگذاری مجدد
 // ============================================================
 async function updateNutritionAnalysis() {
     const display = document.getElementById('nutritionDisplay');
@@ -216,7 +205,7 @@ async function updateNutritionAnalysis() {
     display.innerHTML = `<div class="text-center text-gray-400 py-4"><i class="fas fa-spinner fa-spin text-2xl"></i> در حال تحلیل...</div>`;
     
     try {
-        // فقط از store.inventory استفاده کن، بارگذاری مجدد نکن
+        // فقط از store.inventory استفاده کن
         const { analyzeInventoryNutrition } = await import('./modules/food.js');
         const result = await analyzeInventoryNutrition();
         
@@ -274,7 +263,19 @@ async function updateNutritionAnalysis() {
 }
 
 // ============================================================
-// 8. اتصال رویدادهای داشبورد
+// 8. تابع به‌روزرسانی همه بخش‌ها (بدون بارگذاری مجدد)
+// ============================================================
+function refreshAll() {
+    renderInventoryTable();
+    generateAlerts();
+    generateSuggestions();
+    updateConsumptionPlan();
+    updateNutritionAnalysis();
+    refreshMealSuggestions();
+}
+
+// ============================================================
+// 9. اتصال رویدادهای داشبورد
 // ============================================================
 function bindDashboardUI() {
     const saveBtn = document.getElementById('saveConsumptionBtn');
@@ -303,12 +304,8 @@ function bindDashboardUI() {
         crisisToggle.addEventListener('change', function(e) {
             setCrisisMode(e.target.checked);
             document.body.classList.toggle('crisis', e.target.checked);
-            generateAlerts();
-            generateSuggestions();
-            updateConsumptionPlan();
+            refreshAll();
             localStorage.setItem('crisis_mode', e.target.checked);
-            updateNutritionAnalysis();
-            refreshMealSuggestions();
         });
     }
 
@@ -331,7 +328,7 @@ function bindDashboardUI() {
 }
 
 // ============================================================
-// 9. سناریوهای بحران
+// 10. سناریوهای بحران
 // ============================================================
 function populateScenarioDropdown() {
     const scenarios = window.crisisScenarios || [];
@@ -361,7 +358,7 @@ function populateScenarioDropdown() {
 }
 
 // ============================================================
-// 10. مدیریت مدال تأیید مصرف
+// 11. مدیریت مدال تأیید مصرف
 // ============================================================
 function getFamilySize() {
     return store.currentUserProfile?.familySize || 4;
@@ -453,19 +450,11 @@ async function handleConsumeConfirm() {
     if (result.success) {
         messageDiv.className = 'mt-3 text-center text-sm text-green-600 p-2 bg-green-50 rounded-lg';
         messageDiv.textContent = `✅ ${result.message}`;
-        setTimeout(() => { closeConsumeModal(); regeneratePlan(); }, 1500);
+        setTimeout(() => { closeConsumeModal(); refreshAll(); }, 1500);
     } else {
         messageDiv.className = 'mt-3 text-center text-sm text-red-600 p-2 bg-red-50 rounded-lg';
         messageDiv.textContent = `❌ ${result.message}`;
     }
-}
-
-function regeneratePlan() {
-    updateConsumptionPlan();
-    renderInventoryTable();
-    generateAlerts();
-    updateNutritionAnalysis();
-    refreshMealSuggestions();
 }
 
 function attachMealClickEvents() {
@@ -489,14 +478,13 @@ function mealClickHandler(e) {
 }
 
 // ============================================================
-// 11. مقداردهی اولیه داشبورد
+// 12. مقداردهی اولیه داشبورد
 // ============================================================
 function initDashboard() {
     if (!checkAuth()) return;
     const loggedInUser = getLoggedInUser();
     console.log('👤 کاربر فعلی:', loggedInUser);
     
-    // تنظیم store.currentUser برای هماهنگی
     if (loggedInUser) {
         store.currentUser = loggedInUser;
     }
@@ -511,7 +499,7 @@ function initDashboard() {
         .then(data => { window.crisisScenarios = data; })
         .catch(() => { window.crisisScenarios = []; })
         .finally(() => {
-            // ===== بارگذاری موجودی با کلید صحیح =====
+            // ===== بارگذاری اولیه موجودی (فقط یک بار) =====
             loadInventory();
             console.log('📦 موجودی پس از بارگذاری:', store.inventory.length);
             
@@ -522,9 +510,9 @@ function initDashboard() {
             bindDashboardUI();
             populateScenarioDropdown();
             generateSuggestions();
-            updateConsumptionPlan(); // ✅ بدون بارگذاری مجدد
+            updateConsumptionPlan();   // بدون بارگذاری مجدد
             generateMealSuggestions(1);
-            updateNutritionAnalysis();
+            updateNutritionAnalysis(); // بدون بارگذاری مجدد
             initMealPlanner();
             
             const aiBtn = document.getElementById('aiSuggestionBtn');
@@ -536,11 +524,7 @@ function initDashboard() {
                 crisisToggle.checked = true;
                 setCrisisMode(true);
                 document.body.classList.add('crisis');
-                generateAlerts();
-                generateSuggestions();
-                updateConsumptionPlan();
-                updateNutritionAnalysis();
-                generateMealSuggestions(1);
+                refreshAll();
             }
             
             const userDisplay = document.getElementById('userDisplay');
@@ -563,7 +547,7 @@ function initDashboard() {
 }
 
 // ============================================================
-// 12. مقداردهی اولیه صفحه اصلی (index.html)
+// 13. مقداردهی اولیه صفحه اصلی (index.html)
 // ============================================================
 function initIndex() {
     checkAuth();
@@ -571,7 +555,7 @@ function initIndex() {
 }
 
 // ============================================================
-// 13. چت‌بات هوشمند
+// 14. چت‌بات هوشمند
 // ============================================================
 function loadChatbotWidget() {
     if (typeof puter === 'undefined') {
@@ -667,7 +651,7 @@ function loadChatbotWidget() {
 }
 
 // ============================================================
-// 14. مدیریت مسیرها
+// 15. مدیریت مسیرها
 // ============================================================
 const currentPath = window.location.pathname;
 if (currentPath.includes('login.html')) {
@@ -703,25 +687,16 @@ if (currentPath.includes('login.html')) {
 }
 
 // ============================================================
-// 15. شنونده‌های تغییرات store - ✅ اصلاح شده (بدون بارگذاری مجدد)
+// 16. شنونده‌های تغییرات store - ✅ بدون بارگذاری مجدد
 // ============================================================
 addListener('inventory', function() {
     if (window.location.pathname.includes('dashboard.html')) {
-        renderInventoryTable();
-        generateAlerts();
-        generateSuggestions();
-        updateConsumptionPlan();   // ✅ این تابع دیگر loadInventory را صدا نمی‌زند
-        updateNutritionAnalysis();
-        refreshMealSuggestions();
+        refreshAll();
     }
 });
 addListener('crisisMode', function() {
     if (window.location.pathname.includes('dashboard.html')) {
-        generateAlerts();
-        generateSuggestions();
-        updateConsumptionPlan();
-        updateNutritionAnalysis();
-        refreshMealSuggestions();
+        refreshAll();
     }
 });
 addListener('consumptionData', function() {
@@ -733,11 +708,7 @@ addListener('consumptionData', function() {
 });
 addListener('currentUserProfile', function() {
     if (window.location.pathname.includes('dashboard.html')) {
-        generateAlerts();
-        generateSuggestions();
-        updateConsumptionPlan();
-        updateNutritionAnalysis();
-        refreshMealSuggestions();
+        refreshAll();
     }
 });
 
