@@ -1,6 +1,6 @@
 // modules/huggingface.js
 
-const HF_TOKEN = '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'; // توکنی که از مرحله قبل گرفتی
+const HF_TOKEN = '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'; // توکنی که از مرحله قبل گرفتی
 const BASE_URL = 'https://router.huggingface.co/v1';
 
 export async function getHuggingFaceResponse(prompt, systemPrompt = '') {
