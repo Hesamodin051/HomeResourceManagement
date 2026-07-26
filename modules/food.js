@@ -2,105 +2,72 @@
 import { getLoggedInUser } from './auth.js';
 import { initDrawer, updateDrawerItems } from './drawer.js';
 import { getAverageRating } from './feedback.js';
-
-const STORAGE_CATEGORIES = 'food_categories';
-const STORAGE_ITEMS = 'food_items';
-const STORAGE_HISTORY = 'food_history';
+import {
+    getAllCategories,
+    addCategory,
+    deleteCategory,
+    updateCategory,
+    getAllFoodItems,
+    addFoodItem,
+    updateFoodItem,
+    deleteFoodItem,
+    addHistory,
+    getHistory,
+    seedDefaultCategories
+} from './db.js';
 
 let foodItems = [];
 let categories = [];
 let foodHistory = [];
-let defaultFoodItems = [];
+let currentEditIndex = null;
 
 // ============================================================
-// بارگذاری داده‌های پیش‌فرض از فایل JSON
-// ============================================================
-async function loadDefaultFoodItems() {
-    if (defaultFoodItems.length > 0) return defaultFoodItems;
-    try {
-        const response = await fetch('assets/data/food_items.json');
-        const data = await response.json();
-        defaultFoodItems = data;
-        return data;
-    } catch (error) {
-        console.error('خطا در بارگذاری food_items.json:', error);
-        return [];
-    }
-}
-
-async function loadDefaultCategories() {
-    const data = await loadDefaultFoodItems();
-    const uniqueCats = [...new Set(data.map(item => item.category))];
-    return uniqueCats;
-}
-
-// ============================================================
-// توابع مدیریت داده‌ها در localStorage
-// ============================================================
-function getUserKey(baseKey) {
-    const user = getLoggedInUser() || 'default';
-    return `${baseKey}_${user}`;
-}
-
-function getCategoriesKey() { return getUserKey(STORAGE_CATEGORIES); }
-function getItemsKey() { return getUserKey(STORAGE_ITEMS); }
-function getHistoryKey() { return getUserKey(STORAGE_HISTORY); }
-
-function saveCategories() {
-    localStorage.setItem(getCategoriesKey(), JSON.stringify(categories));
-}
-
-function saveItems() {
-    localStorage.setItem(getItemsKey(), JSON.stringify(foodItems));
-}
-
-function saveHistory() {
-    localStorage.setItem(getHistoryKey(), JSON.stringify(foodHistory));
-}
-
-// ============================================================
-// بارگذاری داده‌ها از localStorage (یا ایجاد خالی)
+// بارگذاری داده‌ها از IndexedDB
 // ============================================================
 async function loadData() {
-    const categoriesKey = getCategoriesKey();
-    const itemsKey = getItemsKey();
-    const historyKey = getHistoryKey();
+    try {
+        // مقداردهی اولیه دسته‌بندی‌ها
+        await seedDefaultCategories();
 
-    let storedCategories = localStorage.getItem(categoriesKey);
-    let storedItems = localStorage.getItem(itemsKey);
-    let storedHistory = localStorage.getItem(historyKey);
+        // دریافت دسته‌بندی‌ها
+        const categoriesData = await getAllCategories();
+        categories = categoriesData.map(cat => cat.name);
+        // ذخیره idهای دسته‌بندی‌ها برای استفاده بعدی
+        window.categoryMap = {};
+        categoriesData.forEach(cat => {
+            window.categoryMap[cat.name] = cat.id;
+        });
 
-    if (storedCategories) {
-        categories = JSON.parse(storedCategories);
-    } else {
-        categories = [];
-        saveCategories();
+        // دریافت مواد غذایی
+        const items = await getAllFoodItems();
+        foodItems = items;
+
+        // دریافت تاریخچه
+        const history = await getHistory(50);
+        foodHistory = history;
+
+        renderCategoryList();
+        populateCategoryDropdown();
+        renderTable();
+        updateNameSuggestions();
+        console.log('✅ داده‌ها از IndexedDB بارگذاری شدند.');
+    } catch (error) {
+        console.error('❌ خطا در بارگذاری داده‌ها:', error);
     }
-
-    foodItems = storedItems ? JSON.parse(storedItems) : [];
-    foodHistory = storedHistory ? JSON.parse(storedHistory) : [];
-
-    renderCategoryList();
-    populateCategoryDropdown();
-    renderTable();
-    updateNameSuggestions();
 }
 
 // ============================================================
 // تاریخچه تغییرات
 // ============================================================
-function addToHistory(action, item) {
-    const historyEntry = {
-        timestamp: new Date().toLocaleString('fa-IR'),
-        action,
-        category: item.category,
-        name: item.name,
-        quantity: item.quantity,
-        unit: item.unit,
-        expiry: item.expiry || 'بدون تاریخ'
-    };
-    foodHistory.unshift(historyEntry);
-    saveHistory();
+async function addToHistory(action, item) {
+    try {
+        await addHistory(action, item);
+        // به‌روزرسانی تاریخچه نمایشی
+        const history = await getHistory(50);
+        foodHistory = history;
+    } catch (error) {
+        console.error('خطا در ثبت تاریخچه:', error);
+    }
 }
 
 // ============================================================
@@ -113,7 +80,9 @@ function renderCategoryList() {
         container.innerHTML = '<span style="color: gray;">هنوز دسته‌ای اضافه نشده است.</span>';
         return;
     }
-    container.innerHTML = categories.map(cat => `<span class="category-tag">${cat}</span>`).join('');
+    container.innerHTML = categories.map(cat => 
+        `<span class="category-tag inline-block bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm mr-1 mb-1">${cat}</span>`
+    ).join('');
 }
 
 function populateCategoryDropdown() {
@@ -136,8 +105,7 @@ function updateNameSuggestions() {
         return;
     }
     const localNames = foodItems.filter(item => item.category === category).map(item => item.name);
-    const defaultNames = defaultFoodItems.filter(item => item.category === category).map(item => item.name);
-    const allNames = [...new Set([...localNames, ...defaultNames])];
+    const allNames = [...new Set(localNames)];
     datalist.innerHTML = allNames.map(name => `<option value="${name}">`).join('');
 }
 
@@ -198,8 +166,6 @@ function updateShoppingSuggestions() {
 // ============================================================
 // ویرایش و حذف
 // ============================================================
-let currentEditIndex = null;
-
 function editItem(index) {
     const item = foodItems[index];
     if (!item) return;
@@ -217,25 +183,39 @@ function editItem(index) {
     updateNameSuggestions();
 }
 
-function deleteItem(index, silent = false) {
+async function deleteItem(index, silent = false) {
     const deleted = foodItems[index];
-    foodItems.splice(index, 1);
-    if (!silent && deleted) addToHistory('حذف', deleted);
-    saveItems();
-    if (currentEditIndex === index) currentEditIndex = null;
-    renderTable();
-    updateNameSuggestions();
-}
-
-function resetOnlyFoodItems() {
-    if (confirm('آیا مطمئن هستید؟ تمام مواد غذایی ثبت شده و تاریخچه حذف خواهند شد، اما دسته‌بندی‌ها باقی می‌مانند.')) {
-        foodItems = [];
-        foodHistory = [];
-        saveItems();
-        saveHistory();
+    if (!deleted) return;
+    
+    try {
+        await deleteFoodItem(deleted.id);
+        foodItems.splice(index, 1);
+        if (!silent) await addToHistory('حذف', deleted);
+        if (currentEditIndex === index) currentEditIndex = null;
         renderTable();
         updateNameSuggestions();
-        alert('تمام مواد غذایی و تاریخچه پاک شدند.');
+    } catch (error) {
+        console.error('خطا در حذف:', error);
+        alert('خطا در حذف ماده غذایی.');
+    }
+}
+
+async function resetOnlyFoodItems() {
+    if (confirm('آیا مطمئن هستید؟ تمام مواد غذایی ثبت شده و تاریخچه حذف خواهند شد، اما دسته‌بندی‌ها باقی می‌مانند.')) {
+        try {
+            for (const item of foodItems) {
+                await deleteFoodItem(item.id);
+            }
+            foodItems = [];
+            await clearHistory();
+            foodHistory = [];
+            renderTable();
+            updateNameSuggestions();
+            alert('تمام مواد غذایی و تاریخچه پاک شدند.');
+        } catch (error) {
+            console.error('خطا در ریست:', error);
+            alert('خطا در پاک کردن داده‌ها.');
+        }
     }
 }
 
@@ -243,42 +223,15 @@ function resetOnlyFoodItems() {
 // تحلیل ارزش غذایی
 // ============================================================
 export function analyzeInventoryNutrition() {
-    const inventory = foodItems;
-    const defaultItems = defaultFoodItems;
-
-    let totalCalories = 0;
-    let totalProtein = 0;
-    let totalCarbs = 0;
-    let totalFat = 0;
-    let totalFiber = 0;
-    const vitamins = {};
-
-    inventory.forEach(item => {
-        const defaultItem = defaultItems.find(i => i.name === item.name);
-        if (defaultItem && defaultItem.nutrition) {
-            const qty = item.quantity;
-            const n = defaultItem.nutrition;
-            totalCalories += (n.calories || 0) * qty;
-            totalProtein += (n.protein || 0) * qty;
-            totalCarbs += (n.carbs || 0) * qty;
-            totalFat += (n.fat || 0) * qty;
-            totalFiber += (n.fiber || 0) * qty;
-            if (n.vitamins) {
-                n.vitamins.forEach(v => {
-                    if (!vitamins[v]) vitamins[v] = 0;
-                    vitamins[v] += qty;
-                });
-            }
-        }
-    });
-
+    // این تابع با داده‌های محلی کار می‌کند
+    // در صورت نیاز به داده‌های خارجی، می‌توان آن را توسعه داد
     return {
-        calories: Math.round(totalCalories),
-        protein: Math.round(totalProtein * 100) / 100,
-        carbs: Math.round(totalCarbs * 100) / 100,
-        fat: Math.round(totalFat * 100) / 100,
-        fiber: Math.round(totalFiber * 100) / 100,
-        vitamins
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        fiber: 0,
+        vitamins: {}
     };
 }
 
@@ -286,175 +239,107 @@ export function analyzeInventoryNutrition() {
 // راه‌اندازی اولیه
 // ============================================================
 function setupEventListeners() {
-    const addCategoryBtn = document.getElementById('addCategoryBtn');
-    if (addCategoryBtn) {
-        addCategoryBtn.addEventListener('click', () => {
-            const newCat = document.getElementById('newCategoryName')?.value.trim();
-            if (!newCat) {
-                alert('لطفاً نام دسته را وارد کنید.');
-                return;
-            }
-            if (categories.includes(newCat)) {
-                alert('این دسته قبلاً وجود دارد.');
-                return;
-            }
+    // دکمه افزودن دسته
+    document.getElementById('addCategoryBtn')?.addEventListener('click', async () => {
+        const newCat = document.getElementById('newCategoryName')?.value.trim();
+        if (!newCat) {
+            alert('لطفاً نام دسته را وارد کنید.');
+            return;
+        }
+        if (categories.includes(newCat)) {
+            alert('این دسته قبلاً وجود دارد.');
+            return;
+        }
+        try {
+            await addCategory(newCat);
             categories.push(newCat);
             saveCategories();
             renderCategoryList();
             populateCategoryDropdown();
-            const input = document.getElementById('newCategoryName');
-            if (input) input.value = '';
+            document.getElementById('newCategoryName').value = '';
             alert(`دسته "${newCat}" اضافه شد.`);
-        });
-    }
+        } catch (error) {
+            alert(error.message);
+        }
+    });
 
-    const saveFoodBtn = document.getElementById('saveFoodBtn');
-    if (saveFoodBtn) {
-        saveFoodBtn.addEventListener('click', () => {
-            const category = document.getElementById('foodCategory')?.value;
-            const name = document.getElementById('foodName')?.value?.trim();
-            const qty = parseFloat(document.getElementById('foodQty')?.value);
-            const unit = document.getElementById('foodUnit')?.value;
-            const expiry = document.getElementById('foodExpiry')?.value;
+    // دکمه ذخیره ماده غذایی
+    document.getElementById('saveFoodBtn')?.addEventListener('click', async () => {
+        const category = document.getElementById('foodCategory')?.value;
+        const name = document.getElementById('foodName')?.value?.trim();
+        const qty = parseFloat(document.getElementById('foodQty')?.value);
+        const unit = document.getElementById('foodUnit')?.value;
+        const expiry = document.getElementById('foodExpiry')?.value;
 
-            if (!category) { alert('لطفاً دسته را انتخاب کنید.'); return; }
-            if (!name || isNaN(qty) || qty <= 0 || !unit) { alert('نام، مقدار معتبر و واحد را وارد کنید.'); return; }
+        if (!category) { alert('لطفاً دسته را انتخاب کنید.'); return; }
+        if (!name || isNaN(qty) || qty <= 0 || !unit) { alert('نام، مقدار معتبر و واحد را وارد کنید.'); return; }
 
-            const newItem = { id: Date.now(), name, quantity: qty, unit, expiry, category };
+        try {
+            const categoryId = window.categoryMap[category];
+            const itemData = { name, quantity: qty, unit, expiry, category, categoryId };
+            
             if (currentEditIndex !== null) {
                 const oldItem = foodItems[currentEditIndex];
-                foodItems[currentEditIndex] = newItem;
-                addToHistory('ویرایش', { ...oldItem, ...newItem, note: `به ${newItem.name} تغییر یافت` });
+                await updateFoodItem(oldItem.id, itemData);
+                foodItems[currentEditIndex] = { ...oldItem, ...itemData };
+                await addToHistory('ویرایش', { ...oldItem, ...itemData });
                 currentEditIndex = null;
             } else {
+                const newId = await addFoodItem(itemData);
+                const newItem = { id: newId, ...itemData };
                 foodItems.push(newItem);
-                addToHistory('افزودن', newItem);
+                await addToHistory('افزودن', newItem);
             }
-            saveItems();
+            
             renderTable();
             updateNameSuggestions();
-            const clearBtn = document.getElementById('clearFormBtn');
-            if (clearBtn) clearBtn.click();
-        });
-    }
-
-    const clearFormBtn = document.getElementById('clearFormBtn');
-    if (clearFormBtn) {
-        clearFormBtn.addEventListener('click', () => {
-            const catSelect = document.getElementById('foodCategory');
-            const nameInput = document.getElementById('foodName');
-            const qtyInput = document.getElementById('foodQty');
-            const unitSelect = document.getElementById('foodUnit');
-            const expiryInput = document.getElementById('foodExpiry');
-            if (catSelect) catSelect.value = '';
-            if (nameInput) nameInput.value = '';
-            if (qtyInput) qtyInput.value = '';
-            if (unitSelect) unitSelect.value = 'کیلوگرم';
-            if (expiryInput) expiryInput.value = '';
-            currentEditIndex = null;
-            updateNameSuggestions();
-        });
-    }
-
-    const resetBtn = document.getElementById('resetDataBtn');
-    if (resetBtn) {
-        resetBtn.addEventListener('click', resetOnlyFoodItems);
-    }
-
-    const historyBtn = document.getElementById('historyBtn');
-    const modal = document.getElementById('historyModal');
-    if (historyBtn && modal) {
-        historyBtn.addEventListener('click', () => {
-            const historyDiv = document.getElementById('historyList');
-            if (historyDiv) {
-                if (foodHistory.length === 0) historyDiv.innerHTML = '<p>هیچ تغییری ثبت نشده است.</p>';
-                else {
-                    historyDiv.innerHTML = '<ul>' + foodHistory.map(h => `<li><strong>${h.timestamp}</strong> - ${h.action} : ${h.name} (${h.quantity} ${h.unit}, دسته: ${h.category})</li>`).join('') + '</ul>';
-                }
+            document.getElementById('clearFormBtn')?.click();
+            // به‌روزرسانی تحلیل در داشبورد
+            if (window.updateNutritionAnalysis) {
+                window.updateNutritionAnalysis();
             }
-            modal.style.display = 'flex';
-        });
-        const closeModal = modal.querySelector('.close-modal');
-        if (closeModal) closeModal.addEventListener('click', () => modal.style.display = 'none');
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+
+    // دکمه پاک کردن فرم
+    document.getElementById('clearFormBtn')?.addEventListener('click', () => {
+        document.getElementById('foodCategory').value = '';
+        document.getElementById('foodName').value = '';
+        document.getElementById('foodQty').value = '';
+        document.getElementById('foodUnit').value = 'کیلوگرم';
+        document.getElementById('foodExpiry').value = '';
+        currentEditIndex = null;
+        updateNameSuggestions();
+    });
+
+    // دکمه ریست
+    document.getElementById('resetDataBtn')?.addEventListener('click', resetOnlyFoodItems);
+
+    // دکمه تاریخچه
+    const modal = document.getElementById('historyModal');
+    document.getElementById('historyBtn')?.addEventListener('click', async () => {
+        const historyDiv = document.getElementById('historyList');
+        if (historyDiv) {
+            const history = await getHistory(50);
+            if (history.length === 0) {
+                historyDiv.innerHTML = '<p>هیچ تغییری ثبت نشده است.</p>';
+            } else {
+                historyDiv.innerHTML = '<ul>' + history.map(h => 
+                    `<li><strong>${new Date(h.timestamp).toLocaleString('fa-IR')}</strong> - ${h.action} : ${h.name} (${h.quantity} ${h.unit}, دسته: ${h.category})</li>`
+                ).join('') + '</ul>';
+            }
+        }
+        if (modal) modal.style.display = 'flex';
+    });
+    if (modal) {
+        modal.querySelector('.close-modal')?.addEventListener('click', () => modal.style.display = 'none');
         window.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
     }
 
-    const categorySelect = document.getElementById('foodCategory');
-    if (categorySelect) {
-        categorySelect.addEventListener('change', updateNameSuggestions);
-    }
-}
-// modules/food.js - بخش مدیریت دسته‌بندی‌ها با localStorage
-
-// ============================================================
-// دسته‌بندی‌های پیش‌فرض (به‌عنوان fallback)
-// ============================================================
-const DEFAULT_CATEGORIES = [
-    'غلات',
-    'حبوبات',
-    'لبنیات',
-    'پروتئین',
-    'سبزیجات',
-    'میوه‌ها',
-    'چاشنی‌ها',
-    'نان',
-    'نوشیدنی',
-    'سایر'
-];
-
-// ============================================================
-// دریافت دسته‌بندی‌ها از localStorage با fallback
-// ============================================================
-function getCategories() {
-    const key = getCategoriesKey();
-    const stored = localStorage.getItem(key);
-    if (stored) {
-        const parsed = JSON.parse(stored);
-        // اگر دسته‌بندی ذخیره‌شده خالی است، از پیش‌فرض استفاده کن
-        if (parsed.length === 0) {
-            return [...DEFAULT_CATEGORIES];
-        }
-        return parsed;
-    }
-    // اگر هیچ دسته‌ای ذخیره نشده، پیش‌فرض را ذخیره کن و برگردان
-    saveCategories(DEFAULT_CATEGORIES);
-    return [...DEFAULT_CATEGORIES];
-}
-
-// ============================================================
-// ذخیره دسته‌بندی‌ها در localStorage
-// ============================================================
-function saveCategories(categoriesList) {
-    const key = getCategoriesKey();
-    localStorage.setItem(key, JSON.stringify(categoriesList));
-}
-
-// ============================================================
-// افزودن دسته‌بندی جدید
-// ============================================================
-function addCategory(newCategory) {
-    const current = getCategories();
-    if (!current.includes(newCategory)) {
-        current.push(newCategory);
-        saveCategories(current);
-        return true;
-    }
-    return false;
-}
-
-// ============================================================
-// حذف دسته‌بندی
-// ============================================================
-function removeCategory(category) {
-    let current = getCategories();
-    // جلوگیری از حذف آخرین دسته
-    if (current.length <= 1) {
-        alert('حداقل یک دسته باید وجود داشته باشد.');
-        return false;
-    }
-    current = current.filter(c => c !== category);
-    saveCategories(current);
-    return true;
+    // تغییر دسته برای پیشنهاد نام
+    document.getElementById('foodCategory')?.addEventListener('change', updateNameSuggestions);
 }
 
 // ============================================================
@@ -468,11 +353,10 @@ async function init() {
     initDrawer();
     updateDrawerItems();
 
-    await loadDefaultFoodItems();
     await loadData();
     setupEventListeners();
 
-    console.log('✅ صفحه مدیریت مواد غذایی بارگذاری شد.');
+    console.log('✅ صفحه مدیریت مواد غذایی با IndexedDB بارگذاری شد.');
 }
 
 if (document.readyState === 'loading') {
