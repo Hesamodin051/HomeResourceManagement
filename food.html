@@ -69,17 +69,6 @@
             <div class="flex gap-2 mt-3">
                 <button id="saveFoodBtn" class="btn-gradient flex-1 justify-center"><i class="fas fa-save ml-2"></i> ذخیره</button>
                 <button id="clearFormBtn" class="btn-outline flex-1 justify-center"><i class="fas fa-eraser ml-2"></i> پاک کردن</button>
-                <button id="startBarcodeScannerBtn" class="btn-gradient flex-1 justify-center bg-green-600 hover:bg-green-700"><i class="fas fa-camera ml-2"></i> اسکن بارکد</button>
-            </div>
-        </div>
-
-        <!-- ===== اسکنر بارکد ===== -->
-        <div id="barcodeScannerContainer" class="card-modern p-4 mb-6 hidden">
-            <h4 class="font-bold text-primary mb-2">لطفاً بارکد را در مقابل دوربین قرار دهید</h4>
-            <div id="scannerVideo" class="w-full max-w-md mx-auto bg-black rounded-xl overflow-hidden aspect-video"></div>
-            <div class="flex justify-between items-center mt-3">
-                <button id="closeScannerBtn" class="btn-outline !py-1 !px-4 text-sm"><i class="fas fa-times ml-2"></i> بستن</button>
-                <p id="scanResult" class="text-sm text-gray-600"></p>
             </div>
         </div>
 
@@ -114,7 +103,7 @@
     <div id="drawer" class="drawer-modern">
         <div class="flex justify-between items-center mb-6">
             <span class="text-lg font-bold text-primary">منو</span>
-            <button id="closeDrawerBtn" class="text-gray-400 hover:text-gray-600 transition-colors">
+            <button id="closeDrawerBtn" class="text-gray-400 hover:text-gray-600">
                 <i class="fas fa-times text-2xl"></i>
             </button>
         </div>
@@ -154,208 +143,8 @@
     </div>
 
     <!-- ===== اسکریپت‌ها ===== -->
+    <script src="menu.js"></script>
     <script src="chatbot-widget.js"></script>
-
-    <!-- ===== اسکریپت منوی کشو (داخلی) ===== -->
-        <!-- ===== اسکریپت منوی کشو (داخلی) ===== -->
-    <script>
-        (function() {
-            'use strict';
-            console.log('🔄 راه‌اندازی منوی کشو در food.html');
-
-            function initDrawer() {
-                const hamburger = document.getElementById('hamburgerMenu');
-                const drawer = document.getElementById('drawer');
-                const backdrop = document.getElementById('drawerBackdrop');
-                const closeBtn = document.getElementById('closeDrawerBtn');
-
-                if (!hamburger || !drawer || !backdrop) {
-                    console.warn('⚠️ منوی کشو: المان‌ها پیدا نشدند!');
-                    return false;
-                }
-
-                console.log('✅ منوی کشو: همه المان‌ها پیدا شدند.');
-
-                function openDrawer() {
-                    drawer.classList.add('open');
-                    backdrop.classList.add('show');
-                    document.body.style.overflow = 'hidden';
-                }
-
-                function closeDrawer() {
-                    drawer.classList.remove('open');
-                    backdrop.classList.remove('show');
-                    document.body.style.overflow = '';
-                }
-
-                if (hamburger._listenerAdded) {
-                    console.log('ℹ️ رویداد منو قبلاً متصل شده است.');
-                    return true;
-                }
-                hamburger._listenerAdded = true;
-
-                hamburger.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    openDrawer();
-                });
-
-                if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
-                backdrop.addEventListener('click', closeDrawer);
-                document.addEventListener('keydown', function(e) {
-                    if (e.key === 'Escape') closeDrawer();
-                });
-
-                console.log('✅ منوی کشو با موفقیت راه‌اندازی شد.');
-                return true;
-            }
-
-            function updateDrawerItems() {
-                const container = document.getElementById('drawerItems');
-                if (!container) {
-                    console.error('❌ المان drawerItems پیدا نشد!');
-                    return false;
-                }
-
-                const loggedInUser = sessionStorage.getItem('loggedInUser');
-                const isLoggedIn = !!loggedInUser;
-                console.log('🔍 وضعیت لاگین:', { loggedInUser, isLoggedIn });
-
-                let items = [];
-                if (isLoggedIn) {
-                    items = [
-                        { type: 'header', text: 'منوی اصلی' },
-                        { icon: 'fa-house', text: 'صفحه اصلی', link: 'index.html' },
-                        { icon: 'fa-chart-pie', text: 'داشبورد', link: 'dashboard.html' },
-                        { type: 'divider' },
-                        { type: 'header', text: 'مدیریت منابع' },
-                        { icon: 'fa-utensils', text: 'مواد غذایی', link: 'food.html' },
-                        { icon: 'fa-bolt', text: 'مصرف انرژی', link: 'energy.html' },
-                        { type: 'divider' },
-                        { type: 'header', text: 'مدیریت بحران' },
-                        { icon: 'fa-triangle-exclamation', text: 'سناریوهای بحران', link: 'dashboard.html' },
-                        { icon: 'fa-boxes-stacked', text: 'ذخایر اضطراری', link: 'food.html' },
-                        { type: 'divider' },
-                        { type: 'header', text: 'گزارش‌ها' },
-                        { icon: 'fa-calendar-week', text: 'گزارش هفتگی', link: 'reports.html' },
-                        { icon: 'fa-calendar-alt', text: 'گزارش ماهانه', link: 'reports.html' },
-                        { type: 'divider' },
-                        // ===== بخش سلامت (جدید) =====
-                        { type: 'header', text: 'سلامت' },
-                        { icon: 'fa-pills', text: 'مدیریت داروها', link: 'medications.html' },
-                        { type: 'divider' },
-                        { type: 'header', text: 'تنظیمات' },
-                        { icon: 'fa-user', text: 'پروفایل', link: 'profile.html' },
-                        { icon: 'fa-bell', text: 'اعلان‌ها', link: 'notifications.html' },
-                        { icon: 'fa-moon', text: 'تم تاریک', action: 'toggleTheme' },
-                        { type: 'divider' },
-                        { icon: 'fa-clock-rotate-left', text: 'تاریخچه چت', link: 'chat-history.html' },
-                        { type: 'divider' },
-                        { icon: 'fa-circle-question', text: 'راهنما', link: 'help.html' },
-                        { icon: 'fa-envelope', text: 'تماس با ما', link: 'contact.html' },
-                        { type: 'divider' },
-                        { icon: 'fa-right-from-bracket', text: 'خروج', action: 'logout' }
-                    ];
-                } else {
-                    items = [
-                        { icon: 'fa-house', text: 'صفحه اصلی', link: 'index.html' },
-                        { icon: 'fa-right-to-bracket', text: 'ورود', link: 'login.html' },
-                        { icon: 'fa-user-plus', text: 'ثبت‌نام', link: 'login.html' },
-                        { type: 'divider' },
-                        { icon: 'fa-circle-question', text: 'راهنما', link: 'help.html' },
-                        { icon: 'fa-envelope', text: 'تماس با ما', link: 'contact.html' }
-                    ];
-                }
-
-                container.innerHTML = '';
-                items.forEach(item => {
-                    if (item.type === 'divider') {
-                        const hr = document.createElement('hr');
-                        hr.style.margin = '0.5rem 0';
-                        hr.style.border = 'none';
-                        hr.style.borderTop = '1px solid #e2e8f0';
-                        container.appendChild(hr);
-                        return;
-                    }
-                    if (item.type === 'header') {
-                        const header = document.createElement('div');
-                        header.textContent = item.text;
-                        header.style.cssText = 'font-size:0.7rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;padding:0.5rem 0.25rem;margin-top:0.25rem;';
-                        container.appendChild(header);
-                        return;
-                    }
-                    const div = document.createElement('div');
-                    div.className = 'drawer-item';
-                    const iconSpan = document.createElement('span');
-                    iconSpan.className = `fas ${item.icon}`;
-                    iconSpan.style.cssText = 'width:20px;display:inline-block;text-align:center;margin-left:12px;color:#64748b;font-size:1rem;';
-                    const textSpan = document.createElement('span');
-                    textSpan.textContent = item.text;
-                    textSpan.style.cssText = 'color:#334155;font-size:0.95rem;';
-                    const wrapper = document.createElement('span');
-                    wrapper.style.cssText = 'display:flex;align-items:center;width:100%;';
-                    wrapper.appendChild(iconSpan);
-                    wrapper.appendChild(textSpan);
-
-                    if (item.link) {
-                        const a = document.createElement('a');
-                        a.href = item.link;
-                        a.appendChild(wrapper);
-                        a.style.cssText = 'text-decoration:none;color:inherit;display:block;width:100%;padding:0.25rem 0;';
-                        div.appendChild(a);
-                    } else {
-                        const btn = document.createElement('button');
-                        btn.appendChild(wrapper);
-                        btn.style.cssText = 'background:none;border:none;cursor:pointer;width:100%;text-align:right;font-family:inherit;font-size:1rem;padding:0.25rem 0;color:#334155;';
-                        btn.onclick = function() {
-                            switch(item.action) {
-                                case 'logout':
-                                    sessionStorage.removeItem('loggedInUser');
-                                    window.location.href = 'index.html';
-                                    break;
-                                case 'toggleTheme':
-                                    document.body.classList.toggle('dark-mode');
-                                    localStorage.setItem('dark_mode', document.body.classList.contains('dark-mode') ? 'true' : 'false');
-                                    break;
-                                default:
-                                    console.log('اقدام ناشناخته:', item.action);
-                            }
-                        };
-                        div.appendChild(btn);
-                    }
-                    div.addEventListener('mouseenter', function() {
-                        const icon = this.querySelector('.fas');
-                        if (icon) icon.style.color = '#3b82f6';
-                        const text = this.querySelector('span:not(.fas)');
-                        if (text) text.style.color = '#3b82f6';
-                    });
-                    div.addEventListener('mouseleave', function() {
-                        const icon = this.querySelector('.fas');
-                        if (icon) icon.style.color = '#64748b';
-                        const text = this.querySelector('span:not(.fas)');
-                        if (text) text.style.color = '#334155';
-                    });
-                    container.appendChild(div);
-                });
-
-                console.log('✅ آیتم‌های منو به‌روزرسانی شدند.');
-                return true;
-            }
-
-            setTimeout(function() {
-                const drawerInit = initDrawer();
-                const itemsUpdate = updateDrawerItems();
-                if (!drawerInit || !itemsUpdate) {
-                    console.warn('⚠️ منو کامل راه‌اندازی نشد. تلاش مجدد...');
-                    setTimeout(function() {
-                        initDrawer();
-                        updateDrawerItems();
-                    }, 300);
-                }
-            }, 100);
-        })();
-    </script>
-
     <script type="module" src="food.js"></script>
 </body>
 </html>
