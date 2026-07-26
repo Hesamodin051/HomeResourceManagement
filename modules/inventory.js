@@ -1,62 +1,50 @@
-// modules/inventory.js
-import { store, setInventory } from './store.js';
+// modules/inventory.js (اضافه کردن تابع جدید)
 
-function getInventoryKey() {
-    const user = store.currentUser || 'default';
-    return `home_inventory_${user}`;
-}
+// ============================================================
+// مصرف مواد اولیه برای یک غذا (کاهش موجودی)
+// ============================================================
+export function consumeIngredients(ingredients, familySize) {
+    const inventory = store.inventory;
+    let consumedItems = [];
+    let errors = [];
 
-export function loadInventory() {
-    const key = getInventoryKey();
-    const stored = localStorage.getItem(key);
-    let inv = [];
-    if (stored) {
-        inv = JSON.parse(stored);
-    } else {
-        inv = [];
-        saveInventory(inv);
+    ingredients.forEach(ing => {
+        // مقدار مورد نیاز برای کل خانواده
+        const needed = ing.quantity * familySize;
+        // پیدا کردن ماده در موجودی
+        const inventoryItem = inventory.find(item => 
+            item.name.includes(ing.name) || 
+            ing.name.includes(item.name)
+        );
+        if (inventoryItem) {
+            if (inventoryItem.quantity >= needed) {
+                inventoryItem.quantity -= needed;
+                consumedItems.push({
+                    name: inventoryItem.name,
+                    consumed: needed,
+                    unit: inventoryItem.unit
+                });
+            } else {
+                errors.push(`${inventoryItem.name} (موجودی: ${inventoryItem.quantity} ${inventoryItem.unit}، نیاز: ${needed} ${inventoryItem.unit})`);
+            }
+        } else {
+            errors.push(`${ing.name} (در انبار موجود نیست)`);
+        }
+    });
+
+    if (errors.length > 0) {
+        return { 
+            success: false, 
+            errors: errors,
+            message: 'مواد کافی برای این غذا وجود ندارد:\n' + errors.join('\n')
+        };
     }
-    setInventory(inv);
-    return inv;
-}
 
-export function saveInventory(inventory) {
-    const key = getInventoryKey();
-    localStorage.setItem(key, JSON.stringify(inventory));
-    setInventory(inventory);
-}
-
-export function addItem(name, quantity, unit, expiry, type = 'normal') {
-    const newItem = { 
-        id: Date.now(), 
-        name, 
-        quantity, 
-        unit, 
-        expiry: expiry || '',
-        type: type || 'normal'
+    // ذخیره موجودی جدید
+    saveInventory(inventory);
+    return { 
+        success: true, 
+        consumedItems: consumedItems,
+        message: 'مواد مصرف شدند.' 
     };
-    const newInventory = [...store.inventory, newItem];
-    saveInventory(newInventory);
-    return newInventory;
-}
-
-export function editItem(id, newName, newQty, newUnit, newExpiry, newType) {
-    const newInventory = store.inventory.map(item =>
-        item.id === id ? { 
-            ...item, 
-            name: newName, 
-            quantity: newQty, 
-            unit: newUnit, 
-            expiry: newExpiry,
-            type: newType || item.type || 'normal'
-        } : item
-    );
-    saveInventory(newInventory);
-    return newInventory;
-}
-
-export function deleteItem(id) {
-    const newInventory = store.inventory.filter(item => item.id !== id);
-    saveInventory(newInventory);
-    return newInventory;
 }
