@@ -7,7 +7,7 @@ import { loadInventory, addItem, editItem, deleteItem, consumeIngredients } from
 import { loadConsumptionData, saveTodayConsumption } from './modules/consumption.js';
 import { store, setCrisisMode, addListener, setCurrentUserProfile } from './modules/store.js';
 import { generateSuggestions } from './modules/suggestion.js';
-import { generateConsumptionPlan, getMealDetails } from './modules/consumption-planner.js';
+import { generateConsumptionPlan } from './modules/consumption-planner.js';
 import { generateMealSuggestions, refreshMealSuggestions, initMealPlanner } from './modules/meal-planner.js';
 import { getSmartSuggestions } from './modules/ai.js';
 
@@ -155,7 +155,7 @@ function renderChart() {
 }
 
 // ============================================================
-// 6. به‌روزرسانی الگوی مصرف
+// 6. به‌روزرسانی الگوی مصرف (با AI)
 // ============================================================
 function updateConsumptionPlan() {
     const display = document.getElementById('consumptionPlanDisplay');
@@ -164,15 +164,30 @@ function updateConsumptionPlan() {
         return;
     }
     const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
-    display.innerHTML = '<div class="text-center text-gray-400 py-4"><i class="fas fa-spinner fa-spin text-2xl"></i> در حال بروزرسانی...</div>';
-    generateConsumptionPlan(days).then(html => {
-        display.innerHTML = html;
-        attachMealClickEvents();
-        console.log('✅ الگوی مصرف به‌روزرسانی شد.');
-    }).catch(err => {
-        console.error('❌ خطا در به‌روزرسانی الگوی مصرف:', err);
-        display.innerHTML = `<div class="text-center text-red-400 py-4">❌ خطا در بروزرسانی. لطفاً دوباره تلاش کنید.</div>`;
-    });
+    console.log(`🔄 بروزرسانی الگوی مصرف برای ${days} روز با هوش مصنوعی...`);
+    
+    display.innerHTML = `
+        <div class="text-center text-gray-400 py-4">
+            <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+            <p>🤖 در حال دریافت برنامه هوشمند از AI...</p>
+        </div>
+    `;
+    
+    generateConsumptionPlan(days)
+        .then(html => {
+            display.innerHTML = html;
+            console.log('✅ الگوی مصرف با AI به‌روزرسانی شد.');
+        })
+        .catch(err => {
+            console.error('❌ خطا در به‌روزرسانی الگوی مصرف:', err);
+            display.innerHTML = `
+                <div class="text-center text-red-400 py-4">
+                    <i class="fas fa-exclamation-triangle text-3xl block mb-2"></i>
+                    خطا در دریافت برنامه هوشمند.
+                    <br><span class="text-xs text-gray-400">${err.message || ''}</span>
+                </div>
+            `;
+        });
 }
 
 // ============================================================
@@ -223,9 +238,13 @@ function bindDashboardUI() {
     // دکمه بروزرسانی الگوی مصرف
     const generatePlanBtn = document.getElementById('generatePlanBtn');
     if (generatePlanBtn) {
+        console.log('✅ دکمه بروزرسانی الگوی مصرف پیدا شد.');
         generatePlanBtn.addEventListener('click', function() {
+            console.log('🖱️ کلیک روی دکمه بروزرسانی الگوی مصرف');
             updateConsumptionPlan();
         });
+    } else {
+        console.warn('⚠️ دکمه generatePlanBtn پیدا نشد!');
     }
 
     // دکمه بازنشانی پیشنهادات غذایی
@@ -316,58 +335,16 @@ function getFamilySize() {
 }
 
 function showConsumeModal(mealData) {
-    const modal = document.getElementById('consumeModal');
-    const body = document.getElementById('consumeModalBody');
-    const title = document.getElementById('consumeModalTitle');
-    if (!modal || !body) return;
-    const familySize = getFamilySize();
-    title.textContent = `🍽️ ${mealData.mealName} - ${mealData.mealType} (${mealData.dayName})`;
-    let html = `<p class="text-sm text-gray-600 mb-4">مواد اولیه مورد نیاز برای ${familySize} نفر:</p><div class="space-y-3">`;
-    mealData.ingredients.forEach((ing, index) => {
-        const needed = (ing.quantity * familySize).toFixed(2);
-        html += `
-            <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                <span class="w-1/3 text-sm font-medium text-gray-700">${ing.name}</span>
-                <input type="number" id="ing_${index}" value="${needed}" step="0.01" min="0" class="input-modern w-24 text-center" data-ingredient="${ing.name}" />
-                <span class="text-sm text-gray-500">${ing.unit}</span>
-                <span class="text-xs text-gray-400">(نیاز: ${needed} ${ing.unit})</span>
-            </div>
-        `;
-    });
-    html += `</div><div class="flex gap-3 mt-6">
-        <button id="confirmConsumeBtn" class="btn-gradient flex-1 justify-center"><i class="fas fa-check ml-2"></i> تأیید و مصرف</button>
-        <button id="cancelConsumeBtn" class="btn-outline flex-1 justify-center"><i class="fas fa-times ml-2"></i> لغو</button>
-    </div><div id="consumeMessage" class="mt-3 text-center text-sm hidden"></div>`;
-    body.innerHTML = html;
-    modal.classList.remove('hidden');
-    document.getElementById('closeConsumeModal').addEventListener('click', closeConsumeModal);
-    document.getElementById('cancelConsumeBtn').addEventListener('click', closeConsumeModal);
-    document.getElementById('confirmConsumeBtn').addEventListener('click', handleConsumeConfirm);
+    // در نسخه AI این قابلیت غیرفعال است
+    alert('🍽️ این قابلیت در نسخه AI غیرفعال است. برنامه به‌صورت خودکار توسط هوش مصنوعی مدیریت می‌شود.');
 }
 
 function closeConsumeModal() {
-    document.getElementById('consumeModal').classList.add('hidden');
+    // غیرفعال
 }
 
 function handleConsumeConfirm() {
-    const mealData = window._currentMealData;
-    if (!mealData) return;
-    const messageDiv = document.getElementById('consumeMessage');
-    const ingredients = mealData.ingredients.map((ing, index) => {
-        const input = document.getElementById(`ing_${index}`);
-        const newQty = parseFloat(input.value) || 0;
-        return { ...ing, quantity: newQty / getFamilySize() };
-    });
-    if (!confirm(`آیا از مصرف ${mealData.mealName} برای ${getFamilySize()} نفر اطمینان دارید؟`)) return;
-    const result = consumeIngredients(ingredients, getFamilySize());
-    if (result.success) {
-        messageDiv.className = 'mt-3 text-center text-sm text-green-600 p-2 bg-green-50 rounded-lg';
-        messageDiv.textContent = `✅ ${result.message}`;
-        setTimeout(() => { closeConsumeModal(); regeneratePlan(); }, 1500);
-    } else {
-        messageDiv.className = 'mt-3 text-center text-sm text-red-600 p-2 bg-red-50 rounded-lg';
-        messageDiv.textContent = `❌ ${result.message}`;
-    }
+    // غیرفعال
 }
 
 function regeneratePlan() {
@@ -379,23 +356,11 @@ function regeneratePlan() {
 }
 
 function attachMealClickEvents() {
-    document.querySelectorAll('.day-card .meal-item').forEach(el => {
-        el.removeEventListener('click', mealClickHandler);
-        el.addEventListener('click', mealClickHandler);
-    });
+    // در نسخه AI، کلیک روی وعده‌ها غیرفعال است
 }
 
 function mealClickHandler(e) {
-    const el = e.currentTarget;
-    const dayIndex = parseInt(el.dataset.dayIndex);
-    const mealType = el.dataset.mealType;
-    const planData = window.currentPlanData;
-    if (!planData || !planData.plan) return;
-    const mealDetails = getMealDetails(dayIndex, mealType, planData.plan);
-    if (mealDetails) {
-        window._currentMealData = mealDetails;
-        showConsumeModal(mealDetails);
-    }
+    // غیرفعال
 }
 
 // ============================================================
