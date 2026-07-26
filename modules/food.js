@@ -1,4 +1,4 @@
-// modules/food.js (نسخه نهایی با همگام‌سازی کامل)
+// modules/food.js (نسخه کامل با همگام‌سازی)
 import { getLoggedInUser } from './auth.js';
 import { initDrawer, updateDrawerItems } from './drawer.js';
 import {
@@ -20,14 +20,13 @@ let foodHistory = [];
 let currentEditIndex = null;
 
 // ============================================================
-// همگام‌سازی داده‌ها با localStorage (برای داشبورد)
+// همگام‌سازی داده‌ها با localStorage
 // ============================================================
 function syncInventoryToLocalStorage() {
     try {
         const user = getLoggedInUser() || 'default';
         const key = `home_inventory_${user}`;
         
-        // تبدیل داده‌های foodItems به فرمت مورد انتظار inventory
         const inventoryData = foodItems.map(item => ({
             id: item.id,
             name: item.name,
@@ -38,15 +37,12 @@ function syncInventoryToLocalStorage() {
             category: item.category
         }));
         
-        // ذخیره در localStorage
         localStorage.setItem(key, JSON.stringify(inventoryData));
         
-        // به‌روزرسانی مستقیم store (برای داشبورد)
         if (typeof setInventory === 'function') {
             setInventory(inventoryData);
         } else if (store) {
             store.inventory = inventoryData;
-            // اطلاع‌رسانی به شنونده‌ها
             if (store.listeners) {
                 store.listeners.forEach(listener => {
                     if (listener.key === 'inventory') {
@@ -56,23 +52,20 @@ function syncInventoryToLocalStorage() {
             }
         }
         
-        console.log('✅ داده‌ها با localStorage همگام شدند. تعداد:', inventoryData.length);
+        console.log('✅ همگام‌سازی با localStorage انجام شد. تعداد:', inventoryData.length);
         return true;
     } catch (error) {
-        console.error('❌ خطا در همگام‌سازی با localStorage:', error);
+        console.error('❌ خطا در همگام‌سازی:', error);
         return false;
     }
 }
 
 // ============================================================
-// بارگذاری داده‌ها از IndexedDB و همگام‌سازی اولیه
+// بارگذاری داده‌ها
 // ============================================================
 async function loadData() {
     try {
-        // مقداردهی اولیه دسته‌بندی‌ها
         await seedDefaultCategories();
-
-        // دریافت دسته‌بندی‌ها
         const categoriesData = await getAllCategories();
         categories = categoriesData.map(cat => cat.name);
         window.categoryMap = {};
@@ -80,20 +73,16 @@ async function loadData() {
             window.categoryMap[cat.name] = cat.id;
         });
 
-        // دریافت مواد غذایی
         foodItems = await getAllFoodItems();
-
-        // دریافت تاریخچه
         foodHistory = await getHistory(50);
 
-        // همگام‌سازی با localStorage (برای داشبورد)
+        // همگام‌سازی اولیه با localStorage
         syncInventoryToLocalStorage();
 
         renderAll();
-        console.log('✅ داده‌ها با موفقیت بارگذاری و همگام شدند.');
+        console.log('✅ داده‌ها بارگذاری و همگام شدند.');
     } catch (error) {
-        console.error('❌ خطا در بارگذاری داده‌ها:', error);
-        // در صورت خطا، از داده‌های پیش‌فرض استفاده کنید
+        console.error('❌ خطا در بارگذاری:', error);
         categories = ['غلات', 'حبوبات', 'لبنیات', 'پروتئین', 'سبزیجات', 'میوه‌ها', 'چاشنی‌ها', 'نان', 'نوشیدنی', 'سایر'];
         foodItems = [];
         foodHistory = [];
@@ -102,7 +91,7 @@ async function loadData() {
 }
 
 // ============================================================
-// رندر همه بخش‌ها
+// رندرها
 // ============================================================
 function renderAll() {
     renderCategoryList();
@@ -111,9 +100,6 @@ function renderAll() {
     updateNameSuggestions();
 }
 
-// ============================================================
-// رندر دسته‌بندی‌ها
-// ============================================================
 function renderCategoryList() {
     const container = document.getElementById('categoryList');
     if (!container) return;
@@ -150,9 +136,6 @@ function updateNameSuggestions() {
     datalist.innerHTML = allNames.map(name => `<option value="${name}">`).join('');
 }
 
-// ============================================================
-// رندر جدول مواد غذایی
-// ============================================================
 function renderTable() {
     const tbody = document.getElementById('foodTableBody');
     if (!tbody) return;
@@ -187,9 +170,6 @@ function renderTable() {
     updateShoppingSuggestions();
 }
 
-// ============================================================
-// پیشنهاد خرید
-// ============================================================
 function updateShoppingSuggestions() {
     const container = document.getElementById('shoppingSuggestions');
     if (!container) return;
@@ -205,7 +185,7 @@ function updateShoppingSuggestions() {
 }
 
 // ============================================================
-// ویرایش، حذف، افزودن (با همگام‌سازی)
+// عملیات CRUD با همگام‌سازی
 // ============================================================
 function editItem(index) {
     const item = foodItems[index];
@@ -222,18 +202,14 @@ function editItem(index) {
 async function deleteItem(index, silent = false) {
     const deleted = foodItems[index];
     if (!deleted) return;
-    
     try {
         await deleteFoodItem(deleted.id);
         foodItems.splice(index, 1);
         if (!silent) await addToHistory('حذف', deleted);
         if (currentEditIndex === index) currentEditIndex = null;
-        
-        // همگام‌سازی با localStorage
         syncInventoryToLocalStorage();
-        
         renderAll();
-        console.log('🗑️ ماده غذایی حذف شد و همگام‌سازی انجام شد.');
+        console.log('🗑️ حذف و همگام‌سازی شد.');
     } catch (error) {
         console.error('خطا در حذف:', error);
         alert('خطا در حذف ماده غذایی.');
@@ -241,19 +217,16 @@ async function deleteItem(index, silent = false) {
 }
 
 async function resetOnlyFoodItems() {
-    if (confirm('آیا مطمئن هستید؟ تمام مواد غذایی ثبت شده و تاریخچه حذف خواهند شد.')) {
+    if (confirm('آیا مطمئن هستید؟ تمام مواد غذایی و تاریخچه حذف می‌شوند.')) {
         try {
             for (const item of foodItems) {
                 await deleteFoodItem(item.id);
             }
             foodItems = [];
             foodHistory = [];
-            
-            // همگام‌سازی با localStorage
             syncInventoryToLocalStorage();
-            
             renderAll();
-            alert('تمام مواد غذایی و تاریخچه پاک شدند.');
+            alert('تمام مواد غذایی پاک شدند.');
         } catch (error) {
             console.error('خطا در ریست:', error);
             alert('خطا در پاک کردن داده‌ها.');
@@ -261,15 +234,12 @@ async function resetOnlyFoodItems() {
     }
 }
 
-// ============================================================
-// تاریخچه تغییرات
-// ============================================================
 async function addToHistory(action, item) {
     try {
         await addHistory(action, item);
         foodHistory = await getHistory(50);
     } catch (error) {
-        console.error('خطا در ثبت تاریخچه:', error);
+        console.error('خطا در تاریخچه:', error);
     }
 }
 
@@ -277,7 +247,6 @@ async function addToHistory(action, item) {
 // راه‌اندازی رویدادها
 // ============================================================
 function setupEventListeners() {
-    // دکمه افزودن دسته
     document.getElementById('addCategoryBtn')?.addEventListener('click', async () => {
         const newCat = document.getElementById('newCategoryName')?.value.trim();
         if (!newCat) {
@@ -304,7 +273,6 @@ function setupEventListeners() {
         }
     });
 
-    // دکمه ذخیره ماده غذایی
     document.getElementById('saveFoodBtn')?.addEventListener('click', async () => {
         const category = document.getElementById('foodCategory')?.value;
         const name = document.getElementById('foodName')?.value?.trim();
@@ -332,23 +300,19 @@ function setupEventListeners() {
                 await addToHistory('افزودن', newItem);
             }
             
-            // همگام‌سازی با localStorage
             syncInventoryToLocalStorage();
-            
             renderAll();
             document.getElementById('clearFormBtn')?.click();
             
-            // به‌روزرسانی داشبورد (اگر باز باشد)
             if (window.updateNutritionAnalysis) {
                 window.updateNutritionAnalysis();
             }
-            console.log('✅ ماده غذایی ذخیره شد و همگام‌سازی انجام شد.');
+            console.log('✅ ماده غذایی ذخیره و همگام شد.');
         } catch (error) {
             alert(error.message);
         }
     });
 
-    // دکمه پاک کردن فرم
     document.getElementById('clearFormBtn')?.addEventListener('click', () => {
         document.getElementById('foodCategory').value = '';
         document.getElementById('foodName').value = '';
@@ -359,10 +323,8 @@ function setupEventListeners() {
         updateNameSuggestions();
     });
 
-    // دکمه ریست
     document.getElementById('resetDataBtn')?.addEventListener('click', resetOnlyFoodItems);
 
-    // دکمه تاریخچه
     const modal = document.getElementById('historyModal');
     document.getElementById('historyBtn')?.addEventListener('click', async () => {
         const historyDiv = document.getElementById('historyList');
@@ -383,16 +345,14 @@ function setupEventListeners() {
         window.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
     }
 
-    // تغییر دسته برای پیشنهاد نام
     document.getElementById('foodCategory')?.addEventListener('change', updateNameSuggestions);
 }
 
 // ============================================================
-// تحلیل ارزش غذایی
+// تحلیل ارزش غذایی (برای داشبورد)
 // ============================================================
 export function analyzeInventoryNutrition() {
-    // این تابع برای داشبورد است و داده‌ها را از localStorage می‌خواند
-    // فعلاً یک خروجی ساده برمی‌گردانیم
+    // خروجی ساده (در صورت نیاز قابل گسترش است)
     return {
         calories: 0,
         protein: 0,
