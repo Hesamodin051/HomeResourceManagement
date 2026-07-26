@@ -159,42 +159,94 @@ function renderChart() {
 // ============================================================
 function updateConsumptionPlan() {
     const display = document.getElementById('consumptionPlanDisplay');
-    if (!display) {
-        console.warn('⚠️ المان consumptionPlanDisplay پیدا نشد.');
-        return;
-    }
+    if (!display) return;
     const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
-    console.log(`🔄 بروزرسانی الگوی مصرف برای ${days} روز...`);
-    
-    display.innerHTML = `
-        <div class="text-center text-gray-400 py-4">
-            <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
-            <p>در حال بروزرسانی برنامه...</p>
-        </div>
-    `;
-    
+    display.innerHTML = `<div class="text-center text-gray-400 py-4"><i class="fas fa-spinner fa-spin text-2xl"></i> در حال بروزرسانی...</div>`;
     generateConsumptionPlan(days)
         .then(html => {
             display.innerHTML = html;
             attachMealClickEvents();
-            console.log('✅ الگوی مصرف به‌روزرسانی شد.');
         })
         .catch(err => {
-            console.error('❌ خطا در به‌روزرسانی الگوی مصرف:', err);
-            display.innerHTML = `
-                <div class="text-center text-red-400 py-4">
-                    <i class="fas fa-exclamation-triangle text-3xl block mb-2"></i>
-                    خطا در بروزرسانی برنامه.
-                    <br><span class="text-xs text-gray-400">${err.message || ''}</span>
-                </div>
-            `;
+            console.error('❌ خطا:', err);
+            display.innerHTML = `<div class="text-center text-red-400 py-4">خطا در بروزرسانی.</div>`;
         });
 }
 
 // ============================================================
-// 7. اتصال رویدادهای داشبورد
+// 7. تحلیل ارزش غذایی هوشمند (نسخه جدید)
+// ============================================================
+async function updateNutritionAnalysis() {
+    const display = document.getElementById('nutritionDisplay');
+    if (!display) return;
+    
+    display.innerHTML = `<div class="text-center text-gray-400 py-4"><i class="fas fa-spinner fa-spin text-2xl"></i> در حال تحلیل...</div>`;
+    
+    try {
+        const { analyzeInventoryNutrition } = await import('./modules/food.js');
+        const result = await analyzeInventoryNutrition();
+        
+        if (result.status === 'empty') {
+            display.innerHTML = `<div class="text-center text-gray-400 py-4">${result.message}</div>`;
+            return;
+        }
+
+        // نمایش وضعیت با رنگ
+        const statusColors = {
+            good: 'text-green-600 bg-green-50 border-green-200',
+            warning: 'text-yellow-600 bg-yellow-50 border-yellow-200',
+            critical: 'text-red-600 bg-red-50 border-red-200'
+        };
+        const statusColor = statusColors[result.status] || statusColors.good;
+
+        // ساخت کارت‌های ارزش غذایی
+        let vitaminHtml = '';
+        if (result.vitamins && Object.keys(result.vitamins).length > 0) {
+            const vitList = Object.keys(result.vitamins).slice(0, 8);
+            vitaminHtml = vitList.map(v => 
+                `<span class="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">${v}</span>`
+            ).join('');
+        }
+
+        // پیشنهادات
+        let suggestionHtml = '';
+        if (result.suggestions && result.suggestions.length > 0) {
+            suggestionHtml = result.suggestions.slice(0, 3).map(s => 
+                `<li class="text-xs text-blue-600">${s}</li>`
+            ).join('');
+        }
+
+        display.innerHTML = `
+            <div class="nutrition-analysis">
+                <div class="flex items-center gap-3 mb-3">
+                    <span class="text-lg">📊</span>
+                    <span class="text-sm font-bold text-gray-700">وضعیت تغذیه‌ای</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full ${statusColor}">${result.statusMessage}</span>
+                    <span class="text-xs text-gray-400">(${result.totalItems} قلم)</span>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-center">
+                    <div class="p-2 bg-blue-50 rounded-lg"><span class="text-xs text-gray-500">کالری</span><p class="text-sm font-bold text-blue-600">${result.calories} <span class="text-xs font-normal text-gray-400">/${Math.round(result.familyNeeds.calories)}</span></p><span class="text-xs text-gray-400">${result.percentages.calories}%</span></div>
+                    <div class="p-2 bg-green-50 rounded-lg"><span class="text-xs text-gray-500">پروتئین</span><p class="text-sm font-bold text-green-600">${result.protein}g <span class="text-xs font-normal text-gray-400">/${Math.round(result.familyNeeds.protein)}</span></p><span class="text-xs text-gray-400">${result.percentages.protein}%</span></div>
+                    <div class="p-2 bg-yellow-50 rounded-lg"><span class="text-xs text-gray-500">کربوهیدرات</span><p class="text-sm font-bold text-yellow-600">${result.carbs}g <span class="text-xs font-normal text-gray-400">/${Math.round(result.familyNeeds.carbs)}</span></p><span class="text-xs text-gray-400">${result.percentages.carbs}%</span></div>
+                    <div class="p-2 bg-red-50 rounded-lg"><span class="text-xs text-gray-500">چربی</span><p class="text-sm font-bold text-red-600">${result.fat}g <span class="text-xs font-normal text-gray-400">/${Math.round(result.familyNeeds.fat)}</span></p><span class="text-xs text-gray-400">${result.percentages.fat}%</span></div>
+                    <div class="p-2 bg-purple-50 rounded-lg"><span class="text-xs text-gray-500">فیبر</span><p class="text-sm font-bold text-purple-600">${result.fiber}g <span class="text-xs font-normal text-gray-400">/${Math.round(result.familyNeeds.fiber)}</span></p><span class="text-xs text-gray-400">${result.percentages.fiber}%</span></div>
+                </div>
+                ${vitaminHtml ? `<div class="flex flex-wrap gap-1 mt-2">${vitaminHtml}</div>` : ''}
+                ${suggestionHtml ? `<div class="mt-2 p-2 bg-blue-50 rounded-lg"><p class="text-xs font-medium text-blue-700">💡 پیشنهادات:</p><ul class="text-xs text-blue-600 space-y-0.5">${suggestionHtml}</ul></div>` : ''}
+                ${result.deficiencies && result.deficiencies.length > 0 ? `<div class="mt-2 text-xs text-red-500">⚠️ کمبود: ${result.deficiencies.slice(0, 5).join('، ')}${result.deficiencies.length > 5 ? ` و ${result.deficiencies.length - 5} مورد دیگر` : ''}</div>` : ''}
+            </div>
+        `;
+    } catch (error) {
+        console.error('❌ خطا در تحلیل ارزش غذایی:', error);
+        display.innerHTML = `<div class="text-center text-red-400 py-4">خطا در تحلیل ارزش غذایی.</div>`;
+    }
+}
+
+// ============================================================
+// 8. اتصال رویدادهای داشبورد
 // ============================================================
 function bindDashboardUI() {
+    // دکمه ذخیره مصرف
     const saveBtn = document.getElementById('saveConsumptionBtn');
     if (saveBtn) {
         saveBtn.addEventListener('click', function() {
@@ -216,6 +268,7 @@ function bindDashboardUI() {
         });
     }
 
+    // سوئیچ بحران
     const crisisToggle = document.getElementById('crisisModeToggle');
     if (crisisToggle) {
         crisisToggle.addEventListener('change', function(e) {
@@ -230,9 +283,11 @@ function bindDashboardUI() {
         });
     }
 
+    // دکمه خروج
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) logoutBtn.addEventListener('click', () => logout());
 
+    // دکمه بروزرسانی الگوی مصرف
     const generatePlanBtn = document.getElementById('generatePlanBtn');
     if (generatePlanBtn) {
         generatePlanBtn.addEventListener('click', function() {
@@ -240,6 +295,7 @@ function bindDashboardUI() {
         });
     }
 
+    // دکمه بازنشانی پیشنهادات غذایی
     const refreshBtn = document.getElementById('refreshMealSuggestionsBtn');
     if (refreshBtn) {
         refreshBtn.addEventListener('click', function() {
@@ -249,7 +305,7 @@ function bindDashboardUI() {
 }
 
 // ============================================================
-// 8. سناریوهای بحران
+// 9. سناریوهای بحران
 // ============================================================
 function populateScenarioDropdown() {
     const scenarios = window.crisisScenarios || [];
@@ -276,47 +332,6 @@ function populateScenarioDropdown() {
         generateSuggestions();
         updateConsumptionPlan();
     });
-}
-
-// ============================================================
-// 9. تحلیل ارزش غذایی
-// ============================================================
-function updateNutritionAnalysis() {
-    const display = document.getElementById('nutritionDisplay');
-    if (!display) return;
-    const inventory = store.inventory;
-    if (!inventory || inventory.length === 0) {
-        display.innerHTML = `<div class="text-center text-gray-400 py-4">هنوز مواد غذایی ثبت نشده است.</div>`;
-        return;
-    }
-    import('./modules/food.js').then(async (foodModule) => {
-        try {
-            const nutrition = await foodModule.analyzeInventoryNutrition();
-            if (!nutrition || nutrition.calories === 0) {
-                display.innerHTML = `<div class="text-center text-gray-400 py-4">اطلاعات ارزش غذایی موجود نیست.</div>`;
-                return;
-            }
-            const vitaminHtml = Object.keys(nutrition.vitamins || {}).length > 0 ? `
-                <div class="flex flex-wrap gap-1 mt-3">
-                    ${Object.keys(nutrition.vitamins).map(v => `<span class="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">${v}</span>`).join('')}
-                </div>
-            ` : '';
-            display.innerHTML = `
-                <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    <div class="text-center p-3 bg-blue-50 rounded-xl"><span class="text-xs text-gray-500">کالری</span><p class="text-xl font-bold text-blue-600">${nutrition.calories}</p><span class="text-xs text-gray-400">کیلوکالری</span></div>
-                    <div class="text-center p-3 bg-green-50 rounded-xl"><span class="text-xs text-gray-500">پروتئین</span><p class="text-xl font-bold text-green-600">${nutrition.protein}g</p></div>
-                    <div class="text-center p-3 bg-yellow-50 rounded-xl"><span class="text-xs text-gray-500">کربوهیدرات</span><p class="text-xl font-bold text-yellow-600">${nutrition.carbs}g</p></div>
-                    <div class="text-center p-3 bg-red-50 rounded-xl"><span class="text-xs text-gray-500">چربی</span><p class="text-xl font-bold text-red-600">${nutrition.fat}g</p></div>
-                    <div class="text-center p-3 bg-purple-50 rounded-xl"><span class="text-xs text-gray-500">فیبر</span><p class="text-xl font-bold text-purple-600">${nutrition.fiber}g</p></div>
-                </div>
-                ${vitaminHtml}
-                <div class="text-xs text-gray-400 mt-3 text-center">تحلیل بر اساس ${inventory.length} قلم مواد غذایی</div>
-            `;
-        } catch (error) {
-            console.error('خطا در تحلیل ارزش غذایی:', error);
-            display.innerHTML = `<div class="text-center text-red-400 py-4">خطا در تحلیل ارزش غذایی.</div>`;
-        }
-    }).catch(err => console.error('خطا در بارگذاری food.js:', err));
 }
 
 // ============================================================
@@ -357,25 +372,17 @@ function showConsumeModal(mealData) {
     html += `
         </div>
         <div class="flex gap-3 mt-4">
-            <button id="confirmConsumeBtn" class="btn-gradient flex-1 justify-center">
-                <i class="fas fa-check ml-2"></i> تأیید و مصرف
-            </button>
-            <button id="cancelConsumeBtn" class="btn-outline flex-1 justify-center">
-                <i class="fas fa-times ml-2"></i> لغو
-            </button>
+            <button id="confirmConsumeBtn" class="btn-gradient flex-1 justify-center"><i class="fas fa-check ml-2"></i> تأیید و مصرف</button>
+            <button id="cancelConsumeBtn" class="btn-outline flex-1 justify-center"><i class="fas fa-times ml-2"></i> لغو</button>
         </div>
         <div id="consumeMessage" class="mt-3 text-center text-sm hidden"></div>
     `;
-    
     body.innerHTML = html;
     modal.classList.remove('hidden');
 
-    // رویدادها
     document.getElementById('closeConsumeModal').addEventListener('click', closeConsumeModal);
     document.getElementById('cancelConsumeBtn').addEventListener('click', closeConsumeModal);
     document.getElementById('confirmConsumeBtn').addEventListener('click', handleConsumeConfirm);
-
-    // دکمه رد وعده
     document.getElementById('rejectMealBtn').addEventListener('click', function() {
         if (confirm(`آیا از رد وعده "${mealData.mealName}" و دریافت پیشنهاد جایگزین اطمینان دارید؟`)) {
             handleRejectMeal(mealData);
@@ -388,18 +395,14 @@ function closeConsumeModal() {
 }
 
 async function handleRejectMeal(mealData) {
-    const { dayIndex, mealType, dayName } = mealData;
-    const newMealName = await getAlternativeMeal(mealType, dayIndex);
-    // به‌روزرسانی برنامه با غذای جدید
+    const newMealName = await getAlternativeMeal(mealData.mealType, mealData.dayIndex);
     const planData = window.currentPlanData;
-    if (planData && planData.plan && planData.plan[dayIndex]) {
-        const day = planData.plan[dayIndex];
-        // پیدا کردن دستور غذایی با نام جدید
+    if (planData?.plan?.[mealData.dayIndex]) {
+        const day = planData.plan[mealData.dayIndex];
         const recipes = await import('./consumption-planner.js').then(m => m.loadRecipes?.() || []);
         const newRecipe = recipes.find(r => r.name === newMealName);
         if (newRecipe) {
-            day.meals[mealType] = newRecipe;
-            // بازسازی کارت‌ها
+            day.meals[mealData.mealType] = newRecipe;
             const display = document.getElementById('consumptionPlanDisplay');
             if (display) {
                 display.innerHTML = await generateConsumptionPlan(
@@ -408,8 +411,6 @@ async function handleRejectMeal(mealData) {
                 attachMealClickEvents();
                 alert(`✅ وعده "${mealData.mealName}" با "${newMealName}" جایگزین شد.`);
             }
-        } else {
-            alert(`پیشنهاد جایگزین "${newMealName}" در دستورها یافت نشد.`);
         }
     }
     closeConsumeModal();
@@ -429,10 +430,7 @@ async function handleConsumeConfirm() {
     if (result.success) {
         messageDiv.className = 'mt-3 text-center text-sm text-green-600 p-2 bg-green-50 rounded-lg';
         messageDiv.textContent = `✅ ${result.message}`;
-        setTimeout(() => {
-            closeConsumeModal();
-            regeneratePlan();
-        }, 1500);
+        setTimeout(() => { closeConsumeModal(); regeneratePlan(); }, 1500);
     } else {
         messageDiv.className = 'mt-3 text-center text-sm text-red-600 p-2 bg-red-50 rounded-lg';
         messageDiv.textContent = `❌ ${result.message}`;
@@ -459,7 +457,7 @@ function mealClickHandler(e) {
     const dayIndex = parseInt(el.dataset.dayIndex);
     const mealType = el.dataset.mealType;
     const planData = window.currentPlanData;
-    if (!planData || !planData.plan) return;
+    if (!planData?.plan) return;
     const mealDetails = getMealDetails(dayIndex, mealType, planData.plan);
     if (mealDetails) {
         window._currentMealData = mealDetails;
@@ -528,7 +526,7 @@ function initDashboard() {
 }
 
 // ============================================================
-// 12. مقداردهی اولیه صفحه اصلی (index.html)
+// 12. مقداردهی اولیه صفحه اصلی
 // ============================================================
 function initIndex() {
     checkAuth();
@@ -540,7 +538,7 @@ function initIndex() {
 // ============================================================
 function loadChatbotWidget() {
     if (typeof puter === 'undefined') {
-        console.warn('⚠️ Puter.js بارگذاری نشده است. چت‌بات غیرفعال می‌شود.');
+        console.warn('⚠️ Puter.js بارگذاری نشده است.');
         return;
     }
     import('./modules/chatbot.js').then(chatbotModule => {
@@ -552,19 +550,12 @@ function loadChatbotWidget() {
         const input = document.getElementById('chatbotInput');
         const messages = document.getElementById('chatbotMessages');
         const typingIndicator = document.getElementById('typingIndicator');
-        if (!fab || !windowEl) {
-            console.warn('⚠️ ویجت چت‌بات در صفحه پیدا نشد.');
-            return;
-        }
+        if (!fab || !windowEl) return;
         let isOpen = false;
         fab.addEventListener('click', function() {
             isOpen = !isOpen;
             windowEl.classList.toggle('open', isOpen);
-            if (isOpen) {
-                input.focus();
-                const badge = document.getElementById('chatbotBadge');
-                if (badge) badge.style.display = 'none';
-            }
+            if (isOpen) { input.focus(); }
         });
         if (closeBtn) {
             closeBtn.addEventListener('click', function() {
@@ -577,19 +568,16 @@ function loadChatbotWidget() {
             if (!text) return;
             addMessageToUI('user', text);
             input.value = '';
-            input.style.height = 'auto';
             typingIndicator.style.display = 'flex';
             sendBtn.disabled = true;
             try {
                 const response = await chatbotApi.sendMessage(text);
                 addMessageToUI('assistant', response);
             } catch (error) {
-                addMessageToUI('assistant', '❌ خطا در دریافت پاسخ. لطفاً دوباره تلاش کنید.');
-                console.error(error);
+                addMessageToUI('assistant', '❌ خطا. دوباره تلاش کنید.');
             } finally {
                 typingIndicator.style.display = 'none';
                 sendBtn.disabled = false;
-                messages.scrollTop = messages.scrollHeight;
             }
         }
         sendBtn.addEventListener('click', sendUserMessage);
@@ -599,17 +587,10 @@ function loadChatbotWidget() {
                 sendUserMessage();
             }
         });
-        input.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 80) + 'px';
-        });
         document.querySelectorAll('.chatbot-quick-suggestions button').forEach(btn => {
             btn.addEventListener('click', function() {
-                const question = this.getAttribute('data-question');
-                if (question) {
-                    input.value = question;
-                    sendUserMessage();
-                }
+                const q = this.getAttribute('data-question');
+                if (q) { input.value = q; sendUserMessage(); }
             });
         });
         function addMessageToUI(role, content) {
@@ -617,18 +598,15 @@ function loadChatbotWidget() {
             div.className = `message ${role}`;
             div.innerHTML = content.replace(/\n/g, '<br>') + `<span class="time">${new Date().toLocaleTimeString('fa-IR')}</span>`;
             messages.insertBefore(div, typingIndicator);
-            messages.scrollTop = messages.scrollHeight;
         }
-        if (chatbotApi.getHistory && typeof chatbotApi.getHistory === 'function') {
+        if (chatbotApi.getHistory) {
             const history = chatbotApi.getHistory();
             history.forEach(msg => {
-                if (msg.role !== 'system') {
-                    addMessageToUI(msg.role, msg.content);
-                }
+                if (msg.role !== 'system') addMessageToUI(msg.role, msg.content);
             });
         }
-        console.log('✅ چت‌بات هوشمند با موفقیت بارگذاری شد.');
-    }).catch(err => console.error('❌ خطا در بارگذاری چت‌بات:', err));
+        console.log('✅ چت‌بات هوشمند بارگذاری شد.');
+    }).catch(err => console.error('❌ خطا:', err));
 }
 
 // ============================================================
@@ -644,14 +622,10 @@ if (currentPath.includes('login.html')) {
     } else {
         loadChatbotWidget();
     }
-} else if (currentPath.includes('profile.html') || 
-           currentPath.includes('food.html') || 
-           currentPath.includes('energy.html') ||
-           currentPath.includes('reports.html') ||
-           currentPath.includes('notifications.html') ||
-           currentPath.includes('help.html') ||
-           currentPath.includes('contact.html') ||
-           currentPath.includes('chat-history.html') ||
+} else if (currentPath.includes('profile.html') || currentPath.includes('food.html') || 
+           currentPath.includes('energy.html') || currentPath.includes('reports.html') ||
+           currentPath.includes('notifications.html') || currentPath.includes('help.html') ||
+           currentPath.includes('contact.html') || currentPath.includes('chat-history.html') ||
            currentPath.includes('medications.html')) {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', loadChatbotWidget);
@@ -706,4 +680,4 @@ addListener('currentUserProfile', function() {
     }
 });
 
-console.log('🚀 سامانه تدبیر منزل با موفقیت بارگذاری شد.');
+console.log('🚀 سامانه تدبیر منزل بارگذاری شد.');
