@@ -97,7 +97,7 @@ export function getUserAvatar(username) {
     return users[username]?.avatar || null;
 }
 
-// ===== IMPORTANT: این تابع به‌روز شده =====
+// ===== تابع checkAuth ساده =====
 export function checkAuth() {
     const loggedInUser = getLoggedInUser();
     const currentPath = window.location.pathname;
@@ -122,9 +122,10 @@ export function checkAuth() {
 
     return true;
 }
+
 export function initAuthPage() {
-    // اگر کاربر لاگین است، به داشبورد برو
-    if (getLoggedInUser()) {
+    const loggedInUser = getLoggedInUser();
+    if (loggedInUser) {
         window.location.href = 'dashboard.html';
         return;
     }
