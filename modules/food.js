@@ -417,7 +417,124 @@ function setupEventListeners() {
 
     document.getElementById('foodCategory')?.addEventListener('change', updateNameSuggestions);
 }
+// modules/food.js (افزودن توابع جدید)
 
+// ============================================================
+// دریافت اطلاعات تغذیه‌ای از هوش مصنوعی
+// ============================================================
+export async function fetchNutritionFromAI(foodName) {
+    try {
+        if (typeof puter === 'undefined') {
+            console.warn('⚠️ Puter.js بارگذاری نشده است.');
+            return null;
+        }
+
+        const prompt = `
+به عنوان یک متخصص تغذیه، اطلاعات کامل تغذیه‌ای برای ماده غذایی "${foodName}" را به صورت JSON تولید کن.
+
+فرمت خروجی:
+{
+  "name": "${foodName}",
+  "barcode": "یک کد ۱۳ رقمی ساختگی",
+  "quantity_per_person_per_day": عدد (مقدار مصرف روزانه برای هر نفر بر حسب واحد),
+  "unit": "واحد اندازه‌گیری (کیلوگرم، لیتر، عدد، بسته)",
+  "shelf_life_days": عدد (مدت ماندگاری به روز),
+  "storage_condition": "شرایط نگهداری (dry_cool, refrigerator, freezer, dark_dry, room_temperature, dark_cool)",
+  "category": "دسته‌بندی (غلات، حبوبات، لبنیات، پروتئین، سبزیجات، میوه‌ها، چاشنی‌ها، نان، نوشیدنی، سایر)",
+  "priority_level": 1 یا 2 یا 3,
+  "nutrition": {
+    "calories": عدد (کالری),
+    "protein": عدد (پروتئین به گرم),
+    "carbs": عدد (کربوهیدرات به گرم),
+    "fat": عدد (چربی به گرم),
+    "fiber": عدد (فیبر به گرم),
+    "vitamins": ["لیست ویتامین‌ها و مواد معدنی"]
+  }
+}
+
+اطمینان حاصل کن که خروجی فقط JSON معتبر باشد و توضیح اضافی نداشته باشد.
+`;
+
+        const response = await puter.ai.chat(prompt, {
+            model: "gpt-4o-mini",
+            temperature: 0.1
+        });
+
+        // استخراج JSON از پاسخ
+        let jsonText = response;
+        const jsonMatch = response.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            jsonText = jsonMatch[0];
+        }
+
+        const data = JSON.parse(jsonText);
+        console.log(`✅ اطلاعات تغذیه‌ای برای "${foodName}" دریافت شد.`);
+        return data;
+    } catch (error) {
+        console.error(`❌ خطا در دریافت اطلاعات برای "${foodName}":`, error);
+        return null;
+    }
+}
+
+// ============================================================
+// افزودن یا به‌روزرسانی اطلاعات تغذیه‌ای در food_items.json
+// ============================================================
+export async function updateNutritionData(foodName) {
+    // بارگذاری data فعلی
+    const currentData = await loadNutritionData();
+    
+    // بررسی وجود ماده در data
+    const existing = currentData.find(item => item.name === foodName);
+    if (existing) {
+        console.log(`ℹ️ "${foodName}" قبلاً در food_items.json وجود دارد.`);
+        return existing;
+    }
+
+    // دریافت از AI
+    const newData = await fetchNutritionFromAI(foodName);
+    if (!newData) {
+        console.warn(`⚠️ اطلاعات "${foodName}" دریافت نشد.`);
+        return null;
+    }
+
+    // افزودن به آرایه و ذخیره در localStorage (برای کش)
+    currentData.push(newData);
+    nutritionDataCache = currentData;
+    
+    // ذخیره در localStorage برای دسترسی سریع‌تر
+    localStorage.setItem('food_nutrition_cache', JSON.stringify(currentData));
+    
+    // همچنین می‌توانیم به سرور ارسال کنیم (در صورت وجود بک‌اند)
+    console.log(`✅ "${foodName}" به لیست تغذیه اضافه شد.`);
+    return newData;
+}
+
+// ============================================================
+// بارگذاری داده‌های تغذیه‌ای با کش
+// ============================================================
+async function loadNutritionData() {
+    // ابتدا از کش (localStorage) تلاش کن
+    const cached = localStorage.getItem('food_nutrition_cache');
+    if (cached) {
+        try {
+            nutritionDataCache = JSON.parse(cached);
+            return nutritionDataCache;
+        } catch (e) {}
+    }
+
+    // اگر در کش نبود، از فایل بخوان
+    if (nutritionDataCache.length > 0) return nutritionDataCache;
+    try {
+        const response = await fetch('assets/data/food_items.json');
+        const data = await response.json();
+        nutritionDataCache = data;
+        localStorage.setItem('food_nutrition_cache', JSON.stringify(data));
+        return data;
+    } catch (error) {
+        console.warn('⚠️ خطا در بارگذاری food_items.json:', error);
+        return [];
+    }
+}
 // ============================================================
 // مقداردهی اولیه
 // ============================================================
