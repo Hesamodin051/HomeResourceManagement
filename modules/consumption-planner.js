@@ -59,12 +59,18 @@ export async function generateConsumptionPlan(days = 7, startDate = null) {
 }
 
 // ============================================================
-// پردازش پاسخ AI به کارت‌های تعاملی (با اصلاح Regex)
+// پردازش پاسخ AI به کارت‌های تعاملی (نسخه‌ی اصلاح‌شده)
 // ============================================================
 function processAIResponseToCards(aiResponse, days, familySize) {
     console.log('📝 پردازش پاسخ AI:', aiResponse);
     
-    const lines = aiResponse.split('\n').filter(line => line.trim() !== '');
+    // تقسیم به خطوط و حذف فاصله‌های اضافی از هر خط
+    const lines = aiResponse.split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+    
+    console.log('📋 تعداد خطوط:', lines.length);
+    
     const mealIcons = { صبحانه: '🌅', ناهار: '🌞', شام: '🌙' };
     const daysOfWeek = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
     const start = new Date();
@@ -74,9 +80,13 @@ function processAIResponseToCards(aiResponse, days, familySize) {
     let currentMeals = {};
 
     for (let line of lines) {
-        // ✅ اصلاح: دو نقطه (:) در آخر روز اختیاری شده است
-        const dayMatch = line.match(/روز\s*(\d+)\s*\(([^)]+)\)\s*:?/);
+        console.log('🔍 بررسی خط:', line);
+        
+        // ✅ الگوی انعطاف‌پذیر برای تشخیص روز
+        // مطابقت با: "روز ۱ (شنبه)" یا "روز ۱ (شنبه):" یا "روز۱(شنبه)"
+        const dayMatch = line.match(/روز\s*(\d+)\s*\(([^)]+)\)/);
         if (dayMatch) {
+            console.log('✅ روز پیدا شد:', dayMatch[0]);
             if (currentDay !== null) {
                 plan.push({ day: currentDay, meals: { ...currentMeals } });
             }
@@ -85,14 +95,17 @@ function processAIResponseToCards(aiResponse, days, familySize) {
             continue;
         }
         
+        // ✅ تشخیص وعده‌ها
         const mealMatch = line.match(/(صبحانه|ناهار|شام)\s*:\s*(.+)/);
         if (mealMatch && currentDay !== null) {
             const type = mealMatch[1];
             const name = mealMatch[2].trim();
+            console.log(`✅ وعده ${type}: ${name}`);
             currentMeals[type] = { name, cook_time: Math.floor(Math.random() * 30 + 15) };
         }
     }
     
+    // اضافه کردن آخرین روز
     if (currentDay !== null && Object.keys(currentMeals).length > 0) {
         plan.push({ day: currentDay, meals: { ...currentMeals } });
     }
