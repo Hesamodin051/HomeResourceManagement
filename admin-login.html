@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ورود سازمانی | سامانه تدبیر منزل</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 'vazir': ['Vazirmatn', 'sans-serif'] },
+                    colors: { 'primary': '#0f172a', 'secondary': '#3b82f6', 'accent': '#f59e0b' }
+                }
+            }
+        }
+    </script>
+    <style>
+        .admin-login-bg {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+        }
+        .admin-login-card {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+        }
+        .admin-login-card .input-modern {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.15);
+            color: white;
+        }
+        .admin-login-card .input-modern:focus {
+            border-color: #3b82f6;
+            background: rgba(255,255,255,0.12);
+        }
+        .admin-login-card .input-modern::placeholder {
+            color: rgba(255,255,255,0.4);
+        }
+    </style>
+</head>
+<body class="font-vazir min-h-screen admin-login-bg flex items-center justify-center">
+    <div class="w-full max-w-md mx-4">
+        <div class="text-center mb-8">
+            <i class="fas fa-building text-5xl text-secondary"></i>
+            <h1 class="text-3xl font-bold text-white mt-3">پنل مدیریت سازمانی</h1>
+            <p class="text-gray-400 text-sm mt-1">سامانه تدبیر منزل</p>
+        </div>
+
+        <div class="admin-login-card rounded-2xl p-8">
+            <div class="mb-6">
+                <div class="flex items-center gap-2 text-yellow-400 text-sm bg-yellow-500/10 p-3 rounded-xl">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>ورود تنها برای سازمان‌های معتبر</span>
+                </div>
+            </div>
+
+            <form id="adminLoginForm" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">نام سازمان</label>
+                    <input type="text" id="adminOrgName" class="input-modern w-full" placeholder="مثال: آب و فاضلاب" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">کد سازمانی</label>
+                    <input type="text" id="adminOrgCode" class="input-modern w-full" placeholder="کد ۸ رقمی" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">رمز عبور</label>
+                    <input type="password" id="adminPassword" class="input-modern w-full" placeholder="رمز عبور سازمانی" required>
+                </div>
+                <div id="adminLoginError" class="text-red-400 text-sm text-center hidden"></div>
+                <button type="submit" class="btn-gradient w-full justify-center text-white">
+                    <i class="fas fa-sign-in-alt ml-2"></i> ورود به پنل مدیریت
+                </button>
+            </form>
+
+            <div class="mt-4 text-center text-xs text-gray-500">
+                <i class="fas fa-lock ml-1"></i> اطلاعات شما با امنیت کامل محافظت می‌شود
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="index.html" class="text-gray-400 hover:text-white text-sm transition-colors">
+                <i class="fas fa-arrow-right ml-1"></i> بازگشت به صفحه اصلی
+            </a>
+        </div>
+    </div>
+
+    <script type="module">
+        // این صفحه فقط فرم ورود را نمایش می‌دهد و به admin.js متصل می‌شود
+        import { adminLogin } from './modules/admin-auth.js';
+
+        document.getElementById('adminLoginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const orgName = document.getElementById('adminOrgName').value.trim();
+            const orgCode = document.getElementById('adminOrgCode').value.trim();
+            const password = document.getElementById('adminPassword').value.trim();
+            
+            const result = await adminLogin(orgName, orgCode, password);
+            if (result.success) {
+                window.location.href = 'admin-dashboard.html';
+            } else {
+                const errorEl = document.getElementById('adminLoginError');
+                errorEl.textContent = result.message;
+                errorEl.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
