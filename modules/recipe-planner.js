@@ -10,9 +10,10 @@ function getInventory() {
 }
 
 let recipes = [];
+let shoppingList = []; // لیست خرید تولید شده
 
 // ============================================================
-// بارگذاری دستور پخت‌ها از فایل JSON
+// بارگذاری دستور پخت‌ها
 // ============================================================
 export async function loadRecipes() {
     try {
@@ -22,6 +23,7 @@ export async function loadRecipes() {
         }
         recipes = await response.json();
         console.log('✅ دستور پخت‌ها بارگذاری شدند:', recipes.length);
+        console.log('📋 لیست رسپی‌ها:', recipes.map(r => r.name).join(', '));
         return recipes;
     } catch (error) {
         console.error('❌ خطا در بارگذاری recipes.json:', error);
@@ -31,32 +33,49 @@ export async function loadRecipes() {
 }
 
 // ============================================================
-// بررسی اینکه آیا یک دستور پخت با موجودی قابل تهیه است
+// نرمال‌سازی نام (حذف فاصله‌های اضافی و حساسیت به حروف)
 // ============================================================
-function canMakeRecipe(recipe) {
-    const inventory = getInventory();
-    
-    for (let ing of recipe.ingredients) {
-        // پیدا کردن ماده در انبار
-        const inventoryItem = inventory.find(item => 
-            item.name.toLowerCase().includes(ing.name.toLowerCase()) ||
-            ing.name.toLowerCase().includes(item.name.toLowerCase())
-        );
-        
-        if (!inventoryItem) {
-            return false; // ماده در انبار نیست
-        }
-        
-        // بررسی مقدار کافی
-        if (inventoryItem.quantity < ing.quantity) {
-            return false; // مقدار کافی نیست
-        }
-    }
-    return true;
+function normalizeName(name) {
+    return name.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 // ============================================================
-// دریافت دستور پخت‌های قابل تهیه بر اساس دسته‌بندی
+// بررسی موجودی یک ماده (فقط وجود، بدون مقدار)
+// ============================================================
+function isIngredientAvailable(ingredientName) {
+    const inventory = getInventory();
+    const normalizedIng = normalizeName(ingredientName);
+    
+    return inventory.some(item => {
+        const normalizedItem = normalizeName(item.name);
+        return normalizedItem.includes(normalizedIng) || normalizedIng.includes(normalizedItem);
+    });
+}
+
+// ============================================================
+// بررسی یک دستور پخت: موجودی و کمبودها (حداکثر ۲ کمبود مجاز)
+// ============================================================
+function analyzeRecipe(recipe) {
+    if (!recipe.ingredients || recipe.ingredients.length === 0) {
+        return { available: false, missing: [], hasAll: false };
+    }
+    
+    const missing = [];
+    for (let ing of recipe.ingredients) {
+        if (!isIngredientAvailable(ing.name)) {
+            missing.push(ing.name);
+        }
+    }
+    
+    const hasAll = missing.length === 0;
+    // اگر بیش از ۲ کمبود داشته باشد، قابل تهیه نیست (می‌توانید عدد را تغییر دهید)
+    const available = missing.length <= 2;
+    
+    return { available, missing, hasAll };
+}
+
+// ============================================================
+// دریافت دستور پخت‌های قابل تهیه (با تحمل کمبود)
 // ============================================================
 function getAvailableRecipesByCategory(category = null) {
     if (recipes.length === 0) {
@@ -64,20 +83,33 @@ function getAvailableRecipesByCategory(category = null) {
         return [];
     }
     
-    let available = recipes.filter(recipe => canMakeRecipe(recipe));
+    // تحلیل همه‌ی رسپی‌ها
+    const analyzed = recipes.map(recipe => {
+        const result = analyzeRecipe(recipe);
+        return { ...recipe, ...result };
+    });
     
+    // فیلتر کردن بر اساس دسته‌بندی
+    let filtered = analyzed;
     if (category) {
-        available = available.filter(recipe => recipe.category === category);
+        filtered = filtered.filter(r => r.category === category);
     }
+    
+    // فقط مواردی که available = true باشند
+    const available = filtered.filter(r => r.available);
+    
+    console.log(`📋 تعداد رسپی‌های قابل تهیه (با تحمل کمبود) در دسته ${category || 'همه'}: ${available.length}`);
+    available.forEach(r => {
+        console.log(`   - ${r.name} (کمبود: ${r.missing.length > 0 ? r.missing.join(', ') : 'هیچ'})`);
+    });
     
     return available;
 }
 
 // ============================================================
-// تولید برنامه مصرف بر اساس Recipe
+// تولید برنامه مصرف
 // ============================================================
 export async function generateConsumptionPlan(days = 7, startDate = null) {
-    // اطمینان از بارگذاری دستور پخت‌ها
     if (recipes.length === 0) {
         await loadRecipes();
     }
@@ -109,55 +141,55 @@ export async function generateConsumptionPlan(days = 7, startDate = null) {
     // ===== تولید برنامه =====
     const plan = generatePlanFromRecipes(days, familySize, crisisMode);
     
-    if (plan.length === 0) {
-        return `
-            <div class="text-center text-gray-400 py-8">
-                <i class="fas fa-exclamation-triangle text-3xl block mb-3 opacity-50"></i>
-                <p>با موجودی فعلی، هیچ دستور پختی قابل تهیه نیست.</p>
-                <p class="text-sm mt-2">لطفاً مواد غذایی بیشتری اضافه کنید.</p>
-            </div>
-        `;
+    // اگر هیچ رسپی‌ای پیدا نشد (حتی با کمبود)، از Rule-Based استفاده کن
+    if (plan.length === 0 || plan.every(day => day.meals.صبحانه.name === 'غذای ساده')) {
+        console.warn('⚠️ هیچ برنامه‌ای با رسپی تولید نشد، استفاده از روش Rule-Based');
+        return generateFallbackPlan(days, familySize);
     }
 
+    // ===== تولید لیست خرید از کمبودهای موجود در برنامه =====
+    shoppingList = generateShoppingList(plan);
+    
     return renderPlanCards(plan, days);
 }
 
 // ============================================================
-// تولید برنامه از دستور پخت‌ها
+// تولید برنامه از دستور پخت‌ها (با انتخاب تصادفی)
 // ============================================================
 function generatePlanFromRecipes(days, familySize, crisisMode) {
     const daysOfWeek = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
     const start = new Date();
     
-    // ===== دسته‌بندی دستور پخت‌های قابل تهیه =====
-    const breakfastRecipes = getAvailableRecipesByCategory('صبحانه');
-    const lunchRecipes = getAvailableRecipesByCategory('ناهار');
-    const dinnerRecipes = getAvailableRecipesByCategory('شام');
+    // دریافت لیست رسپی‌های قابل تهیه (با کمبود مجاز)
+    const allAvailable = getAvailableRecipesByCategory();
+    const breakfastAvailable = getAvailableRecipesByCategory('صبحانه');
+    const lunchAvailable = getAvailableRecipesByCategory('ناهار');
+    const dinnerAvailable = getAvailableRecipesByCategory('شام');
     
-    // اگر دستور پختی در دسته‌بندی نبود، از همه استفاده کن
-    const allRecipes = getAvailableRecipesByCategory();
-    
+    // اگر اصلاً رسپی‌ای وجود ندارد، از Rule-Based استفاده کن
+    if (allAvailable.length === 0) {
+        console.warn('⚠️ هیچ رسپی‌ای قابل تهیه نیست (حتی با کمبود).');
+        return generateFallbackPlanData(days, familySize);
+    }
+
     const getMeal = (category) => {
         let recipesList = [];
-        if (category === 'صبحانه') recipesList = breakfastRecipes.length > 0 ? breakfastRecipes : allRecipes;
-        else if (category === 'ناهار') recipesList = lunchRecipes.length > 0 ? lunchRecipes : allRecipes;
-        else if (category === 'شام') recipesList = dinnerRecipes.length > 0 ? dinnerRecipes : allRecipes;
+        if (category === 'صبحانه') recipesList = breakfastAvailable.length > 0 ? breakfastAvailable : allAvailable;
+        else if (category === 'ناهار') recipesList = lunchAvailable.length > 0 ? lunchAvailable : allAvailable;
+        else if (category === 'شام') recipesList = dinnerAvailable.length > 0 ? dinnerAvailable : allAvailable;
         
-        if (recipesList.length === 0) {
-            return { name: 'غذای ساده', ingredients: [], cook_time: 15 };
-        }
-        
-        // انتخاب تصادفی از لیست
+        // انتخاب تصادفی
         const randomIndex = Math.floor(Math.random() * recipesList.length);
         const recipe = recipesList[randomIndex];
         return {
             name: recipe.name,
             ingredients: recipe.ingredients || [],
-            cook_time: recipe.cook_time || 30
+            cook_time: recipe.cook_time || 30,
+            missing: recipe.missing || [], // ذخیره کمبودها
+            hasAll: recipe.hasAll || false
         };
     };
 
-    // ===== ساخت برنامه =====
     let plan = [];
     const maxDays = Math.min(days, 30);
 
@@ -166,25 +198,13 @@ function generatePlanFromRecipes(days, familySize, crisisMode) {
         date.setDate(start.getDate() + i);
         const dayName = daysOfWeek[date.getDay()] || 'روز';
         
-        // در حالت بحران، غذاها را ساده‌تر می‌کنیم (فقط از اولین گزینه استفاده کن)
         let breakfast, lunch, dinner;
         if (crisisMode) {
-            const crisisRecipes = allRecipes.slice(0, 3);
-            breakfast = {
-                name: crisisRecipes[0]?.name || 'نان و پنیر',
-                ingredients: [],
-                cook_time: 10
-            };
-            lunch = {
-                name: crisisRecipes[1]?.name || 'سوپ',
-                ingredients: [],
-                cook_time: 20
-            };
-            dinner = {
-                name: crisisRecipes[2]?.name || 'املت',
-                ingredients: [],
-                cook_time: 15
-            };
+            // در بحران: فقط از اولین رسپی‌های موجود استفاده کن (با کمبود کمتر)
+            const crisisRecipes = allAvailable.sort((a, b) => a.missing.length - b.missing.length).slice(0, 3);
+            breakfast = crisisRecipes[0] || { name: 'غذای ساده', ingredients: [], cook_time: 10, missing: [], hasAll: true };
+            lunch = crisisRecipes[1] || { name: 'غذای ساده', ingredients: [], cook_time: 20, missing: [], hasAll: true };
+            dinner = crisisRecipes[2] || { name: 'غذای ساده', ingredients: [], cook_time: 15, missing: [], hasAll: true };
         } else {
             breakfast = getMeal('صبحانه');
             lunch = getMeal('ناهار');
@@ -196,9 +216,9 @@ function generatePlanFromRecipes(days, familySize, crisisMode) {
             date: date.toISOString().slice(0, 10),
             dayName: dayName,
             meals: {
-                صبحانه: { name: breakfast.name, ingredients: breakfast.ingredients, cook_time: breakfast.cook_time },
-                ناهار: { name: lunch.name, ingredients: lunch.ingredients, cook_time: lunch.cook_time },
-                شام: { name: dinner.name, ingredients: dinner.ingredients, cook_time: dinner.cook_time }
+                صبحانه: { name: breakfast.name, ingredients: breakfast.ingredients, cook_time: breakfast.cook_time, missing: breakfast.missing || [], hasAll: breakfast.hasAll !== undefined ? breakfast.hasAll : true },
+                ناهار: { name: lunch.name, ingredients: lunch.ingredients, cook_time: lunch.cook_time, missing: lunch.missing || [], hasAll: lunch.hasAll !== undefined ? lunch.hasAll : true },
+                شام: { name: dinner.name, ingredients: dinner.ingredients, cook_time: dinner.cook_time, missing: dinner.missing || [], hasAll: dinner.hasAll !== undefined ? dinner.hasAll : true }
             }
         });
     }
@@ -207,7 +227,58 @@ function generatePlanFromRecipes(days, familySize, crisisMode) {
 }
 
 // ============================================================
-// رندر کارت‌های برنامه
+// تولید لیست خرید از کمبودهای برنامه
+// ============================================================
+function generateShoppingList(plan) {
+    const allMissing = {};
+    plan.forEach(day => {
+        ['صبحانه', 'ناهار', 'شام'].forEach(mealType => {
+            const meal = day.meals[mealType];
+            if (meal && meal.missing && meal.missing.length > 0) {
+                meal.missing.forEach(item => {
+                    allMissing[item] = (allMissing[item] || 0) + 1;
+                });
+            }
+        });
+    });
+    // تبدیل به آرایه برای نمایش
+    return Object.entries(allMissing).map(([name, count]) => ({ name, count }));
+}
+
+// ============================================================
+// داده‌های Rule-Based برای زمانی که هیچ رسپی‌ای قابل تهیه نیست
+// ============================================================
+function generateFallbackPlanData(days, familySize) {
+    const daysOfWeek = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
+    const start = new Date();
+    const mealOptions = {
+        صبحانه: ['نان و پنیر', 'تخم‌مرغ', 'حلیم', 'فرنی'],
+        ناهار: ['برنج و خورش', 'ماکارونی', 'کتلت', 'عدسی'],
+        شام: ['سوپ', 'املت', 'نان و کره', 'شیر']
+    };
+
+    let plan = [];
+    for (let i = 0; i < Math.min(days, 7); i++) {
+        const date = new Date(start);
+        date.setDate(start.getDate() + i);
+        const dayName = daysOfWeek[date.getDay()] || 'روز';
+        const dayPlan = {
+            day: i + 1,
+            date: date.toISOString().slice(0, 10),
+            dayName: dayName,
+            meals: {
+                صبحانه: { name: mealOptions.صبحانه[i % mealOptions.صبحانه.length], ingredients: [], cook_time: 10, missing: [], hasAll: true },
+                ناهار: { name: mealOptions.ناهار[i % mealOptions.ناهار.length], ingredients: [], cook_time: 45, missing: [], hasAll: true },
+                شام: { name: mealOptions.شام[i % mealOptions.شام.length], ingredients: [], cook_time: 20, missing: [], hasAll: true }
+            }
+        };
+        plan.push(dayPlan);
+    }
+    return plan;
+}
+
+// ============================================================
+// رندر کارت‌های برنامه + لیست خرید
 // ============================================================
 function renderPlanCards(plan, days) {
     const mealIcons = { صبحانه: '🌅', ناهار: '🌞', شام: '🌙' };
@@ -238,8 +309,9 @@ function renderPlanCards(plan, days) {
         ['صبحانه', 'ناهار', 'شام'].forEach(type => {
             const meal = day.meals[type];
             if (meal) {
-                const ingredientList = meal.ingredients && meal.ingredients.length > 0 
-                    ? meal.ingredients.map(i => i.name).join('، ')
+                const isComplete = meal.hasAll || meal.missing?.length === 0;
+                const missingText = (meal.missing && meal.missing.length > 0) 
+                    ? `<span class="text-xs text-red-500"> (کمبود: ${meal.missing.join('، ')})</span>` 
                     : '';
                 html += `
                     <div class="meal-item flex justify-between items-center p-1 rounded hover:bg-blue-50 transition-colors cursor-pointer" 
@@ -248,7 +320,8 @@ function renderPlanCards(plan, days) {
                         <span>
                             <span class="font-medium">${mealIcons[type]} ${type}:</span> 
                             ${meal.name}
-                            ${ingredientList ? `<span class="text-xs text-gray-400"> (${ingredientList})</span>` : ''}
+                            ${!isComplete ? '⚠️' : '✅'}
+                            ${missingText}
                         </span>
                         <span class="text-xs text-gray-400">⏱️ ${meal.cook_time || '?'} دقیقه</span>
                     </div>
@@ -263,8 +336,25 @@ function renderPlanCards(plan, days) {
 
     html += `
             </div>
+    `;
+
+    // ===== نمایش لیست خرید =====
+    if (shoppingList && shoppingList.length > 0) {
+        html += `
+            <div class="mt-4 p-3 bg-yellow-50 rounded-xl border border-yellow-200">
+                <h5 class="text-sm font-bold text-yellow-700 mb-2">🛒 لیست خرید پیشنهادی:</h5>
+                <ul class="text-xs text-yellow-700 list-disc list-inside">
+                    ${shoppingList.map(item => `<li>${item.name} (${item.count} بار نیاز است)</li>`).join('')}
+                </ul>
+                <p class="text-xs text-yellow-600 mt-1">این مواد برای تکمیل غذاهای پیشنهادی نیاز است.</p>
+            </div>
+        `;
+    }
+
+    html += `
             <div class="mt-3 p-3 bg-green-50 rounded-xl border border-green-200 text-xs text-green-600">
                 ✅ برنامه بر اساس دستور پخت‌های موجود و موجودی انبار تولید شده است.
+                ${shoppingList && shoppingList.length > 0 ? ' ⚠️ برخی مواد کمبود دارند، لیست خرید در بالا نمایش داده شده است.' : ''}
             </div>
         </div>
     `;
@@ -273,14 +363,23 @@ function renderPlanCards(plan, days) {
 }
 
 // ============================================================
-// دریافت پیشنهاد جایگزین (با استفاده از Recipe)
+// برنامه پیش‌فرض (در صورت عدم تطابق رسپی)
+// ============================================================
+function generateFallbackPlan(days, familySize) {
+    shoppingList = [];
+    const fallbackData = generateFallbackPlanData(days, familySize);
+    return renderPlanCards(fallbackData, days);
+}
+
+// ============================================================
+// دریافت پیشنهاد جایگزین (با تحمل کمبود)
 // ============================================================
 export async function getAlternativeMeal(mealType, dayIndex) {
-    const allRecipes = getAvailableRecipesByCategory();
-    const categoryRecipes = getAvailableRecipesByCategory(mealType === 'صبحانه' ? 'صبحانه' : 
-                                                         mealType === 'ناهار' ? 'ناهار' : 'شام');
+    const allAvailable = getAvailableRecipesByCategory();
+    const category = mealType === 'صبحانه' ? 'صبحانه' : mealType === 'ناهار' ? 'ناهار' : 'شام';
+    const categoryRecipes = getAvailableRecipesByCategory(category);
     
-    const options = categoryRecipes.length > 0 ? categoryRecipes : allRecipes;
+    const options = categoryRecipes.length > 0 ? categoryRecipes : allAvailable;
     
     if (options.length === 0) {
         const fallback = {
@@ -296,7 +395,7 @@ export async function getAlternativeMeal(mealType, dayIndex) {
 }
 
 // ============================================================
-// دریافت جزئیات یک وعده (برای مدال)
+// دریافت جزئیات یک وعده
 // ============================================================
 export function getMealDetails(dayIndex, mealType, plan) {
     if (!plan || !plan[dayIndex]) return null;
@@ -311,6 +410,8 @@ export function getMealDetails(dayIndex, mealType, plan) {
         ingredients: meal.ingredients || [{ name: meal.name, quantity: 1, unit: 'واحد' }],
         cook_time: meal.cook_time || 30,
         servings: getFamilySize(),
-        dayIndex: dayIndex
+        dayIndex: dayIndex,
+        missing: meal.missing || [],
+        hasAll: meal.hasAll !== undefined ? meal.hasAll : true
     };
 }
