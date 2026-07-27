@@ -4,7 +4,7 @@ import { store, setCurrentUserProfile } from './modules/store.js';
 import { initDrawer, updateDrawerItems } from './modules/drawer.js';
 
 // ============================================================
-// بارگذاری اطلاعات پروفایل
+// بارگذاری اطلاعات پروفایل (با چک کردن المان‌ها)
 // ============================================================
 function loadProfile() {
     const username = getLoggedInUser();
@@ -19,40 +19,52 @@ function loadProfile() {
         return;
     }
 
-    // پر کردن فیلدها
-    document.getElementById('username').value = username;
-    document.getElementById('fullName').value = profile.fullName || '';
-    document.getElementById('phone').value = profile.phone || '';
-    document.getElementById('birthDate').value = profile.birthDate || '';
-    document.getElementById('gender').value = profile.gender || '';
-    document.getElementById('maritalStatus').value = profile.maritalStatus || '';
-    document.getElementById('occupation').value = profile.occupation || '';
-    document.getElementById('familySize').value = profile.familySize || 4;
-    document.getElementById('address').value = profile.address || '';
-    document.getElementById('postalCode').value = profile.postalCode || '';
-    document.getElementById('housingType').value = profile.housingType || '';
-    document.getElementById('area').value = profile.area || '';
-    document.getElementById('constructionYear').value = profile.constructionYear || '';
-    document.getElementById('heatingSystem').value = profile.heatingSystem || '';
-    document.getElementById('coolingSystem').value = profile.coolingSystem || '';
-    document.getElementById('waterHeater').value = profile.waterHeater || '';
-    document.getElementById('solarPanel').value = profile.solarPanel || '';
-    document.getElementById('annualWater').value = profile.annualWater || '';
-    document.getElementById('annualElectricity').value = profile.annualElectricity || '';
-    document.getElementById('annualGas').value = profile.annualGas || '';
+    // === پر کردن فیلدها با چک کردن وجود المان ===
+    const setField = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+    };
+    const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    };
+
+    setField('username', username);
+    setField('fullName', profile.fullName || '');
+    setField('phone', profile.phone || '');
+    setField('birthDate', profile.birthDate || '');
+    setField('gender', profile.gender || '');
+    setField('maritalStatus', profile.maritalStatus || '');
+    setField('occupation', profile.occupation || '');
+    setField('familySize', profile.familySize || 4);
+    setField('address', profile.address || '');
+    setField('postalCode', profile.postalCode || '');
+    setField('housingType', profile.housingType || '');
+    setField('area', profile.area || '');
+    setField('constructionYear', profile.constructionYear || '');
+    setField('heatingSystem', profile.heatingSystem || '');
+    setField('coolingSystem', profile.coolingSystem || '');
+    setField('waterHeater', profile.waterHeater || '');
+    setField('solarPanel', profile.solarPanel || '');
+    setField('annualWater', profile.annualWater || '');
+    setField('annualElectricity', profile.annualElectricity || '');
+    setField('annualGas', profile.annualGas || '');
 
     // نام نمایشی
     const displayName = profile.fullName || username;
-    document.getElementById('profileDisplayName').textContent = displayName;
-    document.getElementById('profileUsername').textContent = `@${username}`;
+    setText('profileDisplayName', displayName);
+    setText('profileUsername', `@${username}`);
 
     // آواتار
     const avatar = getUserAvatar(username);
-    if (avatar) {
-        document.getElementById('profileAvatar').src = avatar;
-    } else {
-        const firstChar = username.charAt(0).toUpperCase();
-        document.getElementById('profileAvatar').src = `https://ui-avatars.com/api/?background=1e466e&color=fff&rounded=true&size=96&name=${firstChar}`;
+    const avatarImg = document.getElementById('profileAvatar');
+    if (avatarImg) {
+        if (avatar) {
+            avatarImg.src = avatar;
+        } else {
+            const firstChar = username.charAt(0).toUpperCase();
+            avatarImg.src = `https://ui-avatars.com/api/?background=1e466e&color=fff&rounded=true&size=96&name=${firstChar}`;
+        }
     }
 }
 
@@ -64,47 +76,51 @@ function saveProfile(e) {
     const username = getLoggedInUser();
     if (!username) return;
 
+    const getField = (id) => {
+        const el = document.getElementById(id);
+        return el ? el.value : '';
+    };
+    const getFloat = (id) => parseFloat(getField(id)) || 0;
+    const getInt = (id) => parseInt(getField(id)) || 0;
+
     const updates = {
-        fullName: document.getElementById('fullName').value.trim(),
-        phone: document.getElementById('phone').value.trim(),
-        birthDate: document.getElementById('birthDate').value,
-        gender: document.getElementById('gender').value,
-        maritalStatus: document.getElementById('maritalStatus').value,
-        occupation: document.getElementById('occupation').value.trim(),
-        familySize: parseInt(document.getElementById('familySize').value) || 4,
-        address: document.getElementById('address').value.trim(),
-        postalCode: document.getElementById('postalCode').value.trim(),
-        housingType: document.getElementById('housingType').value,
-        area: parseFloat(document.getElementById('area').value) || 0,
-        constructionYear: parseInt(document.getElementById('constructionYear').value) || 0,
-        heatingSystem: document.getElementById('heatingSystem').value,
-        coolingSystem: document.getElementById('coolingSystem').value,
-        waterHeater: document.getElementById('waterHeater').value,
-        solarPanel: document.getElementById('solarPanel').value,
-        annualWater: parseFloat(document.getElementById('annualWater').value) || 0,
-        annualElectricity: parseFloat(document.getElementById('annualElectricity').value) || 0,
-        annualGas: parseFloat(document.getElementById('annualGas').value) || 0
+        fullName: getField('fullName').trim(),
+        phone: getField('phone').trim(),
+        birthDate: getField('birthDate'),
+        gender: getField('gender'),
+        maritalStatus: getField('maritalStatus'),
+        occupation: getField('occupation').trim(),
+        familySize: getInt('familySize') || 4,
+        address: getField('address').trim(),
+        postalCode: getField('postalCode').trim(),
+        housingType: getField('housingType'),
+        area: getFloat('area'),
+        constructionYear: getInt('constructionYear'),
+        heatingSystem: getField('heatingSystem'),
+        coolingSystem: getField('coolingSystem'),
+        waterHeater: getField('waterHeater'),
+        solarPanel: getField('solarPanel'),
+        annualWater: getFloat('annualWater'),
+        annualElectricity: getFloat('annualElectricity'),
+        annualGas: getFloat('annualGas')
     };
 
     const success = updateUserProfile(username, updates);
+    const status = document.getElementById('profileStatus');
+    if (!status) return;
+
     if (success) {
-        // به‌روز کردن store
         const updated = getUserProfile(username);
         setCurrentUserProfile(updated);
-
-        // پیام موفقیت
-        const status = document.getElementById('profileStatus');
         status.textContent = '✅ اطلاعات با موفقیت ذخیره شد.';
         status.className = 'mt-4 text-center text-sm text-green-600 bg-green-50 p-2 rounded-xl block';
         setTimeout(() => {
             status.className = 'mt-4 text-center text-sm hidden';
         }, 5000);
-
-        // به‌روز کردن نام نمایشی
         const displayName = updates.fullName || username;
-        document.getElementById('profileDisplayName').textContent = displayName;
+        const displayEl = document.getElementById('profileDisplayName');
+        if (displayEl) displayEl.textContent = displayName;
     } else {
-        const status = document.getElementById('profileStatus');
         status.textContent = '❌ خطا در ذخیره اطلاعات. لطفاً دوباره تلاش کنید.';
         status.className = 'mt-4 text-center text-sm text-red-600 bg-red-50 p-2 rounded-xl block';
     }
@@ -122,8 +138,8 @@ function handleAvatarUpload(file) {
         const base64 = e.target.result;
         const success = saveUserAvatar(username, base64);
         if (success) {
-            document.getElementById('profileAvatar').src = base64;
-            // به‌روز کردن آواتار در store
+            const avatarImg = document.getElementById('profileAvatar');
+            if (avatarImg) avatarImg.src = base64;
             const updated = getUserProfile(username);
             setCurrentUserProfile(updated);
             alert('✅ آواتار با موفقیت به‌روز شد.');
@@ -135,12 +151,13 @@ function handleAvatarUpload(file) {
 }
 
 // ============================================================
-// بازنشانی فرم به مقادیر پیش‌فرض
+// بازنشانی فرم
 // ============================================================
 function resetProfileForm() {
     if (confirm('آیا از بازنشانی اطلاعات اطمینان دارید؟')) {
-        loadProfile(); // دوباره بارگذاری
-        document.getElementById('profileStatus').className = 'mt-4 text-center text-sm hidden';
+        loadProfile();
+        const status = document.getElementById('profileStatus');
+        if (status) status.className = 'mt-4 text-center text-sm hidden';
     }
 }
 
@@ -148,23 +165,18 @@ function resetProfileForm() {
 // حذف حساب کاربری
 // ============================================================
 function deleteAccount() {
-    if (confirm('آیا مطمئن هستید؟ این عمل غیرقابل بازگشت است.')) {
-        // حذف کاربر از localStorage (در auth.js تابعی برای این کار وجود ندارد، پیاده‌سازی ساده)
-        const username = getLoggedInUser();
-        if (!username) return;
-        if (confirm('تأیید نهایی: تمام داده‌های شما پاک می‌شود.')) {
-            // حذف کاربر
-            const users = JSON.parse(localStorage.getItem('app_users') || '{}');
-            delete users[username];
-            localStorage.setItem('app_users', JSON.stringify(users));
-            // حذف داده‌های مرتبط
-            localStorage.removeItem(`daily_consumption_${username}`);
-            localStorage.removeItem(`home_inventory_${username}`);
-            localStorage.removeItem(`meal_plan_${username}`);
-            // خروج
-            logout();
-        }
-    }
+    if (!confirm('آیا مطمئن هستید؟ این عمل غیرقابل بازگشت است.')) return;
+    const username = getLoggedInUser();
+    if (!username) return;
+    if (!confirm('تأیید نهایی: تمام داده‌های شما پاک می‌شود.')) return;
+
+    const users = JSON.parse(localStorage.getItem('app_users') || '{}');
+    delete users[username];
+    localStorage.setItem('app_users', JSON.stringify(users));
+    localStorage.removeItem(`daily_consumption_${username}`);
+    localStorage.removeItem(`home_inventory_${username}`);
+    localStorage.removeItem(`meal_plan_${username}`);
+    logout();
 }
 
 // ============================================================
@@ -179,18 +191,24 @@ function init() {
     updateDrawerItems();
     loadProfile();
 
-    // رویدادها
-    document.getElementById('profileForm').addEventListener('submit', saveProfile);
-    document.getElementById('resetProfileBtn').addEventListener('click', resetProfileForm);
-    document.getElementById('deleteAccountBtn').addEventListener('click', deleteAccount);
+    const form = document.getElementById('profileForm');
+    if (form) form.addEventListener('submit', saveProfile);
+    
+    const resetBtn = document.getElementById('resetProfileBtn');
+    if (resetBtn) resetBtn.addEventListener('click', resetProfileForm);
+    
+    const deleteBtn = document.getElementById('deleteAccountBtn');
+    if (deleteBtn) deleteBtn.addEventListener('click', deleteAccount);
 
-    // آپلود آواتار
-    document.getElementById('avatarUpload').addEventListener('change', function(e) {
-        if (this.files && this.files[0]) {
-            handleAvatarUpload(this.files[0]);
-        }
-        this.value = ''; // reset
-    });
+    const avatarUpload = document.getElementById('avatarUpload');
+    if (avatarUpload) {
+        avatarUpload.addEventListener('change', function(e) {
+            if (this.files && this.files[0]) {
+                handleAvatarUpload(this.files[0]);
+            }
+            this.value = '';
+        });
+    }
 }
 
 if (document.readyState === 'loading') {
