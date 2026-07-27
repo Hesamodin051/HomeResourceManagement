@@ -9,6 +9,7 @@ import { store, setCrisisMode, addListener, setCurrentUserProfile } from './modu
 import { generateSuggestions } from './modules/suggestion.js';
 import { generateConsumptionPlan, getMealDetails, getAlternativeMeal } from './modules/consumption-planner.js';
 import { getSmartSuggestions } from './modules/ai.js';
+import { loadRecipes } from './modules/recipe-planner.js';
 
 // ===== غیرفعال کردن پیام Puter.js =====
 if (typeof puter !== 'undefined') {
