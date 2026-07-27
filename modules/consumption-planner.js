@@ -1,9 +1,6 @@
 // modules/consumption-planner.js
-// modules/consumption-planner.js
 import { store } from './store.js';
 import { generateConsumptionPlanAI, getAlternativeMealAI } from './ollama.js';
-
-// ... بقیه‌ی کدها بدون تغییر ...
 
 function getFamilySize() {
     return store.currentUserProfile?.familySize || 4;
@@ -18,7 +15,7 @@ function isOnline() {
 }
 
 // ============================================================
-// تولید برنامه مصرف با هوش مصنوعی (Hugging Face)
+// تولید برنامه مصرف با هوش مصنوعی (Ollama)
 // ============================================================
 export async function generateConsumptionPlan(days = 7, startDate = null) {
     const familySize = getFamilySize();
@@ -36,6 +33,7 @@ export async function generateConsumptionPlan(days = 7, startDate = null) {
     }
 
     if (!isOnline()) {
+        console.warn('⚠️ حالت آفلاین: اینترنت در دسترس نیست.');
         return generateFallbackPlan(days, familySize);
     }
 
@@ -44,24 +42,28 @@ export async function generateConsumptionPlan(days = 7, startDate = null) {
     ).join('\n');
 
     try {
+        console.log('🔄 ارسال درخواست به Ollama...');
         const result = await generateConsumptionPlanAI(days, inventoryList, familySize, crisisMode);
         
         if (!result) {
             throw new Error('پاسخی از AI دریافت نشد');
         }
 
+        console.log('✅ پاسخ از Ollama دریافت شد، در حال پردازش...');
         return processAIResponseToCards(result, days, familySize);
 
     } catch (error) {
-        console.error('❌ خطا در ارتباط با Hugging Face:', error);
+        console.error('❌ خطا در ارتباط با Ollama:', error);
         return generateFallbackPlan(days, familySize);
     }
 }
 
 // ============================================================
-// پردازش پاسخ AI به کارت‌های تعاملی
+// پردازش پاسخ AI به کارت‌های تعاملی (با اصلاح Regex)
 // ============================================================
 function processAIResponseToCards(aiResponse, days, familySize) {
+    console.log('📝 پردازش پاسخ AI:', aiResponse);
+    
     const lines = aiResponse.split('\n').filter(line => line.trim() !== '');
     const mealIcons = { صبحانه: '🌅', ناهار: '🌞', شام: '🌙' };
     const daysOfWeek = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
@@ -72,7 +74,8 @@ function processAIResponseToCards(aiResponse, days, familySize) {
     let currentMeals = {};
 
     for (let line of lines) {
-        const dayMatch = line.match(/روز\s*(\d+)\s*\(([^)]+)\)/);
+        // ✅ اصلاح: دو نقطه (:) در آخر روز اختیاری شده است
+        const dayMatch = line.match(/روز\s*(\d+)\s*\(([^)]+)\)\s*:?/);
         if (dayMatch) {
             if (currentDay !== null) {
                 plan.push({ day: currentDay, meals: { ...currentMeals } });
@@ -81,6 +84,7 @@ function processAIResponseToCards(aiResponse, days, familySize) {
             currentMeals = {};
             continue;
         }
+        
         const mealMatch = line.match(/(صبحانه|ناهار|شام)\s*:\s*(.+)/);
         if (mealMatch && currentDay !== null) {
             const type = mealMatch[1];
@@ -88,21 +92,25 @@ function processAIResponseToCards(aiResponse, days, familySize) {
             currentMeals[type] = { name, cook_time: Math.floor(Math.random() * 30 + 15) };
         }
     }
+    
     if (currentDay !== null && Object.keys(currentMeals).length > 0) {
         plan.push({ day: currentDay, meals: { ...currentMeals } });
     }
 
     if (plan.length === 0) {
+        console.warn('⚠️ برنامه‌ای ساخته نشد، بازگشت به حالت پیش‌فرض');
         return generateFallbackPlan(days, familySize);
     }
 
     window.currentPlanData = { plan, maxDays: plan.length };
+    console.log('✅ برنامه ساخته شد، تعداد روزها:', plan.length);
 
+    // ===== ساخت HTML کارت‌ها =====
     let html = `
         <div class="consumption-plan">
             <div class="flex justify-between items-center mb-4">
                 <h4 class="text-lg font-bold text-primary">📅 برنامه مصرف (${plan.length} روز)</h4>
-                <span class="text-sm text-gray-500">🤖 Hugging Face AI</span>
+                <span class="text-sm text-gray-500">🤖 Ollama (محلی)</span>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     `;
@@ -150,7 +158,7 @@ function processAIResponseToCards(aiResponse, days, familySize) {
     html += `
             </div>
             <div class="mt-3 p-3 bg-blue-50 rounded-xl border border-blue-200 text-xs text-blue-600">
-                🤖 تولید شده توسط Hugging Face AI بر اساس موجودی واقعی انبار
+                🤖 تولید شده توسط Ollama (مدل محلی) بر اساس موجودی واقعی انبار
             </div>
         </div>
     `;
@@ -235,7 +243,7 @@ function generateFallbackPlan(days, familySize) {
             </div>
             <div class="mt-3 p-3 bg-yellow-50 rounded-xl border border-yellow-200 text-xs text-yellow-600">
                 ⚠️ حالت آفلاین: برنامه بر اساس داده‌های پیش‌فرض است.
-                <br>برای برنامه‌ریزی هوشمند، اتصال به Hugging Face AI را بررسی کنید.
+                <br>برای برنامه‌ریزی هوشمند، اتصال به Ollama را بررسی کنید.
             </div>
         </div>
     `;
@@ -244,7 +252,7 @@ function generateFallbackPlan(days, familySize) {
 }
 
 // ============================================================
-// دریافت پیشنهاد جایگزین از AI (Hugging Face)
+// دریافت پیشنهاد جایگزین از AI (Ollama)
 // ============================================================
 export async function getAlternativeMeal(mealType, dayIndex) {
     const familySize = getFamilySize();
