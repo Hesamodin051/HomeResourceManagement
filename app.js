@@ -1,5 +1,5 @@
 // ============================================================
-// app.js - فایل ورودی اصلی سامانه تدبیر منزل (نسخه Recipe-Based)
+// app.js - فایل ورودی اصلی سامانه تدبیر منزل (نسخه نهایی)
 // ============================================================
 
 import { checkAuth, getLoggedInUser, logout, getUserProfile, getUserAvatar } from './modules/auth.js';
@@ -286,42 +286,66 @@ function refreshAll() {
 }
 
 // ============================================================
-// 9. رد وعده و پیشنهاد جایگزین (فقط همان روز و وعده تغییر کند)
+// 9. رد وعده و پیشنهاد جایگزین (با عدم تکرار در روز)
 // ============================================================
 async function handleRejectMeal(mealData) {
-    const newMealName = await getAlternativeMeal(mealData.mealType, mealData.dayIndex);
     const planData = window.currentPlanData;
+    if (!planData?.plan?.[mealData.dayIndex]) {
+        closeConsumeModal();
+        return;
+    }
     
-    if (planData?.plan?.[mealData.dayIndex]) {
-        const day = planData.plan[mealData.dayIndex];
-        if (day) {
-            // فقط همان وعده را در همان روز تغییر بده
-            day.meals[mealData.mealType] = { 
-                name: newMealName, 
-                cook_time: Math.floor(Math.random() * 30 + 15),
-                missing: [],
-                hasAll: true,
-                ingredients: []
-            };
-            
-            // بازرندر با برنامه‌ی موجود
-            const display = document.getElementById('consumptionPlanDisplay');
-            if (display) {
-                const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
-                display.innerHTML = renderPlanCards(planData.plan, days);
-                attachMealClickEvents();
-                attachSwapEvents();
-                alert(`✅ وعده "${mealData.mealName}" با "${newMealName}" جایگزین شد.`);
-            }
+    const day = planData.plan[mealData.dayIndex];
+    // دریافت لیست غذاهای دیگر در همان روز (برای جلوگیری از تکرار)
+    const otherMeals = [];
+    ['صبحانه', 'ناهار', 'شام'].forEach(type => {
+        if (type !== mealData.mealType && day.meals[type]) {
+            otherMeals.push(day.meals[type].name);
+        }
+    });
+    
+    // دریافت غذای جدید (با حذف موارد تکراری)
+    const newMealName = await getAlternativeMeal(mealData.mealType, mealData.dayIndex, otherMeals);
+    
+    if (day) {
+        // فقط همان وعده را در همان روز تغییر بده
+        day.meals[mealData.mealType] = { 
+            name: newMealName, 
+            cook_time: Math.floor(Math.random() * 30 + 15),
+            missing: [],
+            hasAll: true,
+            ingredients: []
+        };
+        
+        // بازرندر با برنامه‌ی موجود
+        const display = document.getElementById('consumptionPlanDisplay');
+        if (display) {
+            const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
+            display.innerHTML = renderPlanCards(planData.plan, days);
+            attachMealClickEvents();
+            attachSwapEvents();
+            alert(`✅ وعده "${mealData.mealName}" با "${newMealName}" جایگزین شد.`);
         }
     }
     closeConsumeModal();
 }
 
 // ============================================================
-// 10. تعویض وعده با انتخاب از لیست (فقط همان روز و وعده تغییر کند)
+// 10. تعویض وعده با انتخاب از لیست (با عدم تکرار در روز)
 // ============================================================
 async function swapMeal(dayIndex, mealType, currentName) {
+    const planData = window.currentPlanData;
+    if (!planData?.plan?.[dayIndex]) return;
+    
+    const day = planData.plan[dayIndex];
+    // دریافت لیست غذاهای دیگر در همان روز
+    const otherMeals = [];
+    ['صبحانه', 'ناهار', 'شام'].forEach(type => {
+        if (type !== mealType && day.meals[type]) {
+            otherMeals.push(day.meals[type].name);
+        }
+    });
+    
     const inventory = store.inventory || [];
     const foodNames = inventory.map(item => item.name);
     if (foodNames.length === 0) {
@@ -331,12 +355,13 @@ async function swapMeal(dayIndex, mealType, currentName) {
     
     let options = foodNames.map(name => `<option value="${name}">${name}</option>`).join('');
     const additionalOptions = `
-        <option value="__chatbot__">🤖 دریافت پیشنهاد از سیستم</option>
+        <option value="__chatbot__">🤖 دریافت پیشنهاد از سیستم (با در نظر گرفتن عدم تکرار)</option>
         <option value="__custom__">✏️ وارد کردن دستی</option>
     `;
     const selectHTML = `
         <div class="p-4">
             <p class="text-sm text-gray-600 mb-2">غذای جدید برای وعده‌ی ${mealType} (جایگزین "${currentName}"):</p>
+            <p class="text-xs text-gray-400 mb-2">⚠️ غذاهای دیگر امروز: ${otherMeals.join('، ') || 'هیچ'}</p>
             <select id="mealSwapSelect" class="input-modern w-full">${options}${additionalOptions}</select>
             <div class="flex gap-3 mt-4">
                 <button id="confirmSwapBtn" class="btn-gradient flex-1 justify-center">تأیید</button>
@@ -363,37 +388,43 @@ async function swapMeal(dayIndex, mealType, currentName) {
         let newMealName = '';
         
         if (selected === '__chatbot__') {
-            newMealName = await getAlternativeMeal(mealType, dayIndex);
+            // دریافت پیشنهاد از سیستم با در نظر گرفتن عدم تکرار
+            newMealName = await getAlternativeMeal(mealType, dayIndex, otherMeals);
             if (!newMealName || newMealName.length < 2) newMealName = 'غذای ساده';
         } else if (selected === '__custom__') {
             newMealName = prompt('نام غذای جدید را وارد کنید:');
             if (!newMealName) return;
+            // بررسی دستی عدم تکرار
+            if (otherMeals.includes(newMealName)) {
+                alert(`⚠️ غذاهای "${newMealName}" قبلاً در امروز انتخاب شده است. لطفاً غذای دیگری انتخاب کنید.`);
+                return;
+            }
         } else {
             newMealName = selected;
+            if (otherMeals.includes(newMealName)) {
+                alert(`⚠️ غذاهای "${newMealName}" قبلاً در امروز انتخاب شده است. لطفاً غذای دیگری انتخاب کنید.`);
+                return;
+            }
         }
         
-        const planData = window.currentPlanData;
-        if (planData?.plan?.[dayIndex]) {
-            const day = planData.plan[dayIndex];
-            if (day) {
-                // فقط همان وعده را در همان روز تغییر بده
-                day.meals[mealType] = { 
-                    name: newMealName, 
-                    cook_time: Math.floor(Math.random() * 30 + 15),
-                    missing: [],
-                    hasAll: true,
-                    ingredients: []
-                };
-                
-                // بازرندر با برنامه‌ی موجود
-                const display = document.getElementById('consumptionPlanDisplay');
-                if (display) {
-                    const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
-                    display.innerHTML = renderPlanCards(planData.plan, days);
-                    attachMealClickEvents();
-                    attachSwapEvents();
-                    alert(`✅ وعده "${currentName}" با "${newMealName}" جایگزین شد.`);
-                }
+        if (day) {
+            // فقط همان وعده را در همان روز تغییر بده
+            day.meals[mealType] = { 
+                name: newMealName, 
+                cook_time: Math.floor(Math.random() * 30 + 15),
+                missing: [],
+                hasAll: true,
+                ingredients: []
+            };
+            
+            // بازرندر با برنامه‌ی موجود
+            const display = document.getElementById('consumptionPlanDisplay');
+            if (display) {
+                const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
+                display.innerHTML = renderPlanCards(planData.plan, days);
+                attachMealClickEvents();
+                attachSwapEvents();
+                alert(`✅ وعده "${currentName}" با "${newMealName}" جایگزین شد.`);
             }
         }
         modal.classList.add('hidden');
