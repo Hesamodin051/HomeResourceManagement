@@ -1,14 +1,11 @@
 // modules/org-auth.js
-// احراز هویت سازمانی - استفاده از org-store
+// احراز هویت سازمانی - بدون تداخل با فایل‌های اصلی
 
 import { orgStore, setOrganizations, setCurrentOrganization, clearOrgData } from './org-store.js';
 import { loadOrgUsers } from './org-consumption.js';
 
 const ORG_SESSION_KEY = 'org_session';
 
-// ============================================================
-// بارگذاری اطلاعات سازمان‌ها
-// ============================================================
 async function loadOrganizations() {
     try {
         const response = await fetch('assets/data/organizations.json');
@@ -61,9 +58,6 @@ function getDefaultOrganizations() {
     ];
 }
 
-// ============================================================
-// ورود سازمانی
-// ============================================================
 export async function orgLogin(orgName, orgCode, password) {
     try {
         const data = await loadOrganizations();
@@ -81,7 +75,6 @@ export async function orgLogin(orgName, orgCode, password) {
             };
         }
         
-        // ذخیره در sessionStorage
         const session = {
             organizationId: org.id,
             organizationName: org.name,
@@ -91,10 +84,7 @@ export async function orgLogin(orgName, orgCode, password) {
         };
         sessionStorage.setItem(ORG_SESSION_KEY, JSON.stringify(session));
         
-        // ذخیره در orgStore
         setCurrentOrganization(org);
-        
-        // بارگذاری کاربران سازمانی
         loadOrgUsers();
         
         return { 
@@ -111,9 +101,6 @@ export async function orgLogin(orgName, orgCode, password) {
     }
 }
 
-// ============================================================
-// دریافت جلسه فعال
-// ============================================================
 export function getOrgSession() {
     const session = sessionStorage.getItem(ORG_SESSION_KEY);
     if (!session) return null;
@@ -124,22 +111,15 @@ export function getOrgSession() {
     }
 }
 
-// ============================================================
-// خروج از پنل مدیریت
-// ============================================================
 export function orgLogout() {
     sessionStorage.removeItem(ORG_SESSION_KEY);
     clearOrgData();
     window.location.href = 'org-login.html';
 }
 
-// ============================================================
-// بررسی احراز هویت
-// ============================================================
 export function checkOrgAuth() {
     const session = getOrgSession();
     const currentPath = window.location.pathname;
-    
     if (currentPath.includes('org-dashboard.html')) {
         if (!session) {
             window.location.href = 'org-login.html';
