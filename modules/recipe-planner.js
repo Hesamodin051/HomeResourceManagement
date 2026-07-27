@@ -60,18 +60,30 @@ function analyzeRecipe(recipe) {
     return { available, missing, hasAll };
 }
 
+// ============================================================
+// دریافت لیست غذاهای قابل تهیه (با تحمل کمبود)
+// ============================================================
 function getAvailableRecipesByCategory(category = null) {
     if (recipes.length === 0) return [];
     const analyzed = recipes.map(recipe => ({ ...recipe, ...analyzeRecipe(recipe) }));
     let filtered = analyzed;
     if (category) filtered = filtered.filter(r => r.category === category);
     const available = filtered.filter(r => r.available);
-    console.log(`📋 رسپی‌های قابل تهیه (دسته ${category || 'همه'}):`, available.map(r => r.name).join(', '));
     return available;
 }
 
 // ============================================================
-// تولید برنامه جدید (فقط در صورت نیاز)
+// دریافت غذای تصادفی از لیست (با حذف موارد تکراری)
+// ============================================================
+function getRandomMeal(recipeList, exclude = []) {
+    const available = recipeList.filter(recipe => !exclude.includes(recipe.name));
+    if (available.length === 0) return null;
+    const randomIndex = Math.floor(Math.random() * available.length);
+    return available[randomIndex];
+}
+
+// ============================================================
+// تولید برنامه مصرف (با عدم تکرار وعده‌ها در یک روز)
 // ============================================================
 export async function generateConsumptionPlan(days = 7, startDate = null, existingPlan = null) {
     if (recipes.length === 0) await loadRecipes();
@@ -102,17 +114,14 @@ export async function generateConsumptionPlan(days = 7, startDate = null, existi
 
     let plan;
     if (existingPlan && Array.isArray(existingPlan) && existingPlan.length > 0) {
-        // استفاده از برنامه‌ی موجود
         plan = existingPlan;
         console.log('♻️ بازرندر با برنامه‌ی موجود');
     } else {
-        // تولید برنامه‌ی جدید
         plan = generatePlanFromRecipes(days, familySize, crisisMode);
         if (plan.length === 0 || plan.every(day => day.meals.صبحانه.name === 'غذای ساده')) {
             console.warn('⚠️ هیچ برنامه‌ای با رسپی تولید نشد، استفاده از Rule-Based');
             plan = generateFallbackPlanData(days, familySize);
         }
-        // فقط در تولید جدید، لیست خرید ساخته شود
         shoppingList = generateShoppingList(plan);
     }
 
@@ -120,62 +129,147 @@ export async function generateConsumptionPlan(days = 7, startDate = null, existi
 }
 
 // ============================================================
-// تولید برنامه از دستور پخت‌ها
+// تولید برنامه از دستور پخت‌ها (با عدم تکرار وعده‌ها)
 // ============================================================
 function generatePlanFromRecipes(days, familySize, crisisMode) {
     const daysOfWeek = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
     const start = new Date();
+    
+    // دریافت لیست غذاهای قابل تهیه برای هر دسته
     const allAvailable = getAvailableRecipesByCategory();
-    const breakfastAvailable = getAvailableRecipesByCategory('صبحانه');
-    const lunchAvailable = getAvailableRecipesByCategory('ناهار');
-    const dinnerAvailable = getAvailableRecipesByCategory('شام');
-    if (allAvailable.length === 0) return generateFallbackPlanData(days, familySize);
+    const breakfastOptions = getAvailableRecipesByCategory('صبحانه');
+    const lunchOptions = getAvailableRecipesByCategory('ناهار');
+    const dinnerOptions = getAvailableRecipesByCategory('شام');
+    
+    // اگر هیچ غذاهای موجود نیست، از Rule-Based استفاده کن
+    if (allAvailable.length === 0) {
+        console.warn('⚠️ هیچ رسپی‌ای قابل تهیه نیست.');
+        return generateFallbackPlanData(days, familySize);
+    }
 
-    const getMeal = (category) => {
-        let recipesList = [];
-        if (category === 'صبحانه') recipesList = breakfastAvailable.length > 0 ? breakfastAvailable : allAvailable;
-        else if (category === 'ناهار') recipesList = lunchAvailable.length > 0 ? lunchAvailable : allAvailable;
-        else if (category === 'شام') recipesList = dinnerAvailable.length > 0 ? dinnerAvailable : allAvailable;
-        if (recipesList.length === 0) recipesList = allAvailable;
-        const randomIndex = Math.floor(Math.random() * recipesList.length);
-        const recipe = recipesList[randomIndex];
-        return {
-            name: recipe.name,
-            ingredients: recipe.ingredients || [],
-            cook_time: recipe.cook_time || 30,
-            missing: recipe.missing || [],
-            hasAll: recipe.hasAll || false
-        };
+    // تابع انتخاب وعده با عدم تکرار
+    const selectMealsForDay = (usedMeals = []) => {
+        // اولویت با دسته‌بندی اختصاصی
+        let breakfastList = breakfastOptions.length > 0 ? breakfastOptions : allAvailable;
+        let lunchList = lunchOptions.length > 0 ? lunchOptions : allAvailable;
+        let dinnerList = dinnerOptions.length > 0 ? dinnerOptions : allAvailable;
+
+        // اگر دسته‌بندی خاصی وجود نداشت، از همه استفاده کن
+        if (breakfastList.length === 0) breakfastList = allAvailable;
+        if (lunchList.length === 0) lunchList = allAvailable;
+        if (dinnerList.length === 0) dinnerList = allAvailable;
+
+        let breakfast = null, lunch = null, dinner = null;
+        let attempts = 0;
+        const maxAttempts = 100;
+
+        while (attempts < maxAttempts) {
+            attempts++;
+            // انتخاب تصادفی برای هر وعده
+            const bIndex = Math.floor(Math.random() * breakfastList.length);
+            const lIndex = Math.floor(Math.random() * lunchList.length);
+            const dIndex = Math.floor(Math.random() * dinnerList.length);
+            
+            const b = breakfastList[bIndex];
+            const l = lunchList[lIndex];
+            const d = dinnerList[dIndex];
+
+            // بررسی عدم تکرار در بین وعده‌های همون روز و همچنین usedMeals (برای جلوگیری از تکرار در روزهای قبل)
+            const mealNames = [b.name, l.name, d.name];
+            const uniqueNames = new Set(mealNames);
+            const hasDuplicate = uniqueNames.size < 3;
+            const isUsed = mealNames.some(name => usedMeals.includes(name));
+
+            if (!hasDuplicate && !isUsed && b && l && d) {
+                breakfast = b;
+                lunch = l;
+                dinner = d;
+                break;
+            }
+        }
+
+        // اگر بعد از تلاش زیاد نتونستیم، از روش ساده‌تر استفاده کن
+        if (!breakfast || !lunch || !dinner) {
+            breakfast = breakfastList[0] || allAvailable[0];
+            lunch = lunchList[0] || allAvailable[0];
+            dinner = dinnerList[0] || allAvailable[0];
+            // اگر باز هم تکراری شد، سعی کن با جابجایی حل کن
+            if (breakfast.name === lunch.name) {
+                lunch = lunchList[1] || allAvailable[1] || lunch;
+            }
+            if (breakfast.name === dinner.name || lunch.name === dinner.name) {
+                dinner = dinnerList[1] || allAvailable[1] || dinner;
+            }
+        }
+
+        return { breakfast, lunch, dinner };
     };
 
     let plan = [];
     const maxDays = Math.min(days, 30);
+    const usedMealsHistory = []; // برای ذخیره غذاهای استفاده‌شده در روزهای قبل
+
     for (let i = 0; i < maxDays; i++) {
         const date = new Date(start);
         date.setDate(start.getDate() + i);
         const dayName = daysOfWeek[date.getDay()] || 'روز';
+        
         let breakfast, lunch, dinner;
         if (crisisMode) {
-            const crisisRecipes = allAvailable.sort((a, b) => a.missing.length - b.missing.length).slice(0, 3);
-            breakfast = crisisRecipes[0] || { name: 'غذای ساده', ingredients: [], cook_time: 10, missing: [], hasAll: true };
-            lunch = crisisRecipes[1] || { name: 'غذای ساده', ingredients: [], cook_time: 20, missing: [], hasAll: true };
-            dinner = crisisRecipes[2] || { name: 'غذای ساده', ingredients: [], cook_time: 15, missing: [], hasAll: true };
+            // در بحران: فقط از ۳ غذای اول موجود استفاده کن (با کمبود کمتر)
+            const crisisRecipes = allAvailable.sort((a, b) => a.missing.length - b.missing.length).slice(0, 6);
+            const used = [];
+            breakfast = crisisRecipes.find(r => !used.includes(r.name));
+            if (breakfast) used.push(breakfast.name);
+            lunch = crisisRecipes.find(r => !used.includes(r.name));
+            if (lunch) used.push(lunch.name);
+            dinner = crisisRecipes.find(r => !used.includes(r.name));
+            if (dinner) used.push(dinner.name);
+            if (!breakfast) breakfast = crisisRecipes[0] || { name: 'غذای ساده', ingredients: [], cook_time: 10, missing: [], hasAll: true };
+            if (!lunch) lunch = crisisRecipes[1] || { name: 'غذای ساده', ingredients: [], cook_time: 20, missing: [], hasAll: true };
+            if (!dinner) dinner = crisisRecipes[2] || { name: 'غذای ساده', ingredients: [], cook_time: 15, missing: [], hasAll: true };
         } else {
-            breakfast = getMeal('صبحانه');
-            lunch = getMeal('ناهار');
-            dinner = getMeal('شام');
+            // انتخاب وعده‌ها با عدم تکرار
+            const meals = selectMealsForDay(usedMealsHistory);
+            breakfast = meals.breakfast;
+            lunch = meals.lunch;
+            dinner = meals.dinner;
+            // ذخیره غذاهای استفاده‌شده برای روزهای آینده
+            if (breakfast) usedMealsHistory.push(breakfast.name);
+            if (lunch) usedMealsHistory.push(lunch.name);
+            if (dinner) usedMealsHistory.push(dinner.name);
         }
+
         plan.push({
             day: i + 1,
             date: date.toISOString().slice(0, 10),
             dayName: dayName,
             meals: {
-                صبحانه: { name: breakfast.name, ingredients: breakfast.ingredients, cook_time: breakfast.cook_time, missing: breakfast.missing || [], hasAll: breakfast.hasAll },
-                ناهار: { name: lunch.name, ingredients: lunch.ingredients, cook_time: lunch.cook_time, missing: lunch.missing || [], hasAll: lunch.hasAll },
-                شام: { name: dinner.name, ingredients: dinner.ingredients, cook_time: dinner.cook_time, missing: dinner.missing || [], hasAll: dinner.hasAll }
+                صبحانه: { 
+                    name: breakfast.name, 
+                    ingredients: breakfast.ingredients || [], 
+                    cook_time: breakfast.cook_time || 10, 
+                    missing: breakfast.missing || [], 
+                    hasAll: breakfast.hasAll !== undefined ? breakfast.hasAll : true 
+                },
+                ناهار: { 
+                    name: lunch.name, 
+                    ingredients: lunch.ingredients || [], 
+                    cook_time: lunch.cook_time || 45, 
+                    missing: lunch.missing || [], 
+                    hasAll: lunch.hasAll !== undefined ? lunch.hasAll : true 
+                },
+                شام: { 
+                    name: dinner.name, 
+                    ingredients: dinner.ingredients || [], 
+                    cook_time: dinner.cook_time || 20, 
+                    missing: dinner.missing || [], 
+                    hasAll: dinner.hasAll !== undefined ? dinner.hasAll : true 
+                }
             }
         });
     }
+
     return plan;
 }
 
@@ -195,14 +289,21 @@ function generateFallbackPlanData(days, familySize) {
         const date = new Date(start);
         date.setDate(start.getDate() + i);
         const dayName = daysOfWeek[date.getDay()] || 'روز';
+        // برای Rule-Based هم عدم تکرار را رعایت کن
+        const breakfast = mealOptions.صبحانه[i % mealOptions.صبحانه.length];
+        let lunch = mealOptions.ناهار[i % mealOptions.ناهار.length];
+        let dinner = mealOptions.شام[i % mealOptions.شام.length];
+        // اگر تکراری شد، جابجا کن
+        if (breakfast === lunch) lunch = mealOptions.ناهار[(i + 1) % mealOptions.ناهار.length];
+        if (breakfast === dinner || lunch === dinner) dinner = mealOptions.شام[(i + 2) % mealOptions.شام.length];
         plan.push({
             day: i + 1,
             date: date.toISOString().slice(0, 10),
             dayName: dayName,
             meals: {
-                صبحانه: { name: mealOptions.صبحانه[i % mealOptions.صبحانه.length], ingredients: [], cook_time: 10, missing: [], hasAll: true },
-                ناهار: { name: mealOptions.ناهار[i % mealOptions.ناهار.length], ingredients: [], cook_time: 45, missing: [], hasAll: true },
-                شام: { name: mealOptions.شام[i % mealOptions.شام.length], ingredients: [], cook_time: 20, missing: [], hasAll: true }
+                صبحانه: { name: breakfast, ingredients: [], cook_time: 10, missing: [], hasAll: true },
+                ناهار: { name: lunch, ingredients: [], cook_time: 45, missing: [], hasAll: true },
+                شام: { name: dinner, ingredients: [], cook_time: 20, missing: [], hasAll: true }
             }
         });
     }
@@ -228,7 +329,7 @@ function generateShoppingList(plan) {
 }
 
 // ============================================================
-// رندر کارت‌های برنامه (صادر شده برای استفاده در app.js)
+// رندر کارت‌های برنامه
 // ============================================================
 export function renderPlanCards(plan, days) {
     const mealIcons = { صبحانه: '🌅', ناهار: '🌞', شام: '🌙' };
@@ -312,23 +413,37 @@ export function renderPlanCards(plan, days) {
 }
 
 // ============================================================
-// دریافت پیشنهاد جایگزین (برای یک وعده)
+// دریافت غذای جایگزین (با قابلیت حذف موارد تکراری)
 // ============================================================
-export async function getAlternativeMeal(mealType, dayIndex) {
-    const allAvailable = getAvailableRecipesByCategory();
+export async function getAlternativeMeal(mealType, dayIndex, excludeMeals = []) {
+    // دریافت لیست غذاهای قابل تهیه برای دسته‌بندی مربوطه
     const category = mealType === 'صبحانه' ? 'صبحانه' : mealType === 'ناهار' ? 'ناهار' : 'شام';
     const categoryRecipes = getAvailableRecipesByCategory(category);
-    const options = categoryRecipes.length > 0 ? categoryRecipes : allAvailable;
+    const allAvailable = getAvailableRecipesByCategory();
+    
+    // اولویت با دسته‌بندی خاص، سپس همه
+    let options = categoryRecipes.length > 0 ? categoryRecipes : allAvailable;
+    
+    // حذف غذاهایی که در excludeMeals هستند (برای جلوگیری از تکرار در روز)
+    options = options.filter(recipe => !excludeMeals.includes(recipe.name));
+    
+    // اگر گزینه‌ای باقی نماند، از بقیه غذاها استفاده کن (با اولویت غذاهای با کمبود کمتر)
     if (options.length === 0) {
-        const fallback = {
-            'صبحانه': ['نان و پنیر', 'تخم‌مرغ', 'حلیم'],
-            'ناهار': ['عدسی', 'ماکارونی', 'کتلت'],
-            'شام': ['سوپ', 'املت', 'نان و کره']
-        };
-        return fallback[mealType]?.[dayIndex % 3] || 'غذای ساده';
+        options = categoryRecipes.length > 0 ? categoryRecipes : allAvailable;
+        // باز هم اگر چیزی نبود، از Rule-Based استفاده کن
+        if (options.length === 0) {
+            const fallback = {
+                'صبحانه': ['نان و پنیر', 'تخم‌مرغ', 'حلیم'],
+                'ناهار': ['عدسی', 'ماکارونی', 'کتلت'],
+                'شام': ['سوپ', 'املت', 'نان و کره']
+            };
+            return fallback[mealType]?.[dayIndex % 3] || 'غذای ساده';
+        }
     }
-    const selected = options[dayIndex % options.length];
-    return selected.name;
+    
+    // انتخاب تصادفی از گزینه‌های باقی‌مانده
+    const randomIndex = Math.floor(Math.random() * options.length);
+    return options[randomIndex].name;
 }
 
 // ============================================================
