@@ -1,5 +1,5 @@
 // ============================================================
-// app.js - فایل ورودی اصلی سامانه تدبیر منزل (نسخه نهایی)
+// app.js - فایل ورودی اصلی سامانه تدبیر منزل (نسخه نهایی با ذخیره‌سازی)
 // ============================================================
 
 import { checkAuth, getLoggedInUser, logout, getUserProfile, getUserAvatar } from './modules/auth.js';
@@ -18,6 +18,42 @@ if (typeof puter !== 'undefined') {
 
 // ===== پرچم برای جلوگیری از درخواست‌های همزمان =====
 let isInitialLoad = true;
+
+// ============================================================
+// 0. توابع ذخیره‌سازی برنامه در localStorage
+// ============================================================
+function getStorageKey() {
+    const user = getLoggedInUser() || 'default';
+    return `meal_plan_${user}`;
+}
+
+function savePlanToStorage(plan) {
+    try {
+        localStorage.setItem(getStorageKey(), JSON.stringify(plan));
+        console.log('💾 برنامه در localStorage ذخیره شد.');
+    } catch (e) {
+        console.warn('⚠️ خطا در ذخیره‌سازی برنامه:', e);
+    }
+}
+
+function loadPlanFromStorage() {
+    try {
+        const stored = localStorage.getItem(getStorageKey());
+        if (stored) {
+            const plan = JSON.parse(stored);
+            console.log('📂 برنامه از localStorage بازیابی شد. تعداد روزها:', plan.length);
+            return plan;
+        }
+    } catch (e) {
+        console.warn('⚠️ خطا در بازیابی برنامه:', e);
+    }
+    return null;
+}
+
+function clearPlanFromStorage() {
+    localStorage.removeItem(getStorageKey());
+    console.log('🗑️ برنامه از localStorage حذف شد.');
+}
 
 // ============================================================
 // 1. PWA: ثبت Service Worker
@@ -160,7 +196,7 @@ function renderChart() {
 }
 
 // ============================================================
-// 6. به‌روزرسانی الگوی مصرف
+// 6. به‌روزرسانی الگوی مصرف (با ذخیره‌سازی)
 // ============================================================
 let planUpdateTimeout = null;
 
@@ -185,12 +221,17 @@ function updateConsumptionPlan() {
             </div>
         `;
         
-        generateConsumptionPlan(days)
+        // تولید برنامه جدید (با نادیده گرفتن برنامه موجود)
+        generateConsumptionPlan(days, null, null)
             .then(html => {
                 display.innerHTML = html;
                 attachMealClickEvents();
                 attachSwapEvents();
-                console.log('✅ الگوی مصرف به‌روزرسانی شد.');
+                // ذخیره برنامه در localStorage
+                if (window.currentPlanData?.plan) {
+                    savePlanToStorage(window.currentPlanData.plan);
+                }
+                console.log('✅ الگوی مصرف به‌روزرسانی و ذخیره شد.');
             })
             .catch(err => {
                 console.error('❌ خطا در به‌روزرسانی الگوی مصرف:', err);
@@ -275,18 +316,28 @@ async function updateNutritionAnalysis() {
 }
 
 // ============================================================
-// 8. تابع به‌روزرسانی همه بخش‌ها
+// 8. تابع به‌روزرسانی همه بخش‌ها (با ذخیره‌سازی)
 // ============================================================
 function refreshAll() {
     renderInventoryTable();
     generateAlerts();
     generateSuggestions();
-    updateConsumptionPlan();
+    // بروزرسانی برنامه با حفظ تغییرات موجود (با استفاده از existingPlan)
+    const display = document.getElementById('consumptionPlanDisplay');
+    if (display && window.currentPlanData?.plan) {
+        const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
+        display.innerHTML = renderPlanCards(window.currentPlanData.plan, days);
+        attachMealClickEvents();
+        attachSwapEvents();
+        savePlanToStorage(window.currentPlanData.plan);
+    } else {
+        updateConsumptionPlan();
+    }
     updateNutritionAnalysis();
 }
 
 // ============================================================
-// 9. رد وعده و پیشنهاد جایگزین (با عدم تکرار در روز)
+// 9. رد وعده و پیشنهاد جایگزین (با عدم تکرار در روز + ذخیره‌سازی)
 // ============================================================
 async function handleRejectMeal(mealData) {
     const planData = window.currentPlanData;
@@ -296,7 +347,6 @@ async function handleRejectMeal(mealData) {
     }
     
     const day = planData.plan[mealData.dayIndex];
-    // دریافت لیست غذاهای دیگر در همان روز (برای جلوگیری از تکرار)
     const otherMeals = [];
     ['صبحانه', 'ناهار', 'شام'].forEach(type => {
         if (type !== mealData.mealType && day.meals[type]) {
@@ -304,11 +354,9 @@ async function handleRejectMeal(mealData) {
         }
     });
     
-    // دریافت غذای جدید (با حذف موارد تکراری)
     const newMealName = await getAlternativeMeal(mealData.mealType, mealData.dayIndex, otherMeals);
     
     if (day) {
-        // فقط همان وعده را در همان روز تغییر بده
         day.meals[mealData.mealType] = { 
             name: newMealName, 
             cook_time: Math.floor(Math.random() * 30 + 15),
@@ -317,13 +365,14 @@ async function handleRejectMeal(mealData) {
             ingredients: []
         };
         
-        // بازرندر با برنامه‌ی موجود
         const display = document.getElementById('consumptionPlanDisplay');
         if (display) {
             const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
             display.innerHTML = renderPlanCards(planData.plan, days);
             attachMealClickEvents();
             attachSwapEvents();
+            // ذخیره در localStorage
+            savePlanToStorage(planData.plan);
             alert(`✅ وعده "${mealData.mealName}" با "${newMealName}" جایگزین شد.`);
         }
     }
@@ -331,14 +380,13 @@ async function handleRejectMeal(mealData) {
 }
 
 // ============================================================
-// 10. تعویض وعده با انتخاب از لیست (با عدم تکرار در روز)
+// 10. تعویض وعده با انتخاب از لیست (با عدم تکرار + ذخیره‌سازی)
 // ============================================================
 async function swapMeal(dayIndex, mealType, currentName) {
     const planData = window.currentPlanData;
     if (!planData?.plan?.[dayIndex]) return;
     
     const day = planData.plan[dayIndex];
-    // دریافت لیست غذاهای دیگر در همان روز
     const otherMeals = [];
     ['صبحانه', 'ناهار', 'شام'].forEach(type => {
         if (type !== mealType && day.meals[type]) {
@@ -388,13 +436,11 @@ async function swapMeal(dayIndex, mealType, currentName) {
         let newMealName = '';
         
         if (selected === '__chatbot__') {
-            // دریافت پیشنهاد از سیستم با در نظر گرفتن عدم تکرار
             newMealName = await getAlternativeMeal(mealType, dayIndex, otherMeals);
             if (!newMealName || newMealName.length < 2) newMealName = 'غذای ساده';
         } else if (selected === '__custom__') {
             newMealName = prompt('نام غذای جدید را وارد کنید:');
             if (!newMealName) return;
-            // بررسی دستی عدم تکرار
             if (otherMeals.includes(newMealName)) {
                 alert(`⚠️ غذاهای "${newMealName}" قبلاً در امروز انتخاب شده است. لطفاً غذای دیگری انتخاب کنید.`);
                 return;
@@ -408,7 +454,6 @@ async function swapMeal(dayIndex, mealType, currentName) {
         }
         
         if (day) {
-            // فقط همان وعده را در همان روز تغییر بده
             day.meals[mealType] = { 
                 name: newMealName, 
                 cook_time: Math.floor(Math.random() * 30 + 15),
@@ -417,13 +462,14 @@ async function swapMeal(dayIndex, mealType, currentName) {
                 ingredients: []
             };
             
-            // بازرندر با برنامه‌ی موجود
             const display = document.getElementById('consumptionPlanDisplay');
             if (display) {
                 const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
                 display.innerHTML = renderPlanCards(planData.plan, days);
                 attachMealClickEvents();
                 attachSwapEvents();
+                // ذخیره در localStorage
+                savePlanToStorage(planData.plan);
                 alert(`✅ وعده "${currentName}" با "${newMealName}" جایگزین شد.`);
             }
         }
@@ -473,7 +519,7 @@ function swapHandler(e) {
 }
 
 // ============================================================
-// 13. مدیریت مدال تأیید مصرف
+// 13. مدیریت مدال تأیید مصرف (با ذخیره‌سازی پس از مصرف)
 // ============================================================
 function getFamilySize() {
     return store.currentUserProfile?.familySize || 4;
@@ -546,7 +592,11 @@ async function handleConsumeConfirm() {
     if (result.success) {
         messageDiv.className = 'mt-3 text-center text-sm text-green-600 p-2 bg-green-50 rounded-lg';
         messageDiv.textContent = `✅ ${result.message}`;
-        setTimeout(() => { closeConsumeModal(); refreshAll(); }, 1500);
+        // بعد از مصرف، برنامه را دوباره رندر و ذخیره کن
+        setTimeout(() => { 
+            closeConsumeModal(); 
+            refreshAll(); 
+        }, 1500);
     } else {
         messageDiv.className = 'mt-3 text-center text-sm text-red-600 p-2 bg-red-50 rounded-lg';
         messageDiv.textContent = `❌ ${result.message}`;
@@ -638,7 +688,29 @@ function populateScenarioDropdown() {
 }
 
 // ============================================================
-// 16. مقداردهی اولیه داشبورد
+// 16. بارگذاری برنامه از localStorage در هنگام راه‌اندازی
+// ============================================================
+function loadAndRenderStoredPlan(days) {
+    const storedPlan = loadPlanFromStorage();
+    if (storedPlan && storedPlan.length > 0) {
+        console.log('📂 برنامه از localStorage بارگذاری شد. تعداد روزها:', storedPlan.length);
+        // تنظیم window.currentPlanData
+        window.currentPlanData = { plan: storedPlan, maxDays: storedPlan.length };
+        // رندر برنامه
+        const display = document.getElementById('consumptionPlanDisplay');
+        if (display) {
+            display.innerHTML = renderPlanCards(storedPlan, days);
+            attachMealClickEvents();
+            attachSwapEvents();
+            console.log('✅ برنامه از localStorage بازیابی و رندر شد.');
+            return true;
+        }
+    }
+    return false;
+}
+
+// ============================================================
+// 17. مقداردهی اولیه داشبورد
 // ============================================================
 async function initDashboard() {
     if (!checkAuth()) return;
@@ -682,7 +754,17 @@ async function initDashboard() {
     bindDashboardUI();
     populateScenarioDropdown();
     generateSuggestions();
-    updateConsumptionPlan();
+    
+    // ===== تلاش برای بارگذاری برنامه از localStorage =====
+    const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
+    const hasStoredPlan = loadAndRenderStoredPlan(days);
+    
+    // اگر برنامه‌ای در localStorage نبود، برنامه جدید تولید کن
+    if (!hasStoredPlan) {
+        console.log('🔄 برنامه‌ای در localStorage یافت نشد، تولید برنامه جدید...');
+        updateConsumptionPlan();
+    }
+    
     updateNutritionAnalysis();
     
     const aiBtn = document.getElementById('aiSuggestionBtn');
@@ -716,7 +798,7 @@ async function initDashboard() {
 }
 
 // ============================================================
-// 17. مقداردهی اولیه صفحه اصلی (index.html)
+// 18. مقداردهی اولیه صفحه اصلی (index.html)
 // ============================================================
 function initIndex() {
     checkAuth();
@@ -724,7 +806,7 @@ function initIndex() {
 }
 
 // ============================================================
-// 18. چت‌بات هوشمند
+// 19. چت‌بات هوشمند
 // ============================================================
 function loadChatbotWidget() {
     if (typeof puter === 'undefined') {
@@ -820,7 +902,7 @@ function loadChatbotWidget() {
 }
 
 // ============================================================
-// 19. مدیریت مسیرها
+// 20. مدیریت مسیرها
 // ============================================================
 const currentPath = window.location.pathname;
 if (currentPath.includes('login.html')) {
@@ -856,7 +938,7 @@ if (currentPath.includes('login.html')) {
 }
 
 // ============================================================
-// 20. شنونده‌های تغییرات store
+// 21. شنونده‌های تغییرات store
 // ============================================================
 addListener('inventory', function() {
     if (window.location.pathname.includes('dashboard.html') && !isInitialLoad) {
