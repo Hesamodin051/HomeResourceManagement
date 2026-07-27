@@ -14,23 +14,32 @@ function getSelectedScenarioName() {
 }
 
 // ============================================================
-// تولید پیشنهادات هوشمند (با هشدار موجودی صفر)
+// تولید پیشنهادات هوشمند (با هشدار موجودی صفر و لاگ)
 // ============================================================
 export function generateSuggestions() {
     const container = document.getElementById('suggestionsList');
     if (!container) return;
 
+    console.log('🔄 تولید پیشنهادات هوشمند...');
+    
     const suggestions = [];
     const crisisMode = store.crisisMode;
     const familySize = store.currentUserProfile?.familySize || 4;
     const inventory = store.inventory || [];
 
+    console.log(`📦 تعداد آیتم‌های موجودی: ${inventory.length}`);
+
     // ============================================================
     // 1. هشدار موجودی صفر (مهم)
     // ============================================================
-    const emptyItems = inventory.filter(item => item.quantity <= 0);
+    const emptyItems = inventory.filter(item => {
+        const qty = parseFloat(item.quantity);
+        return qty <= 0 || isNaN(qty);
+    });
+    
     if (emptyItems.length > 0) {
         const names = emptyItems.map(i => i.name).join('، ');
+        console.log(`⚠️ مواد تمام‌شده: ${names}`);
         suggestions.push({
             text: `⚠️ مواد زیر در انبار تمام شده است: ${names}. لطفاً نسبت به تهیه مجدد آنها اقدام کنید.`,
             priority: 'urgent'
@@ -38,26 +47,61 @@ export function generateSuggestions() {
     }
 
     // ============================================================
-    // 2. هشدار موجودی بسیار کم (کمتر از 10% نیاز روزانه)
+    // 2. هشدار ویژه برای نان (حتی اگر صفر نباشد، کمتر از ۲ روز نیاز باشد)
+    // ============================================================
+    const breadItems = inventory.filter(item => {
+        const name = item.name.toLowerCase();
+        return name.includes('نان') || name.includes('بربری') || name.includes('لواش') || name.includes('سنگک');
+    });
+    
+    if (breadItems.length > 0) {
+        breadItems.forEach(item => {
+            const qty = parseFloat(item.quantity);
+            // فرض: هر نفر روزانه 2 عدد نان مصرف می‌کند
+            const dailyNeed = familySize * 2;
+            if (qty <= 0) {
+                // این قبلاً در بخش emptyItems پوشش داده شده، اما برای اطمینان دوباره چک می‌کنیم
+                if (!emptyItems.includes(item)) {
+                    suggestions.push({
+                        text: `⚠️ ${item.name} تمام شده است. لطفاً خرید کنید.`,
+                        priority: 'urgent'
+                    });
+                }
+            } else if (qty < dailyNeed * 2) {
+                suggestions.push({
+                    text: `🟡 ${item.name}: فقط ${qty} عدد باقی مانده است (نیاز روزانه: ${dailyNeed} عدد). پیشنهاد خرید مجدد.`,
+                    priority: 'warning'
+                });
+            }
+        });
+    } else {
+        // اگر هیچ نانی در انبار نیست، هشدار بده
+        suggestions.push({
+            text: '⚠️ هیچ نانی در انبار ثبت نشده است. لطفاً نان تهیه کنید.',
+            priority: 'urgent'
+        });
+    }
+
+    // ============================================================
+    // 3. هشدار موجودی بسیار کم (کمتر از 2 روز نیاز)
     // ============================================================
     const lowItems = inventory.filter(item => {
-        if (item.quantity <= 0) return false;
-        // تخمین نیاز روزانه (ساده)
+        const qty = parseFloat(item.quantity);
+        if (qty <= 0) return false;
         let dailyNeed = 0;
         const name = item.name.toLowerCase();
-        if (name.includes('آب')) dailyNeed = familySize * 2; // لیتر
-        else if (name.includes('برنج') || name.includes('ماکارونی')) dailyNeed = familySize * 0.3; // کیلوگرم
-        else if (name.includes('نان')) dailyNeed = familySize * 0.2; // کیلوگرم
-        else if (name.includes('مرغ') || name.includes('گوشت')) dailyNeed = familySize * 0.2; // کیلوگرم
-        else if (name.includes('تخم‌مرغ')) dailyNeed = familySize * 0.5; // عدد
-        else if (name.includes('شیر')) dailyNeed = familySize * 0.5; // لیتر
+        if (name.includes('آب')) dailyNeed = familySize * 2;
+        else if (name.includes('برنج') || name.includes('ماکارونی')) dailyNeed = familySize * 0.3;
+        else if (name.includes('مرغ') || name.includes('گوشت')) dailyNeed = familySize * 0.2;
+        else if (name.includes('تخم‌مرغ')) dailyNeed = familySize * 0.5;
+        else if (name.includes('شیر')) dailyNeed = familySize * 0.5;
+        else if (name.includes('روغن')) dailyNeed = familySize * 0.05;
+        else if (name.includes('قند') || name.includes('شکر')) dailyNeed = familySize * 0.02;
         else return false;
-        
-        // اگر موجودی کمتر از 2 روز نیاز باشد، هشدار بده
-        return item.quantity < dailyNeed * 2;
+        return qty < dailyNeed * 2;
     });
 
-    if (lowItems.length > 0 && emptyItems.length === 0) {
+    if (lowItems.length > 0) {
         const names = lowItems.map(i => i.name).join('، ');
         suggestions.push({
             text: `🟡 مواد زیر در آستانه اتمام هستند: ${names}. پیشنهاد می‌شود به‌زودی تهیه شوند.`,
@@ -66,7 +110,7 @@ export function generateSuggestions() {
     }
 
     // ============================================================
-    // 3. الگوی مصرف روزانه
+    // 4. الگوی مصرف روزانه
     // ============================================================
     const patternSuggestions = getPatternSuggestions();
     patternSuggestions.forEach(s => {
@@ -78,7 +122,7 @@ export function generateSuggestions() {
     });
 
     // ============================================================
-    // 4. تنوع غذایی
+    // 5. تنوع غذایی
     // ============================================================
     const varietySuggestions = getFoodVarietySuggestions();
     varietySuggestions.forEach(s => {
@@ -90,25 +134,31 @@ export function generateSuggestions() {
     });
 
     // ============================================================
-    // 5. مدیریت ذخایر (آب، برنج)
+    // 6. مدیریت ذخایر (آب، برنج)
     // ============================================================
     const waterItem = inventory.find(i => i.name.includes('آب'));
-    if (waterItem && waterItem.quantity > 0 && waterItem.quantity < 10 * familySize) {
-        suggestions.push({
-            text: `💧 آب ذخیره فقط برای ${Math.floor(waterItem.quantity / (familySize * 2))} روز کافی است. در صورت بحران، ذخیره را افزایش دهید.`,
-            priority: 'urgent'
-        });
+    if (waterItem) {
+        const qty = parseFloat(waterItem.quantity);
+        if (qty > 0 && qty < 10 * familySize) {
+            suggestions.push({
+                text: `💧 آب ذخیره فقط برای ${Math.floor(qty / (familySize * 2))} روز کافی است. در صورت بحران، ذخیره را افزایش دهید.`,
+                priority: 'urgent'
+            });
+        }
     }
     const riceItem = inventory.find(i => i.name.includes('برنج'));
-    if (riceItem && riceItem.quantity > 0 && riceItem.quantity < 1 * familySize) {
-        suggestions.push({
-            text: '🍚 برنج در حال اتمام است. پیشنهاد خرید حداقل ۲ کیلوگرم.',
-            priority: 'warning'
-        });
+    if (riceItem) {
+        const qty = parseFloat(riceItem.quantity);
+        if (qty > 0 && qty < 1 * familySize) {
+            suggestions.push({
+                text: '🍚 برنج در حال اتمام است. پیشنهاد خرید حداقل ۲ کیلوگرم.',
+                priority: 'warning'
+            });
+        }
     }
 
     // ============================================================
-    // 6. هشدار تاریخ انقضا
+    // 7. هشدار تاریخ انقضا
     // ============================================================
     const today = new Date();
     const expiringSoon = inventory.filter(item => {
@@ -126,7 +176,7 @@ export function generateSuggestions() {
     }
 
     // ============================================================
-    // 7. بحران با سناریو
+    // 8. بحران با سناریو
     // ============================================================
     if (crisisMode) {
         const scenarioName = getSelectedScenarioName();
@@ -151,7 +201,7 @@ export function generateSuggestions() {
     }
 
     // ============================================================
-    // 8. تحلیل ارزش غذایی
+    // 9. تحلیل ارزش غذایی
     // ============================================================
     if (!crisisMode && inventory.length > 0) {
         const nutrition = analyzeInventoryNutrition();
@@ -176,14 +226,13 @@ export function generateSuggestions() {
     }
 
     // ============================================================
-    // 9. اگر هیچ پیشنهادی وجود نداشت، پیام مثبت نشان بده
+    // 10. اگر هیچ پیشنهادی وجود نداشت، پیام مثبت نشان بده
     // ============================================================
     const hasUrgent = suggestions.some(s => s.priority === 'urgent');
     const hasWarning = suggestions.some(s => s.priority === 'warning');
     
     if (!hasUrgent && !hasWarning && inventory.length > 0) {
-        // بررسی اینکه آیا همه چیز خوب است
-        const allGood = inventory.every(item => item.quantity > 0);
+        const allGood = inventory.every(item => parseFloat(item.quantity) > 0);
         if (allGood) {
             suggestions.push({
                 text: '✅ وضعیت ذخایر شما مناسب است. به پایش ادامه دهید.',
@@ -195,6 +244,7 @@ export function generateSuggestions() {
     // ============================================================
     // رندر پیشنهادات
     // ============================================================
+    console.log(`📋 تعداد پیشنهادات تولید شده: ${suggestions.length}`);
     container.innerHTML = suggestions.map(s => {
         const priorityClass = s.priority === 'urgent' ? 'suggestion-urgent' :
                               s.priority === 'warning' ? 'suggestion-warning' :
