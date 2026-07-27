@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>پروفایل | سامانه تدبیر منزل</title>
+    <title>پروفایل کاربر | سامانه تدبیر منزل</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
@@ -19,319 +19,277 @@
             }
         }
     </script>
+    <style>
+        .profile-avatar-container {
+            position: relative;
+            display: inline-block;
+        }
+        .profile-avatar-container .avatar-upload-btn {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background: #3b82f6;
+            color: white;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 2px solid white;
+            transition: all 0.3s;
+        }
+        .profile-avatar-container .avatar-upload-btn:hover {
+            background: #2563eb;
+            transform: scale(1.1);
+        }
+        .profile-section-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1e293b;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .profile-section-title i {
+            color: #3b82f6;
+            margin-left: 0.5rem;
+        }
+    </style>
 </head>
 <body class="font-vazir bg-gray-50 min-h-screen">
-
-    <!-- ===== هدر ===== -->
     <header class="glass-header sticky top-0 z-50 px-4 py-3">
-        <div class="max-w-3xl mx-auto flex justify-between items-center">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
-                <i class="fas fa-user text-2xl text-secondary"></i>
-                <h1 class="text-xl font-bold text-primary">پروفایل کاربری</h1>
+                <i class="fas fa-user-circle text-2xl text-secondary"></i>
+                <h1 class="text-xl font-bold text-primary">پروفایل کاربر</h1>
             </div>
-            <div class="hamburger-menu cursor-pointer" id="hamburgerMenu">
-                <i class="fas fa-bars text-2xl text-gray-700"></i>
+            <div class="flex items-center gap-4">
+                <button onclick="window.location.href='dashboard.html'" class="text-gray-500 hover:text-secondary transition-colors">
+                    <i class="fas fa-arrow-left ml-1"></i> بازگشت
+                </button>
+                <div class="hamburger-menu cursor-pointer" id="hamburgerMenu">
+                    <i class="fas fa-bars text-2xl text-gray-700"></i>
+                </div>
             </div>
         </div>
     </header>
 
-    <main class="max-w-3xl mx-auto px-4 py-6">
-
+    <main class="max-w-4xl mx-auto px-4 py-6">
         <div class="card-modern p-6">
-
-            <!-- ===== آواتار ===== -->
-            <div class="flex flex-col items-center mb-6">
-                <div class="relative">
-                    <img id="avatarImg" src="" alt="avatar" class="w-28 h-28 rounded-full object-cover border-4 border-secondary">
-                    <label for="avatarUpload" class="absolute bottom-0 right-0 bg-secondary text-white p-2 rounded-full cursor-pointer hover:bg-secondary/80 transition-colors">
+            <!-- هدر پروفایل با آواتار -->
+            <div class="flex flex-col sm:flex-row items-center gap-6 mb-6">
+                <div class="profile-avatar-container">
+                    <img id="profileAvatar" src="" alt="آواتار" class="w-24 h-24 rounded-full border-4 border-secondary object-cover">
+                    <label for="avatarUpload" class="avatar-upload-btn">
                         <i class="fas fa-camera text-sm"></i>
                     </label>
-                    <input type="file" id="avatarUpload" accept="image/jpeg,image/png" class="hidden">
+                    <input type="file" id="avatarUpload" accept="image/*" class="hidden">
                 </div>
-                <p class="text-sm text-gray-500 mt-2">برای تغییر عکس کلیک کنید</p>
-            </div>
-
-            <!-- ===== اطلاعات ===== -->
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">نام کاربری</label>
-                    <span id="usernameDisplay" class="block text-gray-900 font-medium mt-1"></span>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">تاریخ عضویت</label>
-                    <span id="registeredAtDisplay" class="block text-gray-900 font-medium mt-1"></span>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">تعداد اعضای خانواده</label>
-                    <input type="number" id="familySizeInput" class="input-modern" min="1" max="20">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">مدت ذخیره‌سازی پیش‌فرض (روز)</label>
-                    <input type="number" id="storageDaysInput" class="input-modern" min="1" max="90">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">ایمیل (اختیاری)</label>
-                    <input type="email" id="emailInput" class="input-modern" placeholder="example@domain.com">
+                <div class="text-center sm:text-right">
+                    <h2 class="text-2xl font-bold text-primary" id="profileDisplayName">کاربر</h2>
+                    <p class="text-gray-500 text-sm" id="profileUsername">@username</p>
+                    <span class="inline-block mt-1 text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full">
+                        <i class="fas fa-check-circle ml-1"></i> فعال
+                    </span>
                 </div>
             </div>
 
-            <!-- ===== دکمه‌ها ===== -->
-            <div class="mt-6 space-y-3">
-                <button id="saveProfileBtn" class="btn-gradient w-full justify-center"><i class="fas fa-save ml-2"></i> ذخیره تغییرات</button>
-                <button id="backToDashboardBtn" class="btn-outline w-full justify-center"><i class="fas fa-arrow-right ml-2"></i> بازگشت به داشبورد</button>
-            </div>
+            <!-- فرم پروفایل -->
+            <form id="profileForm" class="space-y-6">
+                <!-- بخش اطلاعات شخصی -->
+                <div>
+                    <h3 class="profile-section-title"><i class="fas fa-user"></i> اطلاعات شخصی</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">نام و نام خانوادگی</label>
+                            <input type="text" id="fullName" class="input-modern" placeholder="نام کامل خود را وارد کنید">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">نام کاربری</label>
+                            <input type="text" id="username" class="input-modern bg-gray-100" disabled>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">شماره تماس</label>
+                            <input type="tel" id="phone" class="input-modern" placeholder="مثال: 09123456789">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">تاریخ تولد</label>
+                            <input type="date" id="birthDate" class="input-modern">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">جنسیت</label>
+                            <select id="gender" class="input-modern">
+                                <option value="">انتخاب کنید</option>
+                                <option value="male">مرد</option>
+                                <option value="female">زن</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">وضعیت تأهل</label>
+                            <select id="maritalStatus" class="input-modern">
+                                <option value="">انتخاب کنید</option>
+                                <option value="single">مجرد</option>
+                                <option value="married">متأهل</option>
+                                <option value="divorced">مطلقه</option>
+                                <option value="widowed">بیوه</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">شغل</label>
+                            <input type="text" id="occupation" class="input-modern" placeholder="شغل خود را وارد کنید">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">تعداد اعضای خانواده</label>
+                            <input type="number" id="familySize" class="input-modern" min="1" placeholder="مثلاً ۴">
+                        </div>
+                    </div>
+                </div>
 
-            <div id="messageDiv" class="mt-4 text-center text-sm"></div>
+                <!-- بخش اطلاعات مسکن -->
+                <div>
+                    <h3 class="profile-section-title"><i class="fas fa-home"></i> اطلاعات مسکن</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">آدرس کامل</label>
+                            <textarea id="address" rows="2" class="input-modern" placeholder="آدرس خود را وارد کنید"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">کد پستی</label>
+                            <input type="text" id="postalCode" class="input-modern" placeholder="کد پستی ۱۰ رقمی">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">نوع مسکن</label>
+                            <select id="housingType" class="input-modern">
+                                <option value="">انتخاب کنید</option>
+                                <option value="owned">ملکی</option>
+                                <option value="rental">اجاره‌ای</option>
+                                <option value="other">سایر</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">متراژ (متر مربع)</label>
+                            <input type="number" id="area" class="input-modern" placeholder="مثلاً ۱۲۰">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">سال ساخت</label>
+                            <input type="number" id="constructionYear" class="input-modern" placeholder="مثلاً ۱۳۹۰" min="1300" max="1405">
+                        </div>
+                    </div>
+                </div>
 
+                <!-- بخش اطلاعات انرژی -->
+                <div>
+                    <h3 class="profile-section-title"><i class="fas fa-bolt"></i> اطلاعات انرژی</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">سیستم گرمایشی</label>
+                            <select id="heatingSystem" class="input-modern">
+                                <option value="">انتخاب کنید</option>
+                                <option value="central">شوفاژ (مرکزی)</option>
+                                <option value="radiator">رادیاتور (پکیج)</option>
+                                <option value="underfloor">زیرزمینی</option>
+                                <option value="electric">برقی</option>
+                                <option value="gas">گازی (بخاری)</option>
+                                <option value="solar">خورشیدی</option>
+                                <option value="other">سایر</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">سیستم سرمایشی</label>
+                            <select id="coolingSystem" class="input-modern">
+                                <option value="">انتخاب کنید</option>
+                                <option value="central">کولر گازی (اسپلیت)</option>
+                                <option value="duct">کانال‌کشی</option>
+                                <option value="window">پنجره‌ای</option>
+                                <option value="portable">پرتابل</option>
+                                <option value="evaporative">کولر آبی</option>
+                                <option value="other">سایر</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">نوع آبگرمکن</label>
+                            <select id="waterHeater" class="input-modern">
+                                <option value="">انتخاب کنید</option>
+                                <option value="electric">برقی</option>
+                                <option value="gas">گازی (موتورخانه)</option>
+                                <option value="solar">خورشیدی</option>
+                                <option value="heatpump">پمپ حرارتی</option>
+                                <option value="other">سایر</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">پنل خورشیدی</label>
+                            <select id="solarPanel" class="input-modern">
+                                <option value="">انتخاب کنید</option>
+                                <option value="yes">دارد</option>
+                                <option value="no">ندارد</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- بخش مصرف سالیانه (اختیاری) -->
+                <div>
+                    <h3 class="profile-section-title"><i class="fas fa-chart-line"></i> مصرف سالیانه (اختیاری)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">آب (لیتر)</label>
+                            <input type="number" id="annualWater" class="input-modern" placeholder="مصرف سالیانه آب">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">برق (کیلووات)</label>
+                            <input type="number" id="annualElectricity" class="input-modern" placeholder="مصرف سالیانه برق">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">گاز (مترمکعب)</label>
+                            <input type="number" id="annualGas" class="input-modern" placeholder="مصرف سالیانه گاز">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- دکمه‌های اقدام -->
+                <div class="flex flex-wrap gap-4 pt-4 border-t border-gray-200">
+                    <button type="submit" class="btn-gradient flex-1 justify-center">
+                        <i class="fas fa-save ml-2"></i> ذخیره تغییرات
+                    </button>
+                    <button type="button" id="resetProfileBtn" class="btn-outline flex-1 justify-center">
+                        <i class="fas fa-undo ml-2"></i> بازنشانی
+                    </button>
+                    <button type="button" id="deleteAccountBtn" class="btn-danger flex-1 justify-center">
+                        <i class="fas fa-trash-can ml-2"></i> حذف حساب کاربری
+                    </button>
+                </div>
+            </form>
+
+            <!-- پیام وضعیت -->
+            <div id="profileStatus" class="mt-4 text-center text-sm hidden"></div>
         </div>
-
     </main>
 
-    <!-- ===== منوی کشو ===== -->
+    <!-- منوی کشو -->
     <div id="drawer" class="drawer-modern">
         <div class="flex justify-between items-center mb-6">
             <span class="text-lg font-bold text-primary">منو</span>
-            <button id="closeDrawerBtn" class="text-gray-400 hover:text-gray-600 transition-colors">
-                <i class="fas fa-times text-2xl"></i>
-            </button>
+            <button id="closeDrawerBtn" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-2xl"></i></button>
         </div>
         <div id="drawerItems" class="space-y-2"></div>
     </div>
     <div id="drawerBackdrop"></div>
 
-    <!-- ===== ویجت چت‌بات ===== -->
+    <!-- ویجت چت‌بات -->
     <div id="chatbotWidget">
-        <button class="chatbot-fab" id="chatbotFab" aria-label="دستیار هوشمند">
-            <i class="fas fa-robot"></i>
-            <span class="badge" id="chatbotBadge" style="display:none;">1</span>
-        </button>
+        <button class="chatbot-fab" id="chatbotFab"><i class="fas fa-robot"></i><span class="badge" id="chatbotBadge" style="display:none;">1</span></button>
         <div class="chatbot-window" id="chatbotWindow">
-            <div class="chatbot-header">
-                <div class="title"><span class="icon">🤖</span> دستیار هوشمند تدبیر</div>
-                <div style="display:flex;align-items:center;gap:12px;">
-                    <div class="status"><span class="dot"></span><span>آنلاین</span></div>
-                    <button class="close-btn" id="chatbotCloseBtn"><i class="fas fa-times"></i></button>
-                </div>
-            </div>
-            <div class="chatbot-messages" id="chatbotMessages">
-                <div class="message assistant">سلام! 👋 من دستیار هوشمند سامانه‌ی تدبیر منزل هستم. سوال خود را بپرسید! 😊<span class="time">اکنون</span></div>
-                <div class="typing-indicator" id="typingIndicator"><span></span><span></span><span></span></div>
-            </div>
-            <div class="chatbot-quick-suggestions" id="quickSuggestions">
-                <button data-question="وضعیت ذخایر من چگونه است؟">📊 وضعیت ذخایر</button>
-                <button data-question="چطور مصرف آب را کاهش دهم؟">💧 کاهش مصرف آب</button>
-                <button data-question="برای بحران چه کنم؟">⚠️ راهنمای بحران</button>
-                <button data-question="یک برنامه غذایی پیشنهاد بده">🍲 برنامه غذایی</button>
-            </div>
-            <div class="chatbot-input">
-                <textarea id="chatbotInput" rows="1" placeholder="پیام خود را بنویسید..."></textarea>
-                <button class="send-btn" id="chatbotSendBtn"><i class="fas fa-paper-plane"></i></button>
-            </div>
+            <div class="chatbot-header"><div class="title"><span class="icon">🤖</span> دستیار هوشمند تدبیر</div><div><button class="close-btn" id="chatbotCloseBtn"><i class="fas fa-times"></i></button></div></div>
+            <div class="chatbot-messages" id="chatbotMessages"><div class="message assistant">سلام! 👋<span class="time">اکنون</span></div><div class="typing-indicator" id="typingIndicator"><span></span><span></span><span></span></div></div>
+            <div class="chatbot-input"><textarea id="chatbotInput" rows="1" placeholder="پیام..."></textarea><button class="send-btn" id="chatbotSendBtn"><i class="fas fa-paper-plane"></i></button></div>
         </div>
     </div>
 
-    <!-- ===== اسکریپت‌ها ===== -->
     <script src="chatbot-widget.js"></script>
-
-    <!-- ===== اسکریپت منوی کشو (داخلی) ===== -->
-    <!-- ===== اسکریپت منوی کشو (داخلی) ===== -->
-    <script>
-        (function() {
-            'use strict';
-            console.log('🔄 راه‌اندازی منوی کشو در profile.html');
-
-            function initDrawer() {
-                const hamburger = document.getElementById('hamburgerMenu');
-                const drawer = document.getElementById('drawer');
-                const backdrop = document.getElementById('drawerBackdrop');
-                const closeBtn = document.getElementById('closeDrawerBtn');
-
-                if (!hamburger || !drawer || !backdrop) {
-                    console.warn('⚠️ منوی کشو: المان‌ها پیدا نشدند!');
-                    return false;
-                }
-
-                console.log('✅ منوی کشو: همه المان‌ها پیدا شدند.');
-
-                function openDrawer() {
-                    drawer.classList.add('open');
-                    backdrop.classList.add('show');
-                    document.body.style.overflow = 'hidden';
-                }
-
-                function closeDrawer() {
-                    drawer.classList.remove('open');
-                    backdrop.classList.remove('show');
-                    document.body.style.overflow = '';
-                }
-
-                if (hamburger._listenerAdded) {
-                    console.log('ℹ️ رویداد منو قبلاً متصل شده است.');
-                    return true;
-                }
-                hamburger._listenerAdded = true;
-
-                hamburger.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    openDrawer();
-                });
-
-                if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
-                backdrop.addEventListener('click', closeDrawer);
-                document.addEventListener('keydown', function(e) {
-                    if (e.key === 'Escape') closeDrawer();
-                });
-
-                console.log('✅ منوی کشو با موفقیت راه‌اندازی شد.');
-                return true;
-            }
-
-            function updateDrawerItems() {
-                const container = document.getElementById('drawerItems');
-                if (!container) {
-                    console.error('❌ المان drawerItems پیدا نشد!');
-                    return false;
-                }
-
-                const loggedInUser = sessionStorage.getItem('loggedInUser');
-                const isLoggedIn = !!loggedInUser;
-                console.log('🔍 وضعیت لاگین:', { loggedInUser, isLoggedIn });
-
-                let items = [];
-                if (isLoggedIn) {
-                    items = [
-                        { type: 'header', text: 'منوی اصلی' },
-                        { icon: 'fa-house', text: 'صفحه اصلی', link: 'index.html' },
-                        { icon: 'fa-chart-pie', text: 'داشبورد', link: 'dashboard.html' },
-                        { type: 'divider' },
-                        { type: 'header', text: 'مدیریت منابع' },
-                        { icon: 'fa-utensils', text: 'مواد غذایی', link: 'food.html' },
-                        { icon: 'fa-bolt', text: 'مصرف انرژی', link: 'energy.html' },
-                        { type: 'divider' },
-                        { type: 'header', text: 'مدیریت بحران' },
-                        { icon: 'fa-triangle-exclamation', text: 'سناریوهای بحران', link: 'dashboard.html' },
-                        { icon: 'fa-boxes-stacked', text: 'ذخایر اضطراری', link: 'food.html' },
-                        { type: 'divider' },
-                        { type: 'header', text: 'گزارش‌ها' },
-                        { icon: 'fa-calendar-week', text: 'گزارش هفتگی', link: 'reports.html' },
-                        { icon: 'fa-calendar-alt', text: 'گزارش ماهانه', link: 'reports.html' },
-                        { type: 'divider' },
-                        // ===== بخش سلامت (جدید) =====
-                        { type: 'header', text: 'سلامت' },
-                        { icon: 'fa-pills', text: 'مدیریت داروها', link: 'medications.html' },
-                        { type: 'divider' },
-                        { type: 'header', text: 'تنظیمات' },
-                        { icon: 'fa-user', text: 'پروفایل', link: 'profile.html' },
-                        { icon: 'fa-bell', text: 'اعلان‌ها', link: 'notifications.html' },
-                        { icon: 'fa-moon', text: 'تم تاریک', action: 'toggleTheme' },
-                        { type: 'divider' },
-                        { icon: 'fa-clock-rotate-left', text: 'تاریخچه چت', link: 'chat-history.html' },
-                        { type: 'divider' },
-                        { icon: 'fa-circle-question', text: 'راهنما', link: 'help.html' },
-                        { icon: 'fa-envelope', text: 'تماس با ما', link: 'contact.html' },
-                        { type: 'divider' },
-                        { icon: 'fa-right-from-bracket', text: 'خروج', action: 'logout' }
-                    ];
-                } else {
-                    items = [
-                        { icon: 'fa-house', text: 'صفحه اصلی', link: 'index.html' },
-                        { icon: 'fa-right-to-bracket', text: 'ورود', link: 'login.html' },
-                        { icon: 'fa-user-plus', text: 'ثبت‌نام', link: 'login.html' },
-                        { type: 'divider' },
-                        { icon: 'fa-circle-question', text: 'راهنما', link: 'help.html' },
-                        { icon: 'fa-envelope', text: 'تماس با ما', link: 'contact.html' }
-                    ];
-                }
-
-                container.innerHTML = '';
-                items.forEach(item => {
-                    if (item.type === 'divider') {
-                        const hr = document.createElement('hr');
-                        hr.style.margin = '0.5rem 0';
-                        hr.style.border = 'none';
-                        hr.style.borderTop = '1px solid #e2e8f0';
-                        container.appendChild(hr);
-                        return;
-                    }
-                    if (item.type === 'header') {
-                        const header = document.createElement('div');
-                        header.textContent = item.text;
-                        header.style.cssText = 'font-size:0.7rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;padding:0.5rem 0.25rem;margin-top:0.25rem;';
-                        container.appendChild(header);
-                        return;
-                    }
-                    const div = document.createElement('div');
-                    div.className = 'drawer-item';
-                    const iconSpan = document.createElement('span');
-                    iconSpan.className = `fas ${item.icon}`;
-                    iconSpan.style.cssText = 'width:20px;display:inline-block;text-align:center;margin-left:12px;color:#64748b;font-size:1rem;';
-                    const textSpan = document.createElement('span');
-                    textSpan.textContent = item.text;
-                    textSpan.style.cssText = 'color:#334155;font-size:0.95rem;';
-                    const wrapper = document.createElement('span');
-                    wrapper.style.cssText = 'display:flex;align-items:center;width:100%;';
-                    wrapper.appendChild(iconSpan);
-                    wrapper.appendChild(textSpan);
-
-                    if (item.link) {
-                        const a = document.createElement('a');
-                        a.href = item.link;
-                        a.appendChild(wrapper);
-                        a.style.cssText = 'text-decoration:none;color:inherit;display:block;width:100%;padding:0.25rem 0;';
-                        div.appendChild(a);
-                    } else {
-                        const btn = document.createElement('button');
-                        btn.appendChild(wrapper);
-                        btn.style.cssText = 'background:none;border:none;cursor:pointer;width:100%;text-align:right;font-family:inherit;font-size:1rem;padding:0.25rem 0;color:#334155;';
-                        btn.onclick = function() {
-                            switch(item.action) {
-                                case 'logout':
-                                    sessionStorage.removeItem('loggedInUser');
-                                    window.location.href = 'index.html';
-                                    break;
-                                case 'toggleTheme':
-                                    document.body.classList.toggle('dark-mode');
-                                    localStorage.setItem('dark_mode', document.body.classList.contains('dark-mode') ? 'true' : 'false');
-                                    break;
-                                default:
-                                    console.log('اقدام ناشناخته:', item.action);
-                            }
-                        };
-                        div.appendChild(btn);
-                    }
-                    div.addEventListener('mouseenter', function() {
-                        const icon = this.querySelector('.fas');
-                        if (icon) icon.style.color = '#3b82f6';
-                        const text = this.querySelector('span:not(.fas)');
-                        if (text) text.style.color = '#3b82f6';
-                    });
-                    div.addEventListener('mouseleave', function() {
-                        const icon = this.querySelector('.fas');
-                        if (icon) icon.style.color = '#64748b';
-                        const text = this.querySelector('span:not(.fas)');
-                        if (text) text.style.color = '#334155';
-                    });
-                    container.appendChild(div);
-                });
-
-                console.log('✅ آیتم‌های منو به‌روزرسانی شدند.');
-                return true;
-            }
-
-            setTimeout(function() {
-                const drawerInit = initDrawer();
-                const itemsUpdate = updateDrawerItems();
-                if (!drawerInit || !itemsUpdate) {
-                    console.warn('⚠️ منو کامل راه‌اندازی نشد. تلاش مجدد...');
-                    setTimeout(function() {
-                        initDrawer();
-                        updateDrawerItems();
-                    }, 300);
-                }
-            }, 100);
-        })();
-    </script>
+    <script src="menu.js"></script>
     <script type="module" src="profile.js"></script>
 </body>
 </html>
