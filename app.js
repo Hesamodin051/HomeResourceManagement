@@ -7,9 +7,9 @@ import { loadInventory, addItem, editItem, deleteItem, consumeIngredients } from
 import { loadConsumptionData, saveTodayConsumption } from './modules/consumption.js';
 import { store, setCrisisMode, addListener, setCurrentUserProfile } from './modules/store.js';
 import { generateSuggestions } from './modules/suggestion.js';
-import { generateConsumptionPlan, getMealDetails, getAlternativeMeal } from './modules/consumption-planner.js';
+import { generateConsumptionPlan, getMealDetails, getAlternativeMeal, renderPlanCards } from './modules/consumption-planner.js';
 import { getSmartSuggestions } from './modules/ai.js';
-import { loadRecipes } from './modules/recipe-planner.js'; // ← ایمپورت جدید
+import { loadRecipes } from './modules/recipe-planner.js';
 
 // ===== غیرفعال کردن پیام Puter.js =====
 if (typeof puter !== 'undefined') {
@@ -29,7 +29,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // ============================================================
-// 2. توابع مربوط به هوش مصنوعی (AI)
+// 2. توابع مربوط به هوش مصنوعی (AI) - فقط برای بخش "دستیار هوشمند"
 // ============================================================
 async function handleAISuggestion() {
     const display = document.getElementById('aiSuggestionDisplay');
@@ -189,6 +189,7 @@ function updateConsumptionPlan() {
             .then(html => {
                 display.innerHTML = html;
                 attachMealClickEvents();
+                attachSwapEvents();
                 console.log('✅ الگوی مصرف به‌روزرسانی شد.');
             })
             .catch(err => {
@@ -285,7 +286,122 @@ function refreshAll() {
 }
 
 // ============================================================
-// 9. اتصال رویدادهای کلیک روی وعده‌ها
+// 9. رد وعده و پیشنهاد جایگزین (فقط همان روز و وعده تغییر کند)
+// ============================================================
+async function handleRejectMeal(mealData) {
+    const newMealName = await getAlternativeMeal(mealData.mealType, mealData.dayIndex);
+    const planData = window.currentPlanData;
+    
+    if (planData?.plan?.[mealData.dayIndex]) {
+        const day = planData.plan[mealData.dayIndex];
+        if (day) {
+            // فقط همان وعده را در همان روز تغییر بده
+            day.meals[mealData.mealType] = { 
+                name: newMealName, 
+                cook_time: Math.floor(Math.random() * 30 + 15),
+                missing: [],
+                hasAll: true,
+                ingredients: []
+            };
+            
+            // بازرندر با برنامه‌ی موجود
+            const display = document.getElementById('consumptionPlanDisplay');
+            if (display) {
+                const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
+                display.innerHTML = renderPlanCards(planData.plan, days);
+                attachMealClickEvents();
+                attachSwapEvents();
+                alert(`✅ وعده "${mealData.mealName}" با "${newMealName}" جایگزین شد.`);
+            }
+        }
+    }
+    closeConsumeModal();
+}
+
+// ============================================================
+// 10. تعویض وعده با انتخاب از لیست (فقط همان روز و وعده تغییر کند)
+// ============================================================
+async function swapMeal(dayIndex, mealType, currentName) {
+    const inventory = store.inventory || [];
+    const foodNames = inventory.map(item => item.name);
+    if (foodNames.length === 0) {
+        alert('هیچ ماده‌ای در انبار ثبت نشده است. لطفاً ابتدا مواد غذایی را اضافه کنید.');
+        return;
+    }
+    
+    let options = foodNames.map(name => `<option value="${name}">${name}</option>`).join('');
+    const additionalOptions = `
+        <option value="__chatbot__">🤖 دریافت پیشنهاد از سیستم</option>
+        <option value="__custom__">✏️ وارد کردن دستی</option>
+    `;
+    const selectHTML = `
+        <div class="p-4">
+            <p class="text-sm text-gray-600 mb-2">غذای جدید برای وعده‌ی ${mealType} (جایگزین "${currentName}"):</p>
+            <select id="mealSwapSelect" class="input-modern w-full">${options}${additionalOptions}</select>
+            <div class="flex gap-3 mt-4">
+                <button id="confirmSwapBtn" class="btn-gradient flex-1 justify-center">تأیید</button>
+                <button id="cancelSwapBtn" class="btn-outline flex-1 justify-center">لغو</button>
+            </div>
+        </div>
+    `;
+    
+    const modal = document.getElementById('consumeModal');
+    const body = document.getElementById('consumeModalBody');
+    const title = document.getElementById('consumeModalTitle');
+    if (!modal || !body) return;
+    title.textContent = '🔄 تعویض وعده';
+    body.innerHTML = selectHTML;
+    modal.classList.remove('hidden');
+    
+    document.getElementById('cancelSwapBtn').addEventListener('click', () => {
+        modal.classList.add('hidden');
+    });
+    
+    document.getElementById('confirmSwapBtn').addEventListener('click', async () => {
+        const select = document.getElementById('mealSwapSelect');
+        const selected = select.value;
+        let newMealName = '';
+        
+        if (selected === '__chatbot__') {
+            newMealName = await getAlternativeMeal(mealType, dayIndex);
+            if (!newMealName || newMealName.length < 2) newMealName = 'غذای ساده';
+        } else if (selected === '__custom__') {
+            newMealName = prompt('نام غذای جدید را وارد کنید:');
+            if (!newMealName) return;
+        } else {
+            newMealName = selected;
+        }
+        
+        const planData = window.currentPlanData;
+        if (planData?.plan?.[dayIndex]) {
+            const day = planData.plan[dayIndex];
+            if (day) {
+                // فقط همان وعده را در همان روز تغییر بده
+                day.meals[mealType] = { 
+                    name: newMealName, 
+                    cook_time: Math.floor(Math.random() * 30 + 15),
+                    missing: [],
+                    hasAll: true,
+                    ingredients: []
+                };
+                
+                // بازرندر با برنامه‌ی موجود
+                const display = document.getElementById('consumptionPlanDisplay');
+                if (display) {
+                    const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
+                    display.innerHTML = renderPlanCards(planData.plan, days);
+                    attachMealClickEvents();
+                    attachSwapEvents();
+                    alert(`✅ وعده "${currentName}" با "${newMealName}" جایگزین شد.`);
+                }
+            }
+        }
+        modal.classList.add('hidden');
+    });
+}
+
+// ============================================================
+// 11. اتصال رویدادهای کلیک روی وعده‌ها
 // ============================================================
 function attachMealClickEvents() {
     document.querySelectorAll('.day-card .meal-item').forEach(el => {
@@ -308,7 +424,25 @@ function mealClickHandler(e) {
 }
 
 // ============================================================
-// 10. مدیریت مدال تأیید مصرف
+// 12. اتصال رویدادهای تعویض
+// ============================================================
+function attachSwapEvents() {
+    document.querySelectorAll('.swap-meal-btn').forEach(btn => {
+        btn.removeEventListener('click', swapHandler);
+        btn.addEventListener('click', swapHandler);
+    });
+}
+
+function swapHandler(e) {
+    const btn = e.currentTarget;
+    const dayIndex = parseInt(btn.dataset.day);
+    const mealType = btn.dataset.meal;
+    const currentName = btn.dataset.current;
+    swapMeal(dayIndex, mealType, currentName);
+}
+
+// ============================================================
+// 13. مدیریت مدال تأیید مصرف
 // ============================================================
 function getFamilySize() {
     return store.currentUserProfile?.familySize || 4;
@@ -367,25 +501,6 @@ function closeConsumeModal() {
     document.getElementById('consumeModal').classList.add('hidden');
 }
 
-async function handleRejectMeal(mealData) {
-    const newMealName = await getAlternativeMeal(mealData.mealType, mealData.dayIndex);
-    const planData = window.currentPlanData;
-    if (planData?.plan?.[mealData.dayIndex]) {
-        const day = planData.plan[mealData.dayIndex];
-        if (day) {
-            day.meals[mealData.mealType] = { name: newMealName, cook_time: Math.floor(Math.random() * 30 + 15) };
-            const display = document.getElementById('consumptionPlanDisplay');
-            if (display) {
-                const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
-                display.innerHTML = await generateConsumptionPlan(days);
-                attachMealClickEvents();
-                alert(`✅ وعده "${mealData.mealName}" با "${newMealName}" جایگزین شد.`);
-            }
-        }
-    }
-    closeConsumeModal();
-}
-
 async function handleConsumeConfirm() {
     const mealData = window._currentMealData;
     if (!mealData) return;
@@ -408,7 +523,7 @@ async function handleConsumeConfirm() {
 }
 
 // ============================================================
-// 11. اتصال رویدادهای داشبورد
+// 14. اتصال رویدادهای داشبورد
 // ============================================================
 function bindDashboardUI() {
     const saveBtn = document.getElementById('saveConsumptionBtn');
@@ -462,7 +577,7 @@ function bindDashboardUI() {
 }
 
 // ============================================================
-// 12. سناریوهای بحران
+// 15. سناریوهای بحران
 // ============================================================
 function populateScenarioDropdown() {
     const scenarios = window.crisisScenarios || [];
@@ -492,7 +607,7 @@ function populateScenarioDropdown() {
 }
 
 // ============================================================
-// 13. مقداردهی اولیه داشبورد (اصلاح‌شده با async)
+// 16. مقداردهی اولیه داشبورد
 // ============================================================
 async function initDashboard() {
     if (!checkAuth()) return;
@@ -509,7 +624,6 @@ async function initDashboard() {
     }
     
     try {
-        // بارگذاری سناریوهای بحران
         const response = await fetch('assets/data/crisis_scenarios.json');
         if (response.ok) {
             window.crisisScenarios = await response.json();
@@ -524,7 +638,7 @@ async function initDashboard() {
     loadInventory();
     
     // ===== بارگذاری دستور پخت‌ها (Recipe-Based) =====
-    await loadRecipes(); // ← این خط با async کار می‌کند
+    await loadRecipes();
     
     // ===== بارگذاری مصرف =====
     isInitialLoad = true;
@@ -571,7 +685,7 @@ async function initDashboard() {
 }
 
 // ============================================================
-// 14. مقداردهی اولیه صفحه اصلی (index.html)
+// 17. مقداردهی اولیه صفحه اصلی (index.html)
 // ============================================================
 function initIndex() {
     checkAuth();
@@ -579,7 +693,7 @@ function initIndex() {
 }
 
 // ============================================================
-// 15. چت‌بات هوشمند
+// 18. چت‌بات هوشمند
 // ============================================================
 function loadChatbotWidget() {
     if (typeof puter === 'undefined') {
@@ -675,7 +789,7 @@ function loadChatbotWidget() {
 }
 
 // ============================================================
-// 16. مدیریت مسیرها
+// 19. مدیریت مسیرها
 // ============================================================
 const currentPath = window.location.pathname;
 if (currentPath.includes('login.html')) {
@@ -711,7 +825,7 @@ if (currentPath.includes('login.html')) {
 }
 
 // ============================================================
-// 17. شنونده‌های تغییرات store
+// 20. شنونده‌های تغییرات store
 // ============================================================
 addListener('inventory', function() {
     if (window.location.pathname.includes('dashboard.html') && !isInitialLoad) {
