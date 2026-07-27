@@ -617,7 +617,7 @@ function initDashboard() {
         .catch(() => { window.crisisScenarios = []; })
         .finally(() => {
             loadInventory();
-            
+            await loadRecipes();
             isInitialLoad = true;
             loadConsumptionData();
             isInitialLoad = false;
