@@ -1,5 +1,5 @@
 // ============================================================
-// app.js - فایل ورودی اصلی سامانه تدبیر منزل (نسخه نهایی با Hugging Face)
+// app.js - فایل ورودی اصلی سامانه تدبیر منزل (نسخه Recipe-Based)
 // ============================================================
 
 import { checkAuth, getLoggedInUser, logout, getUserProfile, getUserAvatar } from './modules/auth.js';
@@ -9,14 +9,14 @@ import { store, setCrisisMode, addListener, setCurrentUserProfile } from './modu
 import { generateSuggestions } from './modules/suggestion.js';
 import { generateConsumptionPlan, getMealDetails, getAlternativeMeal } from './modules/consumption-planner.js';
 import { getSmartSuggestions } from './modules/ai.js';
-import { loadRecipes } from './modules/recipe-planner.js';
+import { loadRecipes } from './modules/recipe-planner.js'; // ← ایمپورت جدید
 
 // ===== غیرفعال کردن پیام Puter.js =====
 if (typeof puter !== 'undefined') {
     puter.quiet = true;
 }
 
-// ===== پرچم برای جلوگیری از درخواست‌های همزمان در بارگذاری اولیه =====
+// ===== پرچم برای جلوگیری از درخواست‌های همزمان =====
 let isInitialLoad = true;
 
 // ============================================================
@@ -160,7 +160,7 @@ function renderChart() {
 }
 
 // ============================================================
-// 6. به‌روزرسانی الگوی مصرف (با Debounce)
+// 6. به‌روزرسانی الگوی مصرف
 // ============================================================
 let planUpdateTimeout = null;
 
@@ -181,7 +181,7 @@ function updateConsumptionPlan() {
         display.innerHTML = `
             <div class="text-center text-gray-400 py-4">
                 <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
-                <p>🤖 در حال دریافت برنامه هوشمند...</p>
+                <p>📋 در حال تولید برنامه بر اساس رسپی‌ها...</p>
             </div>
         `;
         
@@ -189,7 +189,6 @@ function updateConsumptionPlan() {
             .then(html => {
                 display.innerHTML = html;
                 attachMealClickEvents();
-                attachSwapEvents();
                 console.log('✅ الگوی مصرف به‌روزرسانی شد.');
             })
             .catch(err => {
@@ -205,7 +204,7 @@ function updateConsumptionPlan() {
             .finally(() => {
                 planUpdateTimeout = null;
             });
-    }, 800);
+    }, 500);
 }
 
 // ============================================================
@@ -286,93 +285,7 @@ function refreshAll() {
 }
 
 // ============================================================
-// 9. تعویض وعده غذایی (با Hugging Face)
-// ============================================================
-async function swapMeal(dayIndex, mealType, currentName) {
-    const inventory = store.inventory || [];
-    const foodNames = inventory.map(item => item.name);
-    if (foodNames.length === 0) {
-        alert('هیچ ماده‌ای در انبار ثبت نشده است. لطفاً ابتدا مواد غذایی را اضافه کنید.');
-        return;
-    }
-    
-    let options = foodNames.map(name => `<option value="${name}">${name}</option>`).join('');
-    const additionalOptions = `
-        <option value="__chatbot__">🤖 دریافت پیشنهاد از Hugging Face</option>
-        <option value="__custom__">✏️ وارد کردن دستی</option>
-    `;
-    const selectHTML = `
-        <div class="p-4">
-            <p class="text-sm text-gray-600 mb-2">غذای جدید برای وعده‌ی ${mealType} (جایگزین "${currentName}"):</p>
-            <select id="mealSwapSelect" class="input-modern w-full">${options}${additionalOptions}</select>
-            <div class="flex gap-3 mt-4">
-                <button id="confirmSwapBtn" class="btn-gradient flex-1 justify-center">تأیید</button>
-                <button id="cancelSwapBtn" class="btn-outline flex-1 justify-center">لغو</button>
-            </div>
-        </div>
-    `;
-    
-    const modal = document.getElementById('consumeModal');
-    const body = document.getElementById('consumeModalBody');
-    const title = document.getElementById('consumeModalTitle');
-    if (!modal || !body) return;
-    title.textContent = '🔄 تعویض وعده';
-    body.innerHTML = selectHTML;
-    modal.classList.remove('hidden');
-    
-    document.getElementById('cancelSwapBtn').addEventListener('click', () => {
-        modal.classList.add('hidden');
-    });
-    document.getElementById('confirmSwapBtn').addEventListener('click', async () => {
-        const select = document.getElementById('mealSwapSelect');
-        const selected = select.value;
-        let newMealName = '';
-        
-        if (selected === '__chatbot__') {
-            const inventoryList = inventory.map(item => 
-                `- ${item.name}: ${item.quantity} ${item.unit}`
-            ).join('\n');
-            const familySize = getFamilySize();
-            
-            try {
-                // ===== استفاده از Hugging Face برای پیشنهاد =====
-                const { getAlternativeMealAI } = await import('./modules/huggingface.js');
-                newMealName = await getAlternativeMealAI(mealType, inventoryList, familySize);
-                if (!newMealName || newMealName.length < 2) {
-                    newMealName = 'غذای ساده';
-                }
-                console.log('✅ پیشنهاد از Hugging Face دریافت شد:', newMealName);
-            } catch (e) {
-                console.error('❌ خطا در دریافت پیشنهاد از Hugging Face:', e);
-                alert('خطا در دریافت پیشنهاد از هوش مصنوعی. لطفاً دستی وارد کنید.');
-                return;
-            }
-        } else if (selected === '__custom__') {
-            newMealName = prompt('نام غذای جدید را وارد کنید:');
-            if (!newMealName) return;
-        } else {
-            newMealName = selected;
-        }
-        
-        const planData = window.currentPlanData;
-        if (planData?.plan?.[dayIndex]) {
-            planData.plan[dayIndex].meals[mealType] = { name: newMealName, cook_time: Math.floor(Math.random() * 30 + 15) };
-            const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
-            const display = document.getElementById('consumptionPlanDisplay');
-            if (display) {
-                const html = await generateConsumptionPlan(days);
-                display.innerHTML = html;
-                attachMealClickEvents();
-                attachSwapEvents();
-            }
-            alert(`✅ وعده "${currentName}" با "${newMealName}" جایگزین شد.`);
-        }
-        modal.classList.add('hidden');
-    });
-}
-
-// ============================================================
-// 10. اتصال رویدادهای کلیک روی وعده و تعویض
+// 9. اتصال رویدادهای کلیک روی وعده‌ها
 // ============================================================
 function attachMealClickEvents() {
     document.querySelectorAll('.day-card .meal-item').forEach(el => {
@@ -394,23 +307,8 @@ function mealClickHandler(e) {
     }
 }
 
-function attachSwapEvents() {
-    document.querySelectorAll('.swap-meal-btn').forEach(btn => {
-        btn.removeEventListener('click', swapHandler);
-        btn.addEventListener('click', swapHandler);
-    });
-}
-
-function swapHandler(e) {
-    const btn = e.currentTarget;
-    const dayIndex = parseInt(btn.dataset.day);
-    const mealType = btn.dataset.meal;
-    const currentName = btn.dataset.current;
-    swapMeal(dayIndex, mealType, currentName);
-}
-
 // ============================================================
-// 11. مدیریت مدال تأیید مصرف
+// 10. مدیریت مدال تأیید مصرف
 // ============================================================
 function getFamilySize() {
     return store.currentUserProfile?.familySize || 4;
@@ -481,7 +379,6 @@ async function handleRejectMeal(mealData) {
                 const days = parseInt(document.getElementById('planDaysSelect')?.value || 7);
                 display.innerHTML = await generateConsumptionPlan(days);
                 attachMealClickEvents();
-                attachSwapEvents();
                 alert(`✅ وعده "${mealData.mealName}" با "${newMealName}" جایگزین شد.`);
             }
         }
@@ -511,7 +408,7 @@ async function handleConsumeConfirm() {
 }
 
 // ============================================================
-// 12. اتصال رویدادهای داشبورد
+// 11. اتصال رویدادهای داشبورد
 // ============================================================
 function bindDashboardUI() {
     const saveBtn = document.getElementById('saveConsumptionBtn');
@@ -565,7 +462,7 @@ function bindDashboardUI() {
 }
 
 // ============================================================
-// 13. سناریوهای بحران
+// 12. سناریوهای بحران
 // ============================================================
 function populateScenarioDropdown() {
     const scenarios = window.crisisScenarios || [];
@@ -595,9 +492,9 @@ function populateScenarioDropdown() {
 }
 
 // ============================================================
-// 14. مقداردهی اولیه داشبورد
+// 13. مقداردهی اولیه داشبورد (اصلاح‌شده با async)
 // ============================================================
-function initDashboard() {
+async function initDashboard() {
     if (!checkAuth()) return;
     const loggedInUser = getLoggedInUser();
     console.log('👤 کاربر فعلی:', loggedInUser);
@@ -611,59 +508,70 @@ function initDashboard() {
         if (profile) setCurrentUserProfile(profile);
     }
     
-    fetch('assets/data/crisis_scenarios.json')
-        .then(res => res.json())
-        .then(data => { window.crisisScenarios = data; })
-        .catch(() => { window.crisisScenarios = []; })
-        .finally(() => {
-            loadInventory();
-            await loadRecipes();
-            isInitialLoad = true;
-            loadConsumptionData();
-            isInitialLoad = false;
-            
-            renderInventoryTable();
-            renderChart();
-            generateAlerts();
-            bindDashboardUI();
-            populateScenarioDropdown();
-            generateSuggestions();
-            updateConsumptionPlan();
-            updateNutritionAnalysis();
-            
-            const aiBtn = document.getElementById('aiSuggestionBtn');
-            if (aiBtn) aiBtn.addEventListener('click', handleAISuggestion);
-            
-            const savedCrisis = localStorage.getItem('crisis_mode');
-            const crisisToggle = document.getElementById('crisisModeToggle');
-            if (savedCrisis === 'true' && crisisToggle) {
-                crisisToggle.checked = true;
-                setCrisisMode(true);
-                document.body.classList.add('crisis');
-                refreshAll();
-            }
-            
-            const userDisplay = document.getElementById('userDisplay');
-            const userAvatar = document.getElementById('userAvatar');
-            if (userDisplay && loggedInUser) userDisplay.innerText = loggedInUser;
-            if (userAvatar && loggedInUser) {
-                const avatarBase64 = getUserAvatar(loggedInUser);
-                if (avatarBase64) userAvatar.src = avatarBase64;
-                else {
-                    const firstChar = loggedInUser.charAt(0).toUpperCase();
-                    userAvatar.src = `https://ui-avatars.com/api/?background=1e466e&color=fff&rounded=true&size=36&name=${firstChar}`;
-                }
-                const profileClickable = document.getElementById('profileClickable');
-                if (profileClickable) {
-                    profileClickable.style.cursor = 'pointer';
-                    profileClickable.addEventListener('click', () => window.location.href = 'profile.html');
-                }
-            }
-        });
+    try {
+        // بارگذاری سناریوهای بحران
+        const response = await fetch('assets/data/crisis_scenarios.json');
+        if (response.ok) {
+            window.crisisScenarios = await response.json();
+        } else {
+            window.crisisScenarios = [];
+        }
+    } catch (e) {
+        window.crisisScenarios = [];
+    }
+    
+    // ===== بارگذاری موجودی =====
+    loadInventory();
+    
+    // ===== بارگذاری دستور پخت‌ها (Recipe-Based) =====
+    await loadRecipes(); // ← این خط با async کار می‌کند
+    
+    // ===== بارگذاری مصرف =====
+    isInitialLoad = true;
+    loadConsumptionData();
+    isInitialLoad = false;
+    
+    renderInventoryTable();
+    renderChart();
+    generateAlerts();
+    bindDashboardUI();
+    populateScenarioDropdown();
+    generateSuggestions();
+    updateConsumptionPlan();
+    updateNutritionAnalysis();
+    
+    const aiBtn = document.getElementById('aiSuggestionBtn');
+    if (aiBtn) aiBtn.addEventListener('click', handleAISuggestion);
+    
+    const savedCrisis = localStorage.getItem('crisis_mode');
+    const crisisToggle = document.getElementById('crisisModeToggle');
+    if (savedCrisis === 'true' && crisisToggle) {
+        crisisToggle.checked = true;
+        setCrisisMode(true);
+        document.body.classList.add('crisis');
+        refreshAll();
+    }
+    
+    const userDisplay = document.getElementById('userDisplay');
+    const userAvatar = document.getElementById('userAvatar');
+    if (userDisplay && loggedInUser) userDisplay.innerText = loggedInUser;
+    if (userAvatar && loggedInUser) {
+        const avatarBase64 = getUserAvatar(loggedInUser);
+        if (avatarBase64) userAvatar.src = avatarBase64;
+        else {
+            const firstChar = loggedInUser.charAt(0).toUpperCase();
+            userAvatar.src = `https://ui-avatars.com/api/?background=1e466e&color=fff&rounded=true&size=36&name=${firstChar}`;
+        }
+        const profileClickable = document.getElementById('profileClickable');
+        if (profileClickable) {
+            profileClickable.style.cursor = 'pointer';
+            profileClickable.addEventListener('click', () => window.location.href = 'profile.html');
+        }
+    }
 }
 
 // ============================================================
-// 15. مقداردهی اولیه صفحه اصلی (index.html)
+// 14. مقداردهی اولیه صفحه اصلی (index.html)
 // ============================================================
 function initIndex() {
     checkAuth();
@@ -671,7 +579,7 @@ function initIndex() {
 }
 
 // ============================================================
-// 16. چت‌بات هوشمند
+// 15. چت‌بات هوشمند
 // ============================================================
 function loadChatbotWidget() {
     if (typeof puter === 'undefined') {
@@ -767,7 +675,7 @@ function loadChatbotWidget() {
 }
 
 // ============================================================
-// 17. مدیریت مسیرها
+// 16. مدیریت مسیرها
 // ============================================================
 const currentPath = window.location.pathname;
 if (currentPath.includes('login.html')) {
@@ -803,7 +711,7 @@ if (currentPath.includes('login.html')) {
 }
 
 // ============================================================
-// 18. شنونده‌های تغییرات store
+// 17. شنونده‌های تغییرات store
 // ============================================================
 addListener('inventory', function() {
     if (window.location.pathname.includes('dashboard.html') && !isInitialLoad) {
