@@ -38,7 +38,7 @@ export async function getOllamaResponse(prompt, systemPrompt = '', model = 'llam
 }
 
 export async function generateConsumptionPlanAI(days, inventoryList, familySize, crisisMode) {
-    const crisisText = crisisMode ? '⚠️ حالت بحران فعال است.' : '';
+    const crisisText = crisisMode ? '⚠️ حالت بحران فعال است. مصرف را به حداقل برسان و اولویت با آب و کنسروها باشد.' : '';
     const systemPrompt = 'شما یک دستیار هوشمند مدیریت منابع خانگی هستید.';
     const prompt = `بر اساس موجودی زیر، یک برنامه مصرف ${days} روزه برای خانواده ${familySize} نفره تهیه کن.
 
@@ -48,6 +48,8 @@ ${inventoryList}
 ${crisisText}
 
 برنامه باید شامل ۳ وعده غذایی در روز (صبحانه، ناهار، شام) باشد.
+
+مهم: فقط از مواد موجود در انبار استفاده کن. اگر ماده‌ای کافی نیست، پیشنهاد جایگزین بده.
 
 فرمت خروجی دقیقاً به این صورت باشد (فقط همین فرمت، بدون توضیح اضافی):
 
@@ -61,7 +63,9 @@ ${crisisText}
 ناهار: [نام غذا]
 شام: [نام غذا]
 
-... تا روز ${days}`;
+... تا روز ${days}
+
+توجه: غذاها باید متناسب با وعده باشند (صبحانه سبک، ناهار سنگین‌تر، شام متوسط). تنوع غذایی رعایت شود.`;
 
     return await getOllamaResponse(prompt, systemPrompt);
 }
