@@ -1,0 +1,48 @@
+{
+  "organizations": [
+    {
+      "id": "org_water",
+      "name": "آب و فاضلاب",
+      "code": "WATER2024",
+      "password": "water@admin",
+      "role": "water_company",
+      "permissions": ["view_water", "view_users", "view_reports"],
+      "description": "شرکت آب و فاضلاب استان",
+      "region": "تهران",
+      "contactEmail": "info@water.ir"
+    },
+    {
+      "id": "org_electricity",
+      "name": "شرکت برق",
+      "code": "ELEC2024",
+      "password": "elec@admin",
+      "role": "electricity_company",
+      "permissions": ["view_electricity", "view_users", "view_reports"],
+      "description": "شرکت توزیع برق استان",
+      "region": "تهران",
+      "contactEmail": "info@elec.ir"
+    },
+    {
+      "id": "org_chamber",
+      "name": "اتاق بازرگانی",
+      "code": "CHAMBER2024",
+      "password": "chamber@admin",
+      "role": "chamber",
+      "permissions": ["view_all", "view_users", "view_reports", "export_data"],
+      "description": "اتاق بازرگانی، صنایع، معادن و کشاورزی",
+      "region": "تهران",
+      "contactEmail": "info@chamber.ir"
+    },
+    {
+      "id": "org_budget",
+      "name": "سازمان برنامه و بودجه",
+      "code": "BUDGET2024",
+      "password": "budget@admin",
+      "role": "budget_org",
+      "permissions": ["view_all", "view_users", "view_reports", "export_data", "set_limits"],
+      "description": "سازمان مدیریت و برنامه‌ریزی بودجه",
+      "region": "تهران",
+      "contactEmail": "info@budget.ir"
+    }
+  ]
+}
