@@ -1,5 +1,5 @@
 // modules/ollama.js
-const OLLAMA_URL = 'http://127.0.0.1:6336/api/chat';
+const OLLAMA_URL = 'http://127.0.0.1:11434/api/chat';
 
 export async function getOllamaResponse(prompt, systemPrompt = '', model = 'llama3.2') {
     try {
