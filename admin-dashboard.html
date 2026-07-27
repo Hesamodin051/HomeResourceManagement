@@ -29,8 +29,8 @@
                 <h1 class="text-xl font-bold">پنل مدیریت سازمانی</h1>
             </div>
             <div class="flex items-center gap-4">
-                <span class="text-sm text-gray-300" id="adminOrgName">سازمان</span>
-                <button id="logoutAdminBtn" class="text-gray-300 hover:text-white transition-colors">
+                <span class="text-sm text-gray-300" id="orgNameDisplay">سازمان</span>
+                <button id="orgLogoutBtn" class="text-gray-300 hover:text-white transition-colors">
                     <i class="fas fa-sign-out-alt"></i> خروج
                 </button>
             </div>
@@ -39,21 +39,19 @@
 
     <main class="max-w-7xl mx-auto px-4 py-6">
         <!-- کارت‌های آماری -->
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6" id="statsCards">
-            <!-- توسط JavaScript پر می‌شود -->
-        </div>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6" id="orgStatsCards"></div>
 
         <!-- ابزارهای کنترل -->
         <div class="flex flex-wrap items-center justify-between gap-4 bg-white rounded-xl p-4 border border-gray-200 mb-6">
             <div class="flex items-center gap-3">
                 <i class="fas fa-search text-gray-400"></i>
-                <input id="adminSearchInput" type="text" placeholder="جستجوی کاربر..." class="input-modern !py-1 !px-3 w-48 md:w-64">
+                <input id="orgSearchInput" type="text" placeholder="جستجوی کاربر..." class="input-modern !py-1 !px-3 w-48 md:w-64">
             </div>
             <div class="flex items-center gap-3">
-                <button id="exportCSVBtn" class="btn-gradient !py-1 !px-4 text-sm">
+                <button id="orgExportCSVBtn" class="btn-gradient !py-1 !px-4 text-sm">
                     <i class="fas fa-file-csv ml-1"></i> خروجی CSV
                 </button>
-                <button id="refreshAdminBtn" class="btn-outline !py-1 !px-4 text-sm">
+                <button id="orgRefreshBtn" class="btn-outline !py-1 !px-4 text-sm">
                     <i class="fas fa-rotate ml-1"></i> بروزرسانی
                 </button>
             </div>
@@ -63,24 +61,24 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <div class="bg-white rounded-xl p-4 border border-gray-200">
                 <h3 class="text-sm font-bold text-gray-700 mb-3">📈 روند مصرف روزانه</h3>
-                <canvas id="dailyChart" height="200"></canvas>
+                <canvas id="orgDailyChart" height="200"></canvas>
             </div>
             <div class="bg-white rounded-xl p-4 border border-gray-200">
                 <h3 class="text-sm font-bold text-gray-700 mb-3">🥧 توزیع کل مصرف</h3>
-                <canvas id="distributionChart" height="200"></canvas>
+                <canvas id="orgDistributionChart" height="200"></canvas>
             </div>
         </div>
 
         <!-- پیش‌بینی مصرف -->
         <div class="bg-white rounded-xl p-4 border border-gray-200 mb-6">
             <h3 class="text-sm font-bold text-gray-700 mb-3">🔮 پیش‌بینی مصرف ۳۰ روز آینده</h3>
-            <div id="forecastContainer"></div>
+            <div id="orgForecastContainer"></div>
         </div>
 
         <!-- هشدارها -->
         <div class="bg-white rounded-xl p-4 border border-gray-200 mb-6">
             <h3 class="text-sm font-bold text-gray-700 mb-3">⚠️ هشدارهای مصرف</h3>
-            <div id="alertsList"></div>
+            <div id="orgAlertsList"></div>
         </div>
 
         <!-- جدول کاربران -->
@@ -98,25 +96,21 @@
                             <th>عملیات</th>
                         </tr>
                     </thead>
-                    <tbody id="usersTableBody">
-                        <!-- توسط JavaScript پر می‌شود -->
-                    </tbody>
+                    <tbody id="orgUsersTableBody"></tbody>
                 </table>
             </div>
         </div>
     </main>
 
     <script type="module">
-        import { checkAdminAuth } from './modules/admin-auth.js';
-        import { initAdminDashboard } from './modules/admin.js';
+        import { checkOrgAuth } from './modules/org-auth.js';
+        import { initOrgDashboard } from './modules/org-dashboard.js';
 
-        // بررسی احراز هویت
-        if (!checkAdminAuth()) {
-            window.location.href = 'admin-login.html';
+        if (!checkOrgAuth()) {
+            window.location.href = 'org-login.html';
         }
 
-        // مقداردهی اولیه
-        document.addEventListener('DOMContentLoaded', initAdminDashboard);
+        document.addEventListener('DOMContentLoaded', initOrgDashboard);
     </script>
 </body>
 </html>
