@@ -321,6 +321,9 @@ async function updateNutritionAnalysis() {
 function refreshAll() {
     renderInventoryTable();
     generateAlerts();
+    setTimeout(() => {
+        generateSuggestions();
+    }, 100);
     generateSuggestions();
     // بروزرسانی برنامه با حفظ تغییرات موجود (با استفاده از existingPlan)
     const display = document.getElementById('consumptionPlanDisplay');
