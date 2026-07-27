@@ -1,7 +1,9 @@
 // modules/consumption-planner.js
+// modules/consumption-planner.js
 import { store } from './store.js';
-// به‌جای huggingface یا chatanywhere
 import { generateConsumptionPlanAI, getAlternativeMealAI } from './ollama.js';
+
+// ... بقیه‌ی کدها بدون تغییر ...
 
 function getFamilySize() {
     return store.currentUserProfile?.familySize || 4;
