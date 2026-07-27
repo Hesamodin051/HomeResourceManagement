@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سامانه تدبیر منزل | مدیریت هوشمند مصرف و ذخایر خانگی</title>
+    <title>سامانه تدبیر منزل | ورود و ثبت‌نام</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
@@ -19,120 +19,82 @@
             }
         }
     </script>
-    <style>
-        .hero-gradient { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); }
-        .card-hover:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(0,0,0,0.12); }
-    </style>
 </head>
-<body class="font-vazir bg-gray-50 min-h-screen">
-
-    <!-- ===== هدر ===== -->
-    <header class="glass-header sticky top-0 z-50 px-4 py-3">
-        <div class="max-w-6xl mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <i class="fas fa-home text-2xl text-secondary"></i>
-                <h1 class="text-xl font-bold text-primary">سامانه تدبیر منزل</h1>
-            </div>
-            <div class="hamburger-menu cursor-pointer" id="hamburgerMenu">
-                <i class="fas fa-bars text-2xl text-gray-700"></i>
-            </div>
+<body class="font-vazir bg-gradient-to-br from-blue-50 to-gray-100 min-h-screen flex items-center justify-center">
+    <div class="max-w-md w-full mx-4">
+        <div class="text-center mb-8">
+            <i class="fas fa-home text-5xl text-secondary"></i>
+            <h1 class="text-3xl font-bold text-primary mt-2">سامانه تدبیر منزل</h1>
+            <p class="text-gray-500 text-sm mt-1">مدیریت هوشمند منابع خانگی</p>
         </div>
-    </header>
 
-    <!-- ===== بخش اصلی ===== -->
-    <main class="max-w-6xl mx-auto px-4 py-12">
-        <div class="hero-gradient rounded-3xl p-8 md:p-16 text-center text-white shadow-2xl relative overflow-hidden mb-12">
-            <div class="relative z-10">
-                <div class="text-6xl mb-4">🏠</div>
-                <h1 class="text-3xl md:text-5xl font-black leading-tight mb-4">سامانه هوشمند مدیریت و پایش مصرف آب، برق، گاز و ذخایر غذایی</h1>
-                <p class="text-lg md:text-2xl text-yellow-400 font-bold mb-2">در شرایط عادی و بحرانی</p>
-                <p class="text-gray-300 text-base md:text-lg max-w-2xl mx-auto">هر خانه، یک سامانه هوشمند برای مدیریت بحران</p>
-                <div class="flex flex-wrap justify-center gap-4 mt-8">
-                    <a href="login.html" class="btn-gradient"><i class="fas fa-sign-in-alt"></i> ورود به پرتال شخصی</a>
-                    <a href="login.html" class="btn-outline"><i class="fas fa-user-plus"></i> ثبت‌نام</a>
+        <div class="card-modern p-6">
+            <!-- تب‌ها -->
+            <div class="flex border-b border-gray-200 mb-6">
+                <button class="tab-btn active flex-1 py-2 text-center font-medium text-sm text-secondary border-b-2 border-secondary transition-all" data-tab="login">
+                    <i class="fas fa-sign-in-alt ml-1"></i> ورود
+                </button>
+                <button class="tab-btn flex-1 py-2 text-center font-medium text-sm text-gray-400 hover:text-gray-600 transition-all" data-tab="register">
+                    <i class="fas fa-user-plus ml-1"></i> ثبت‌نام
+                </button>
+            </div>
+
+            <!-- فرم ورود -->
+            <div id="loginForm" class="block">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">نام کاربری</label>
+                        <input type="text" id="loginUsername" class="input-modern w-full" placeholder="نام کاربری خود را وارد کنید">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">رمز عبور</label>
+                        <input type="password" id="loginPassword" class="input-modern w-full" placeholder="رمز عبور خود را وارد کنید">
+                    </div>
+                    <div id="loginError" class="text-red-500 text-sm text-center hidden"></div>
+                    <button id="doLogin" class="btn-gradient w-full justify-center">
+                        <i class="fas fa-sign-in-alt ml-2"></i> ورود
+                    </button>
                 </div>
             </div>
-            <div class="absolute top-0 left-0 w-64 h-64 bg-secondary/20 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
-            <div class="absolute bottom-0 right-0 w-64 h-64 bg-accent/20 rounded-full blur-3xl translate-x-1/2 translate-y-1/2"></div>
-        </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="card-modern card-hover text-center"><div class="text-4xl mb-3">💧</div><h3 class="text-lg font-bold text-primary">پایش مصرف آب</h3><p class="text-sm text-gray-500 mt-1">مدیریت هوشمند مصرف آب خانگی</p></div>
-            <div class="card-modern card-hover text-center"><div class="text-4xl mb-3">⚡</div><h3 class="text-lg font-bold text-primary">پایش مصرف برق</h3><p class="text-sm text-gray-500 mt-1">کاهش هزینه‌ها با آگاهی لحظه‌ای</p></div>
-            <div class="card-modern card-hover text-center"><div class="text-4xl mb-3">🔥</div><h3 class="text-lg font-bold text-primary">پایش مصرف گاز</h3><p class="text-sm text-gray-500 mt-1">بهینه‌سازی مصرف انرژی</p></div>
-            <div class="card-modern card-hover text-center"><div class="text-4xl mb-3">🍚</div><h3 class="text-lg font-bold text-primary">مدیریت ذخایر غذایی</h3><p class="text-sm text-gray-500 mt-1">ثبت، دسته‌بندی و هشدار انقضا</p></div>
-            <div class="card-modern card-hover text-center md:col-span-2"><div class="text-4xl mb-3">⚠️</div><h3 class="text-lg font-bold text-primary">حالت بحران هوشمند</h3><p class="text-sm text-gray-500 mt-1">۷ سناریوی بحران با اولویت‌بندی منابع</p></div>
-        </div>
-
-        <footer class="mt-12 text-center text-sm text-gray-400 border-t border-gray-200 pt-6">پروژه درس مدیریت پروژه فناوری اطلاعات – تیم بین‌رشته‌ای ۵ نفره</footer>
-    </main>
-
-    <!-- ===== منوی کشو ===== -->
-    <div id="drawer" class="drawer-modern">
-        <div class="flex justify-between items-center mb-6">
-            <span class="text-lg font-bold text-primary">منو</span>
-            <button id="closeDrawerBtn" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-2xl"></i></button>
-        </div>
-        <div id="drawerItems" class="space-y-2"></div>
-    </div>
-    <div id="drawerBackdrop"></div>
-
-    <!-- ===== ویجت چت‌بات ===== -->
-    <div id="chatbotWidget">
-        <button class="chatbot-fab" id="chatbotFab" aria-label="دستیار هوشمند">
-            <i class="fas fa-robot"></i>
-            <span class="badge" id="chatbotBadge" style="display:none;">1</span>
-        </button>
-        <div class="chatbot-window" id="chatbotWindow">
-            <div class="chatbot-header">
-                <div class="title"><span class="icon">🤖</span> دستیار هوشمند تدبیر</div>
-                <div style="display:flex;align-items:center;gap:12px;">
-                    <div class="status"><span class="dot"></span><span>آنلاین</span></div>
-                    <button class="close-btn" id="chatbotCloseBtn"><i class="fas fa-times"></i></button>
+            <!-- فرم ثبت‌نام -->
+            <div id="registerForm" class="hidden">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">نام کاربری</label>
+                        <input type="text" id="regUsername" class="input-modern w-full" placeholder="حداقل ۳ کاراکتر">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">رمز عبور</label>
+                        <input type="password" id="regPassword" class="input-modern w-full" placeholder="حداقل ۴ کاراکتر">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">تکرار رمز عبور</label>
+                        <input type="password" id="regConfirm" class="input-modern w-full" placeholder="رمز عبور را تکرار کنید">
+                    </div>
+                    <div id="registerError" class="text-red-500 text-sm text-center hidden"></div>
+                    <button id="doRegister" class="btn-gradient w-full justify-center">
+                        <i class="fas fa-user-plus ml-2"></i> ثبت‌نام
+                    </button>
                 </div>
             </div>
-            <div class="chatbot-messages" id="chatbotMessages">
-                <div class="message assistant">سلام! 👋 من دستیار هوشمند سامانه‌ی تدبیر منزل هستم. سوال خود را بپرسید! 😊<span class="time">اکنون</span></div>
-                <div class="typing-indicator" id="typingIndicator"><span></span><span></span><span></span></div>
+
+            <!-- لینک ورود سازمانی -->
+            <div class="mt-6 pt-4 border-t border-gray-200 text-center">
+                <a href="org-login.html" class="text-sm text-gray-500 hover:text-secondary transition-colors">
+                    <i class="fas fa-building ml-1"></i> ورود سازمان‌ها (پنل مدیریت)
+                </a>
             </div>
-            <div class="chatbot-quick-suggestions" id="quickSuggestions">
-                <button data-question="وضعیت ذخایر من چگونه است؟">📊 وضعیت ذخایر</button>
-                <button data-question="چطور مصرف آب را کاهش دهم؟">💧 کاهش مصرف آب</button>
-                <button data-question="برای بحران چه کنم؟">⚠️ راهنمای بحران</button>
-                <button data-question="یک برنامه غذایی پیشنهاد بده">🍲 برنامه غذایی</button>
-            </div>
-            <div class="chatbot-input">
-                <textarea id="chatbotInput" rows="1" placeholder="پیام خود را بنویسید..."></textarea>
-                <button class="send-btn" id="chatbotSendBtn"><i class="fas fa-paper-plane"></i></button>
-            </div>
+        </div>
+
+        <div class="text-center mt-4 text-xs text-gray-400">
+            <i class="fas fa-shield-alt ml-1"></i> اطلاعات شما با امنیت کامل ذخیره می‌شود
         </div>
     </div>
 
-    <!-- ===== اسکریپت‌های ضروری ===== -->
-    <script>
-        // ===== بررسی لاگین و هدایت به داشبورد (با فلگ) =====
-        (function() {
-            // اگر در حال حاضر در حال ریدایرکت هستیم، متوقف کن
-            if (sessionStorage.getItem('redirect_in_progress') === 'true') {
-                console.log('⏳ ریدایرکت در حال انجام است، صبر کنید...');
-                return;
-            }
-
-            const loggedInUser = sessionStorage.getItem('loggedInUser');
-            if (loggedInUser) {
-                console.log('🔄 کاربر لاگین است، رفتن به داشبورد...');
-                sessionStorage.setItem('redirect_in_progress', 'true');
-                window.location.href = 'dashboard.html';
-            } else {
-                console.log('🌿 کاربر مهمان، نمایش صفحه اصلی.');
-                // اگر فلگ ریدایرکت باقی مانده بود پاک کن
-                sessionStorage.removeItem('redirect_in_progress');
-            }
-        })();
+    <script type="module">
+        import { initAuthPage } from './modules/auth.js';
+        initAuthPage();
     </script>
-
-    <script src="menu.js"></script>
-    <script src="chatbot-widget.js"></script>
-    <!-- ===== حذف app.js از index ===== -->
 </body>
 </html>
