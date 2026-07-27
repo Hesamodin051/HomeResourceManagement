@@ -1,8 +1,10 @@
-// modules/admin-auth.js
-// احراز هویت سازمان‌ها برای پنل مدیریت
+// modules/org-auth.js
+// احراز هویت سازمانی - استفاده از org-store
 
-const ORGANIZATIONS_KEY = 'admin_organizations';
-const ADMIN_SESSION_KEY = 'admin_session';
+import { orgStore, setOrganizations, setCurrentOrganization, clearOrgData } from './org-store.js';
+import { loadOrgUsers } from './org-consumption.js';
+
+const ORG_SESSION_KEY = 'org_session';
 
 // ============================================================
 // بارگذاری اطلاعات سازمان‌ها
@@ -12,70 +14,60 @@ async function loadOrganizations() {
         const response = await fetch('assets/data/organizations.json');
         if (!response.ok) throw new Error('فایل سازمان‌ها پیدا نشد');
         const data = await response.json();
-        // ذخیره در localStorage برای دسترسی سریع
-        localStorage.setItem(ORGANIZATIONS_KEY, JSON.stringify(data));
+        setOrganizations(data.organizations || []);
         return data;
     } catch (error) {
         console.error('❌ خطا در بارگذاری سازمان‌ها:', error);
-        // استفاده از داده‌های پیش‌فرض اگر فایل موجود نباشد
         const defaultData = getDefaultOrganizations();
-        localStorage.setItem(ORGANIZATIONS_KEY, JSON.stringify(defaultData));
-        return defaultData;
+        setOrganizations(defaultData);
+        return { organizations: defaultData };
     }
 }
 
-// ============================================================
-// داده‌های پیش‌فرض سازمان‌ها (در صورت عدم وجود فایل)
-// ============================================================
 function getDefaultOrganizations() {
-    return {
-        organizations: [
-            {
-                id: 'org_water',
-                name: 'آب و فاضلاب',
-                code: 'WATER2024',
-                password: 'water@admin',
-                role: 'water_company',
-                permissions: ['view_water', 'view_users', 'view_reports']
-            },
-            {
-                id: 'org_electricity',
-                name: 'شرکت برق',
-                code: 'ELEC2024',
-                password: 'elec@admin',
-                role: 'electricity_company',
-                permissions: ['view_electricity', 'view_users', 'view_reports']
-            },
-            {
-                id: 'org_chamber',
-                name: 'اتاق بازرگانی',
-                code: 'CHAMBER2024',
-                password: 'chamber@admin',
-                role: 'chamber',
-                permissions: ['view_all', 'view_users', 'view_reports', 'export_data']
-            },
-            {
-                id: 'org_budget',
-                name: 'سازمان برنامه و بودجه',
-                code: 'BUDGET2024',
-                password: 'budget@admin',
-                role: 'budget_org',
-                permissions: ['view_all', 'view_users', 'view_reports', 'export_data', 'set_limits']
-            }
-        ]
-    };
+    return [
+        {
+            id: 'org_water',
+            name: 'آب و فاضلاب',
+            code: 'WATER2024',
+            password: 'water@admin',
+            role: 'water_company',
+            permissions: ['view_water', 'view_users', 'view_reports']
+        },
+        {
+            id: 'org_electricity',
+            name: 'شرکت برق',
+            code: 'ELEC2024',
+            password: 'elec@admin',
+            role: 'electricity_company',
+            permissions: ['view_electricity', 'view_users', 'view_reports']
+        },
+        {
+            id: 'org_chamber',
+            name: 'اتاق بازرگانی',
+            code: 'CHAMBER2024',
+            password: 'chamber@admin',
+            role: 'chamber',
+            permissions: ['view_all', 'view_users', 'view_reports', 'export_data']
+        },
+        {
+            id: 'org_budget',
+            name: 'سازمان برنامه و بودجه',
+            code: 'BUDGET2024',
+            password: 'budget@admin',
+            role: 'budget_org',
+            permissions: ['view_all', 'view_users', 'view_reports', 'export_data', 'set_limits']
+        }
+    ];
 }
 
 // ============================================================
 // ورود سازمانی
 // ============================================================
-export async function adminLogin(orgName, orgCode, password) {
+export async function orgLogin(orgName, orgCode, password) {
     try {
-        // بارگذاری سازمان‌ها
         const data = await loadOrganizations();
-        const orgs = data.organizations || [];
-        
-        // جستجوی سازمان
+        const orgs = orgStore.organizations || [];
         const org = orgs.find(o => 
             o.name === orgName && 
             o.code === orgCode && 
@@ -89,7 +81,7 @@ export async function adminLogin(orgName, orgCode, password) {
             };
         }
         
-        // ذخیره جلسه در sessionStorage
+        // ذخیره در sessionStorage
         const session = {
             organizationId: org.id,
             organizationName: org.name,
@@ -97,7 +89,13 @@ export async function adminLogin(orgName, orgCode, password) {
             permissions: org.permissions || [],
             loggedInAt: new Date().toISOString()
         };
-        sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
+        sessionStorage.setItem(ORG_SESSION_KEY, JSON.stringify(session));
+        
+        // ذخیره در orgStore
+        setCurrentOrganization(org);
+        
+        // بارگذاری کاربران سازمانی
+        loadOrgUsers();
         
         return { 
             success: true, 
@@ -116,8 +114,8 @@ export async function adminLogin(orgName, orgCode, password) {
 // ============================================================
 // دریافت جلسه فعال
 // ============================================================
-export function getAdminSession() {
-    const session = sessionStorage.getItem(ADMIN_SESSION_KEY);
+export function getOrgSession() {
+    const session = sessionStorage.getItem(ORG_SESSION_KEY);
     if (!session) return null;
     try {
         return JSON.parse(session);
@@ -129,41 +127,25 @@ export function getAdminSession() {
 // ============================================================
 // خروج از پنل مدیریت
 // ============================================================
-export function adminLogout() {
-    sessionStorage.removeItem(ADMIN_SESSION_KEY);
-    window.location.href = 'admin-login.html';
+export function orgLogout() {
+    sessionStorage.removeItem(ORG_SESSION_KEY);
+    clearOrgData();
+    window.location.href = 'org-login.html';
 }
 
 // ============================================================
 // بررسی احراز هویت
 // ============================================================
-export function checkAdminAuth() {
-    const session = getAdminSession();
+export function checkOrgAuth() {
+    const session = getOrgSession();
     const currentPath = window.location.pathname;
     
-    // اگر در صفحات مدیریت هستیم و وارد نشده‌ایم
-    if (currentPath.includes('admin-dashboard.html') || currentPath.includes('admin-')) {
+    if (currentPath.includes('org-dashboard.html')) {
         if (!session) {
-            window.location.href = 'admin-login.html';
+            window.location.href = 'org-login.html';
             return false;
         }
         return true;
     }
     return true;
-}
-
-// ============================================================
-// دریافت اطلاعات سازمان جاری
-// ============================================================
-export async function getCurrentOrganization() {
-    const session = getAdminSession();
-    if (!session) return null;
-    
-    try {
-        const data = await loadOrganizations();
-        const orgs = data.organizations || [];
-        return orgs.find(o => o.id === session.organizationId) || null;
-    } catch {
-        return null;
-    }
 }
