@@ -12,6 +12,7 @@ function saveUsers(users) {
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
 }
 
+// ===== ثبت‌نام =====
 export function register(username, password, email = '') {
     const users = getUsers();
     if (users[username]) {
@@ -23,14 +24,36 @@ export function register(username, password, email = '') {
     if (password.length < 4) {
         return { success: false, message: 'رمز عبور باید حداقل ۴ کاراکتر باشد.' };
     }
+    
+    // ایجاد پروفایل جدید با فیلدهای پیش‌فرض
     users[username] = {
         password,
         registeredAt: new Date().toISOString(),
         familySize: 4,
         storageDays: 7,
         email: email,
-        avatar: null
+        avatar: null,
+        // فیلدهای جدید پروفایل
+        fullName: '',
+        phone: '',
+        birthDate: '',
+        gender: '',
+        maritalStatus: '',
+        occupation: '',
+        address: '',
+        postalCode: '',
+        housingType: '',
+        area: 0,
+        constructionYear: 0,
+        heatingSystem: '',
+        coolingSystem: '',
+        waterHeater: '',
+        solarPanel: '',
+        annualWater: 0,
+        annualElectricity: 0,
+        annualGas: 0
     };
+    
     saveUsers(users);
     sessionStorage.setItem('loggedInUser', username);
     setCurrentUser(username);
@@ -38,6 +61,7 @@ export function register(username, password, email = '') {
     return { success: true, message: 'ثبت‌نام موفق' };
 }
 
+// ===== ورود =====
 export function login(username, password) {
     const users = getUsers();
     const user = users[username];
@@ -50,6 +74,7 @@ export function login(username, password) {
     return { success: true, message: 'ورود موفق' };
 }
 
+// ===== خروج =====
 export function logout() {
     sessionStorage.removeItem('loggedInUser');
     setCurrentUser(null);
@@ -57,21 +82,38 @@ export function logout() {
     window.location.href = 'index.html';
 }
 
+// ===== دریافت کاربر لاگین شده =====
 export function getLoggedInUser() {
     return sessionStorage.getItem('loggedInUser');
 }
 
+// ===== دریافت پروفایل کاربر =====
 export function getUserProfile(username) {
     const users = getUsers();
     return users[username] || null;
 }
 
+// ===== به‌روزرسانی پروفایل کاربر =====
 export function updateUserProfile(username, updates) {
     const users = getUsers();
     if (!users[username]) return false;
-    if (updates.familySize !== undefined) users[username].familySize = parseInt(updates.familySize);
-    if (updates.storageDays !== undefined) users[username].storageDays = parseInt(updates.storageDays);
-    if (updates.email !== undefined) users[username].email = updates.email;
+    
+    // فیلدهای قابل به‌روزرسانی (لیست کامل)
+    const allowedFields = [
+        'familySize', 'storageDays', 'email', 'fullName', 'phone',
+        'birthDate', 'gender', 'maritalStatus', 'occupation',
+        'address', 'postalCode', 'housingType', 'area',
+        'constructionYear', 'heatingSystem', 'coolingSystem',
+        'waterHeater', 'solarPanel', 'annualWater',
+        'annualElectricity', 'annualGas'
+    ];
+    
+    for (const key of allowedFields) {
+        if (updates[key] !== undefined) {
+            users[username][key] = updates[key];
+        }
+    }
+    
     saveUsers(users);
     if (store.currentUser === username) {
         setCurrentUserProfile(users[username]);
@@ -79,6 +121,7 @@ export function updateUserProfile(username, updates) {
     return true;
 }
 
+// ===== ذخیره آواتار =====
 export function saveUserAvatar(username, avatarBase64) {
     const users = getUsers();
     if (users[username]) {
@@ -92,11 +135,13 @@ export function saveUserAvatar(username, avatarBase64) {
     return false;
 }
 
+// ===== دریافت آواتار =====
 export function getUserAvatar(username) {
     const users = getUsers();
     return users[username]?.avatar || null;
 }
 
+// ===== بررسی احراز هویت برای صفحات محافظت‌شده =====
 export function checkAuth() {
     const loggedInUser = getLoggedInUser();
     const currentPath = window.location.pathname;
@@ -115,6 +160,7 @@ export function checkAuth() {
     return true;
 }
 
+// ===== مقداردهی صفحه ورود/ثبت‌نام =====
 export function initAuthPage() {
     const loggedInUser = getLoggedInUser();
     if (loggedInUser) {
@@ -152,7 +198,10 @@ export function initAuthPage() {
                 window.location.href = 'dashboard.html';
             } else {
                 const errorDiv = document.getElementById('loginError');
-                if (errorDiv) errorDiv.innerText = result.message;
+                if (errorDiv) {
+                    errorDiv.innerText = result.message;
+                    errorDiv.classList.remove('hidden');
+                }
             }
         });
     }
@@ -165,7 +214,10 @@ export function initAuthPage() {
             const confirm = document.getElementById('regConfirm').value;
             if (password !== confirm) {
                 const errorDiv = document.getElementById('registerError');
-                if (errorDiv) errorDiv.innerText = 'رمز عبور و تکرار آن مطابقت ندارند.';
+                if (errorDiv) {
+                    errorDiv.innerText = 'رمز عبور و تکرار آن مطابقت ندارند.';
+                    errorDiv.classList.remove('hidden');
+                }
                 return;
             }
             const email = '';
@@ -174,7 +226,10 @@ export function initAuthPage() {
                 window.location.href = 'dashboard.html';
             } else {
                 const errorDiv = document.getElementById('registerError');
-                if (errorDiv) errorDiv.innerText = result.message;
+                if (errorDiv) {
+                    errorDiv.innerText = result.message;
+                    errorDiv.classList.remove('hidden');
+                }
             }
         });
     }
