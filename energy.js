@@ -1,6 +1,7 @@
 // energy.js
 import { getLoggedInUser } from './modules/auth.js';
 import { initDrawer, updateDrawerItems } from './modules/drawer.js';
+import { store } from './modules/store.js'; // برای دسترسی به تعداد اعضای خانواده
 
 // ===== کلیدهای ذخیره‌سازی وابسته به کاربر =====
 function getUserKey(baseKey) {
@@ -16,61 +17,145 @@ let meterReadings = [];
 let dailyConsumption = [];
 let chartInstance = null;
 
-const DEFAULT_WATER_PRICE = 0.2;
-const DEFAULT_ELECTRICITY_PRICE = 162;
-const DEFAULT_GAS_PRICE = 157;
+const DEFAULT_WATER_PRICE_PER_LITER = 0.2; // دیگر استفاده نمی‌شود، اما برای سازگاری نگه می‌داریم
+const DEFAULT_ELECTRICITY_PRICE = 162; // قیمت هر کیلووات برق (تومان)
+const DEFAULT_GAS_PRICE = 157; // قیمت هر مترمکعب گاز (تومان)
+
+// ===== تعرفه‌های پلکانی آب به سبک ایران =====
+// این تعرفه‌ها بر اساس ابلاغیه‌های شرکت آب و فاضلاب (سال ۱۴۰۳) تنظیم شده است.
+// قیمت‌ها به تومان به ازای هر متر مکعب می‌باشد.
+function getDefaultWaterTiers() {
+    return [
+        { limit: 5, price: 150 },    // پله اول: تا ۵ مترمکعب (با احتساب افزایش جمعیت)
+        { limit: 10, price: 600 },   // پله دوم: ۵ تا ۱۰ مترمکعب
+        { limit: 20, price: 1800 },  // پله سوم: ۱۰ تا ۲۰ مترمکعب
+        { limit: Infinity, price: 3000 } // پله چهارم: بیش از ۲۰ مترمکعب
+    ];
+}
+
+const DEFAULT_FIXED_CHARGE = 2000; // هزینه ثابت اشتراک آب به تومان
+const DEFAULT_VAT_RATE = 0.09; // مالیات بر ارزش افزوده ۹ درصد
 
 let settings = {
     waterThreshold: 500,
     electricityThreshold: 30,
     gasThreshold: 50,
-    waterPrice: DEFAULT_WATER_PRICE,
+    waterPrice: DEFAULT_WATER_PRICE_PER_LITER,
     electricityPrice: DEFAULT_ELECTRICITY_PRICE,
     gasPrice: DEFAULT_GAS_PRICE,
-    waterUnit: 'liter'
+    waterUnit: 'liter',
+    waterTiers: getDefaultWaterTiers(),
+    fixedCharge: DEFAULT_FIXED_CHARGE,
+    vatRate: DEFAULT_VAT_RATE,
+    baseAllowance: 5 // مترمکعب پایه برای خانواده ۴ نفره
 };
+
+// ===== محاسبه قبض آب با تعرفه‌های پلکانی ایران =====
+function calculateWaterBill(monthlyLiters, familySize = 4) {
+    // تبدیل لیتر به متر مکعب
+    const monthlyM3 = monthlyLiters / 1000;
+    
+    // محاسبه سقف پله اول بر اساس تعداد اعضا
+    // هر نفر اضافه بر ۴ نفر، ۱ مترمکعب به پله اول اضافه می‌شود
+    let firstTierLimit = settings.baseAllowance + Math.max(0, (familySize - 4));
+    // حداقل پله اول ۵ مترمکعب
+    if (firstTierLimit < 5) firstTierLimit = 5;
+    
+    // ساخت پله‌ها با توجه به سقف پله اول
+    const tiers = settings.waterTiers.map(t => ({ ...t }));
+    // تنظیم پله اول بر اساس جمعیت
+    if (tiers.length > 0) {
+        tiers[0].limit = firstTierLimit;
+    }
+    
+    let remaining = monthlyM3;
+    let previousLimit = 0;
+    let totalCost = 0;
+    let tierDetails = [];
+    
+    for (const tier of tiers) {
+        if (remaining <= 0) break;
+        const volumeInTier = Math.min(remaining, tier.limit - previousLimit);
+        if (volumeInTier > 0) {
+            const cost = volumeInTier * tier.price;
+            totalCost += cost;
+            tierDetails.push({
+                range: `${previousLimit + 1} - ${tier.limit === Infinity ? '∞' : tier.limit}`,
+                volume: Math.round(volumeInTier * 100) / 100,
+                price: tier.price,
+                cost: Math.round(cost)
+            });
+            remaining -= volumeInTier;
+        }
+        previousLimit = tier.limit;
+    }
+    
+    // اضافه کردن هزینه ثابت اشتراک
+    const fixedCharge = settings.fixedCharge || DEFAULT_FIXED_CHARGE;
+    totalCost += fixedCharge;
+    
+    // مالیات بر ارزش افزوده
+    const vat = totalCost * (settings.vatRate || DEFAULT_VAT_RATE);
+    const finalCost = totalCost + vat;
+    
+    return {
+        consumptionM3: Math.round(monthlyM3 * 100) / 100,
+        baseCost: Math.round(totalCost - vat - fixedCharge), // هزینه مصرف قبل از مالیات و ثابت
+        fixedCharge: Math.round(fixedCharge),
+        vat: Math.round(vat),
+        totalCost: Math.round(finalCost),
+        tierDetails: tierDetails,
+        tiers: tiers,
+        firstTierLimit: firstTierLimit
+    };
+}
 
 // ===== بارگذاری تنظیمات =====
 function loadSettings() {
     const stored = localStorage.getItem(getSettingsKey());
     if (stored) {
         const saved = JSON.parse(stored);
-        settings.waterPrice = (saved.waterPrice && saved.waterPrice !== 0) ? saved.waterPrice : DEFAULT_WATER_PRICE;
+        // قیمت‌های ساده
+        settings.waterPrice = (saved.waterPrice && saved.waterPrice !== 0) ? saved.waterPrice : DEFAULT_WATER_PRICE_PER_LITER;
         settings.electricityPrice = (saved.electricityPrice && saved.electricityPrice !== 0) ? saved.electricityPrice : DEFAULT_ELECTRICITY_PRICE;
         settings.gasPrice = (saved.gasPrice && saved.gasPrice !== 0) ? saved.gasPrice : DEFAULT_GAS_PRICE;
+        // آستانه‌ها
         settings.waterThreshold = saved.waterThreshold || 500;
         settings.electricityThreshold = saved.electricityThreshold || 30;
         settings.gasThreshold = saved.gasThreshold || 50;
         settings.waterUnit = saved.waterUnit || 'liter';
+        // تعرفه‌های آب
+        if (saved.waterTiers && Array.isArray(saved.waterTiers) && saved.waterTiers.length > 0) {
+            settings.waterTiers = saved.waterTiers;
+        } else {
+            settings.waterTiers = getDefaultWaterTiers();
+        }
+        settings.fixedCharge = saved.fixedCharge || DEFAULT_FIXED_CHARGE;
+        settings.vatRate = saved.vatRate || DEFAULT_VAT_RATE;
+        settings.baseAllowance = saved.baseAllowance || 5;
     } else {
-        settings.waterPrice = DEFAULT_WATER_PRICE;
-        settings.electricityPrice = DEFAULT_ELECTRICITY_PRICE;
-        settings.gasPrice = DEFAULT_GAS_PRICE;
+        // مقادیر پیش‌فرض
+        settings.waterTiers = getDefaultWaterTiers();
+        settings.fixedCharge = DEFAULT_FIXED_CHARGE;
+        settings.vatRate = DEFAULT_VAT_RATE;
+        settings.baseAllowance = 5;
     }
-    // اعمال مقادیر به المان‌ها
-    const waterThresholdEl = document.getElementById('waterThreshold');
-    if (waterThresholdEl) waterThresholdEl.value = settings.waterThreshold;
-    const elecThresholdEl = document.getElementById('electricityThreshold');
-    if (elecThresholdEl) elecThresholdEl.value = settings.electricityThreshold;
-    const gasThresholdEl = document.getElementById('gasThreshold');
-    if (gasThresholdEl) gasThresholdEl.value = settings.gasThreshold;
-    
-    const waterPriceEl = document.getElementById('waterPrice');
-    if (waterPriceEl) waterPriceEl.value = settings.waterPrice;
-    const elecPriceEl = document.getElementById('electricityPrice');
-    if (elecPriceEl) elecPriceEl.value = settings.electricityPrice;
-    const gasPriceEl = document.getElementById('gasPrice');
-    if (gasPriceEl) gasPriceEl.value = settings.gasPrice;
-    
-    const waterUnitEl = document.getElementById('waterUnit');
-    if (waterUnitEl) waterUnitEl.value = settings.waterUnit;
+    // اعمال به المان‌ها
+    document.getElementById('waterThreshold').value = settings.waterThreshold;
+    document.getElementById('electricityThreshold').value = settings.electricityThreshold;
+    document.getElementById('gasThreshold').value = settings.gasThreshold;
+    document.getElementById('waterPrice').value = settings.waterPrice;
+    document.getElementById('electricityPrice').value = settings.electricityPrice;
+    document.getElementById('gasPrice').value = settings.gasPrice;
+    document.getElementById('waterUnit').value = settings.waterUnit;
 }
 
 function saveManualSettings() {
+    // قیمت‌های ساده
     let waterPrice = parseFloat(document.getElementById('waterPrice').value);
     let electricityPrice = parseFloat(document.getElementById('electricityPrice').value);
     let gasPrice = parseFloat(document.getElementById('gasPrice').value);
-    if (isNaN(waterPrice) || waterPrice === 0) waterPrice = DEFAULT_WATER_PRICE;
+    if (isNaN(waterPrice) || waterPrice === 0) waterPrice = DEFAULT_WATER_PRICE_PER_LITER;
     if (isNaN(electricityPrice) || electricityPrice === 0) electricityPrice = DEFAULT_ELECTRICITY_PRICE;
     if (isNaN(gasPrice) || gasPrice === 0) gasPrice = DEFAULT_GAS_PRICE;
     
@@ -81,6 +166,9 @@ function saveManualSettings() {
     settings.electricityPrice = electricityPrice;
     settings.gasPrice = gasPrice;
     settings.waterUnit = document.getElementById('waterUnit').value;
+    
+    // تعرفه‌های آب را از localStorage ذخیره می‌کنیم (فعلاً همان‌ها را نگه می‌داریم)
+    // در این نسخه کاربر نمی‌تواند از طریق UI پله‌ها را ویرایش کند، اما در آینده قابل توسعه است.
     
     localStorage.setItem(getSettingsKey(), JSON.stringify(settings));
     document.getElementById('waterPrice').disabled = true;
@@ -345,7 +433,7 @@ function updateChartByPeriod() {
     renderChartByPeriod(period, chartType);
 }
 
-// ===== پیش‌بینی قبض =====
+// ===== پیش‌بینی قبض (با محاسبه دقیق آب) =====
 function calculateBillPrediction() {
     const display = document.getElementById('billPredictionDisplay');
     if (!display) return;
@@ -366,19 +454,56 @@ function calculateBillPrediction() {
         case 'monthly': daysMultiplier = 30; periodName = 'ماهانه'; break;
         default: daysMultiplier = 30; periodName = 'ماهانه';
     }
-    const waterCost = avgWater * daysMultiplier * (settings.waterPrice / 1000);
+    
+    // محاسبه آب با تعرفه پلکانی
+    const familySize = store.currentUserProfile?.familySize || 4;
+    const monthlyWaterLiters = avgWater * daysMultiplier;
+    const waterBill = calculateWaterBill(monthlyWaterLiters, familySize);
+    
+    // محاسبه برق و گاز با قیمت ساده (برای برق و گاز هم می‌توان تعرفه پلکانی پیاده‌سازی کرد، اما فعلاً ساده)
     const elecCost = avgElec * daysMultiplier * settings.electricityPrice;
     const gasCost = avgGas * daysMultiplier * settings.gasPrice;
-    const total = waterCost + elecCost + gasCost;
     
-    display.innerHTML = `
-        <div>📊 پیش‌بینی قبض ${periodName} (بر اساس میانگین مصرف ${dailyConsumption.length} روز اخیر):</div>
-        <div>💧 آب: ${(avgWater * daysMultiplier).toFixed(2)} لیتر → ${waterCost.toFixed(0)} تومان</div>
-        <div>⚡ برق: ${(avgElec * daysMultiplier).toFixed(2)} کیلووات → ${elecCost.toFixed(0)} تومان</div>
-        <div>🔥 گاز: ${(avgGas * daysMultiplier).toFixed(2)} مترمکعب → ${gasCost.toFixed(0)} تومان</div>
-        <div><strong>💰 جمع کل: ${total.toFixed(0)} تومان</strong></div>
-        <div style="font-size:0.8rem;">*تخمین بر اساس تعرفه‌های فعلی (قابل تغییر در تنظیمات دستی).</div>
+    // هزینه کل
+    const totalCost = waterBill.totalCost + elecCost + gasCost;
+    
+    // ساخت نمایش
+    let html = `
+        <div class="space-y-2">
+            <div class="font-bold text-primary">📊 پیش‌بینی قبض ${periodName}</div>
+            <div class="grid grid-cols-2 gap-2 text-sm">
+                <div class="bg-blue-50 p-2 rounded">
+                    💧 آب: <span class="font-bold">${waterBill.totalCost.toLocaleString()}</span> تومان
+                </div>
+                <div class="bg-yellow-50 p-2 rounded">
+                    ⚡ برق: <span class="font-bold">${Math.round(elecCost).toLocaleString()}</span> تومان
+                </div>
+                <div class="bg-green-50 p-2 rounded">
+                    🔥 گاز: <span class="font-bold">${Math.round(gasCost).toLocaleString()}</span> تومان
+                </div>
+                <div class="bg-purple-50 p-2 rounded font-bold">
+                    💰 جمع: <span class="font-bold text-primary">${Math.round(totalCost).toLocaleString()}</span> تومان
+                </div>
+            </div>
+            <div class="text-xs text-gray-500 mt-2">
+                <details>
+                    <summary class="cursor-pointer">🔍 جزئیات قبض آب (${waterBill.consumptionM3} مترمکعب)</summary>
+                    <div class="mt-1 space-y-1">
+                        ${waterBill.tierDetails.map(t => 
+                            `<div>پله ${t.range}: ${t.volume} m³ × ${t.price} = ${t.cost.toLocaleString()} تومان</div>`
+                        ).join('')}
+                        <div>هزینه ثابت اشتراک: ${waterBill.fixedCharge.toLocaleString()} تومان</div>
+                        <div>مالیات (۹٪): ${waterBill.vat.toLocaleString()} تومان</div>
+                        <div class="font-bold">جمع آب: ${waterBill.totalCost.toLocaleString()} تومان</div>
+                        <div class="text-gray-400 text-[10px]">پله اول بر اساس ${familySize} نفر: ${waterBill.firstTierLimit} مترمکعب</div>
+                    </div>
+                </details>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-1">* تخمین بر اساس تعرفه‌های روز (قابل تنظیم دستی)</div>
+        </div>
     `;
+    
+    display.innerHTML = html;
 }
 
 // ===== جدول مصرف =====
@@ -403,8 +528,12 @@ function showConsumptionTable() {
         return;
     }
     let totalW = 0, totalE = 0, totalG = 0;
+    // برای نمایش هزینه‌ها در جدول از قیمت‌های ساده استفاده می‌کنیم
     const rows = filtered.map(day => {
-        const cost = day.water * (settings.waterPrice / 1000) + day.electricity * settings.electricityPrice + day.gas * settings.gasPrice;
+        const waterCost = day.water * (settings.waterPrice / 1000);
+        const elecCost = day.electricity * settings.electricityPrice;
+        const gasCost = day.gas * settings.gasPrice;
+        const total = waterCost + elecCost + gasCost;
         let alertMsg = '';
         if (day.water > settings.waterThreshold && settings.waterThreshold > 0) alertMsg += '⚠️ آب ';
         if (day.electricity > settings.electricityThreshold && settings.electricityThreshold > 0) alertMsg += '⚠️ برق ';
@@ -413,7 +542,7 @@ function showConsumptionTable() {
         totalW += day.water;
         totalE += day.electricity;
         totalG += day.gas;
-        return `<tr><td>${day.date}</td><td>${day.water.toFixed(2)} لیتر</td><td>${day.electricity.toFixed(2)} کیلووات</td><td>${day.gas.toFixed(2)} مترمکعب</td><td>${cost.toFixed(0)} تومان</td><td>${alertMsg}</td></tr>`;
+        return `<tr><td>${day.date}</td><td>${day.water.toFixed(2)} لیتر</td><td>${day.electricity.toFixed(2)} کیلووات</td><td>${day.gas.toFixed(2)} مترمکعب</td><td>${Math.round(total).toLocaleString()} تومان</td><td>${alertMsg}</td></tr>`;
     }).join('');
     tbody.innerHTML = rows;
     const avgW = totalW / filtered.length;
@@ -437,8 +566,11 @@ function exportToCSV() {
     }
     let csv = [["تاریخ", "آب (لیتر/روز)", "برق (کیلووات/روز)", "گاز (مترمکعب/روز)", "هزینه (تومان)"]];
     filtered.forEach(day => {
-        const cost = day.water * (settings.waterPrice / 1000) + day.electricity * settings.electricityPrice + day.gas * settings.gasPrice;
-        csv.push([day.date, day.water.toFixed(2), day.electricity.toFixed(2), day.gas.toFixed(2), cost.toFixed(0)]);
+        const waterCost = day.water * (settings.waterPrice / 1000);
+        const elecCost = day.electricity * settings.electricityPrice;
+        const gasCost = day.gas * settings.gasPrice;
+        const total = waterCost + elecCost + gasCost;
+        csv.push([day.date, day.water.toFixed(2), day.electricity.toFixed(2), day.gas.toFixed(2), Math.round(total).toFixed(0)]);
     });
     const blob = new Blob(["\uFEFF" + csv.map(r => r.join(",")).join("\n")], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement('a');
